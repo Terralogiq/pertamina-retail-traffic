@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "pertamina_retail_traffic",
+  "project_id": "60d39f7e-b0bb-4d31-ad28-14ad1bdf2606"
+}
