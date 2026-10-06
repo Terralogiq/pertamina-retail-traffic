@@ -147,6 +147,7 @@ CREATE TABLE traffic.weather_slots (
   -- demo-only (Google Weather currentConditions)
   demo_condition_type     STRING,    -- e.g. LIGHT_RAIN
   demo_condition_text     STRING,    -- localized description
+  demo_rain_flag          BOOL,      -- weatherCondition.type is a rain type; catches light rain that qpf misses
   demo_icon_uri           STRING,
   demo_precip_probability FLOAT64,
   demo_thunderstorm_prob  FLOAT64,

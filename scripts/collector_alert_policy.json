@@ -1,0 +1,34 @@
+{
+  "displayName": "__POLICY_NAME__",
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Failed executions of Cloud Run job __JOB__",
+      "conditionThreshold": {
+        "filter": "resource.type = \"cloud_run_job\" AND resource.labels.job_name = \"__JOB__\" AND metric.type = \"run.googleapis.com/job/completed_execution_count\" AND metric.labels.result = monitoring.regex.full_match(\"fail.*\")",
+        "aggregations": [
+          {
+            "alignmentPeriod": "300s",
+            "perSeriesAligner": "ALIGN_SUM"
+          }
+        ],
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "trigger": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "alertStrategy": {
+    "autoClose": "1800s"
+  },
+  "notificationChannels": [
+    "__CHANNEL__"
+  ],
+  "documentation": {
+    "mimeType": "text/markdown",
+    "content": "The Cloud Run job `__JOB__` (traffic and weather collector) had a failed execution. The job fails only if every Routes or Weather call fails, or on a BigQuery or startup error. Check the logs: `gcloud run jobs executions list --job __JOB__ --region __REGION__` and Cloud Logging for resource `cloud_run_job`."
+  }
+}

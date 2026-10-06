@@ -103,7 +103,7 @@ Target: rows landing within 2 days of receiving the directions links.
   - maps legs to rows;
   - computes `static_ratio` and `speed_kmh`.
 - `weather.py`: field mapping and units, and `rain_flag`.
-- `bq.py`: reads active routes, runs the `MERGE`s, creates the views. This is the only module that imports `google.cloud`.
+- `bq.py`: reads active routes and runs the `MERGE`s (staging table + MERGE per table). This is the only module that imports `google.cloud`. The views `v_leg_baseline` and `v_traffic` are created by `sql/ddl.sql` (1a).
 - `Dockerfile` and `requirements.txt`.
 
 Each run:
@@ -115,6 +115,7 @@ Each run:
 Tests go in `tests/test_collector_*.py`, cover the pure functions only and make no network calls.
 
 **1d. Deploy** (bead `.7.8`)
+- **First deploy uses `--default-sa`** (user, 2026-10-07). The job and the Scheduler run as the Compute Engine default service account, which has Editor. Editor already covers BigQuery jobs, table writes (the dataset access list gives project editors write access) and starting the job. The only grant added is `secretmanager.secretAccessor` on `MAPS_API_KEY`. Moving to the dedicated accounts below is bead `pertamina-retail-traffic-907.7.12`: re-run the script without `--default-sa`.
 - `scripts/deploy_collector.sh`, re-runnable:
   - enables `cloudscheduler`, `cloudbuild` and `artifactregistry`;
   - creates service accounts:
@@ -136,7 +137,7 @@ Tests go in `tests/test_collector_*.py`, cover the pure functions only and make 
 
 ### Phase 2: refine (after collecting has started)
 
-- **`v_leg_baseline` and `v_traffic`:** created in 1c, meaningful after about 7 days of data.
+- **`v_leg_baseline` and `v_traffic`:** created in 1a (`sql/ddl.sql`), meaningful after about 7 days of data.
 - **Reroute check** (bead `.7.6`): `demo_rerouted` on every leg (distance more than 10% off, or the geometry leaves a 30 m buffer around `expected_polyline`). Computed at ingest and backfilled from `route_geometry`.
 - **Optional: speed intervals** on the legs, at Enterprise pricing ($15/1k instead of $10/1k).
 
@@ -169,11 +170,11 @@ Levers:
 |---|---|---|
 | `sql/ddl.sql`, `scripts/bq_setup.sh` | `.7.2` | |
 | `data/segment_links.csv`, `scripts/segments_lib.py`, `scripts/propose_segments.py`, `scripts/preview_segments.py`, `data/routes.csv`, `tests/test_segments.py` | `.7.4` | `data/routes.csv` is generated; fix inputs via links, not by hand |
-| `scripts/load_reference.py` | `.7.11` | Needs the `.7.2` tables |
-| `collector/main.py`, `collector/slots.py`, `collector/bq.py`, `collector/Dockerfile`, `collector/requirements.txt` | `.7.5` | Shared entry point. `.7.7` hands its row builder to `.7.5` rather than editing these files |
+| `scripts/load_reference.py`, `tests/test_load_reference.py` | `.7.11` | Needs the `.7.2` tables |
+| `collector/main.py`, `collector/slots.py`, `collector/bq.py`, `collector/httpjson.py`, `collector/Dockerfile`, `collector/.dockerignore`, `collector/requirements.txt`, `tests/test_collector_http.py`, `tests/test_collector_bq.py` | `.7.5` | Shared entry point. `.7.7` hands its row builder to `.7.5` rather than editing these files |
 | `collector/traffic.py`, `tests/test_collector_traffic.py` | `.7.5` | |
 | `collector/weather.py`, `tests/test_collector_weather.py` | `.7.7` | Can run in parallel with `.7.5` |
-| `scripts/deploy_collector.sh` | `.7.8` | |
+| `scripts/deploy_collector.sh`, `scripts/collector_alert_policy.json` | `.7.8` | |
 | `scripts/build-and-test.sh` | `.7.5` | Add `collector/*.py` to `py_compile` |
 | `docs/plans/*.md`, `data/sites.csv`, `README.md`, `.gitignore` | orchestrator | |
 
