@@ -1,0 +1,11 @@
+site_no,spbu_code,city,road,road_type,place_id
+1,24.351.97,Bandar Lampung,Jl. P. Tirtayasa,client-provided,ChIJOev7BHzcQC4RkTJHeDJS8PQ
+2,24.351.34,Bandar Lampung,Jl. P. Antasari,client-provided,ChIJJXEjFwnbQC4RBlHwmDTzc3w
+3,34.121.03,Jakarta Selatan,Jl. TB Simatupang,congested arterial,ChIJ_Yu4YvnxaS4RSq9CZVDfahU
+4,34.117.12,Jakarta Barat,Jl. Daan Mogot,arterial,ChIJyxrzOer3aS4RroaX8C20SCk
+5,KM57A,Karawang,Tol Jakarta-Cikampek KM 57 A (Jakarta->Cikampek),toll rest area,ChIJxyd2_yF0aS4Rke2QWUFK2lQ
+6,34.401.16,Bandung,Jl. Dr. Djunjunan,arterial gateway,ChIJ1W0orWTmaC4RoY3QEG4SQhQ
+7,54.601.80,Surabaya,Jl. Ahmad Yani,arterial,ChIJdbnAi0T71y0RK8RxR-5wLqk
+8,61.761.03,Balikpapan,Jl. MT Haryono,arterial,ChIJnV_l7-5G8S0RR5u6DitfPus
+9,74.902.22,Makassar,Jl. Perintis Kemerdekaan,national road airport link,ChIJawRf9Urjvi0RnmY2YouCcAA
+10,54.801.17,Denpasar,Jl. By Pass Ngurah Rai,bypass,ChIJT8-a6kVB0i0RpAsgjpVtcRQ

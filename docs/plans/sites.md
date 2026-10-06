@@ -39,9 +39,9 @@ For sites 3–10, run a Places Text Search for `SPBU Pertamina <road> <city>`. A
 3. Has `businessStatus` OPERATIONAL and a decent number of reviews, which helps the Places panel.
 
 Record the following in `traffic.sites`:
-- the SPBU number (from the place name)
-- `place_id`
-- location
+- the SPBU number (from the place name). Site 5's Places listing has no number, so it uses the surrogate `KM57A` until Pertamina confirms the real code.
+- `place_id`: the anchor. `data/sites.csv` is the committed source and holds no coordinates.
+- location, re-fetched from Place Details at least every 30 days (Places ToS limit on caching lat/lng)
 - road name
 - city
 

@@ -13,10 +13,11 @@ TODO: check the RMI BigQuery export field names and the WeatherNext variable lis
 ## sites
 ```sql
 CREATE TABLE traffic.sites (
-  site_id      STRING NOT NULL,   -- SPBU number, e.g. "31.128.02"
+  site_id      STRING NOT NULL,   -- SPBU number, e.g. "31.128.02"; surrogate if Places shows none (site 5: "KM57A")
   name         STRING,
-  place_id     STRING,            -- Places place_id (storable indefinitely)
-  location     GEOGRAPHY,
+  place_id     STRING NOT NULL,   -- Places place_id: the anchor (storable indefinitely)
+  location     GEOGRAPHY,         -- from Place Details; Places ToS allows caching lat/lng for at most 30 days
+  location_refreshed_at TIMESTAMP, -- collector re-fetches location from Place Details when older than 30 days
   road_name    STRING,
   city         STRING
 );

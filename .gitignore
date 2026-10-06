@@ -17,3 +17,4 @@ node_modules/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+out/
