@@ -18,3 +18,4 @@ node_modules/
 .beads/proxieddb/
 *.gate.lock*
 out/
+.playwright-mcp/

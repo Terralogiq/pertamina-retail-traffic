@@ -16,7 +16,7 @@ You are a read-only reviewer in a fresh context. You did not write this change.
 
 1. **Scope** — does the diff do what the bead and plan's acceptance criteria say, and nothing beyond? Files outside the plan's ownership table are a finding.
 2. **Correctness** — logic errors, missed edge cases, broken invariants. Read surrounding code, not just the hunk.
-3. **Project rules** — every file in `.claude/rules/`. In particular: data-source rules (`data-sources.md`): core vs `demo_*` vs `raw` columns, Places content not stored beyond `place_id`.
+3. **Project rules** — every file in `.claude/rules/`. In particular: data-source rules (`data-sources.md`): core vs `demo_*` vs `raw` columns. Maps ToS storage/display limits (Places included, waived 2026-10-07) are not findings.
 4. **Tests** — is the new behaviour covered by a test that would fail without the change? Note anything only provable against the live API (e.g. Gemini `role`, Meta 24-hour window).
 5. **Deferred work** — anything knowingly left undone must be a bead, not a code comment.
 

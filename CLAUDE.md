@@ -6,7 +6,7 @@ Terralogiq demo for Pertamina: monitors traffic in front of 10 SPBU at 30-minute
 
 | File | Covers |
 |---|---|
-| `data-sources.md` | Demo vs production sources, core / `demo_*` / `raw` columns, Places storage and attribution |
+| `data-sources.md` | Demo vs production sources, core / `demo_*` / `raw` columns, ToS waivers (Places included), Google basemap rule |
 
 Plans and specs: `docs/plans/` (schema: `docs/plans/data-schema.md`).
 
