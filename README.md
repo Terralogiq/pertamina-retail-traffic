@@ -10,8 +10,13 @@ Terralogiq demo for Pertamina: monitors traffic on the road in front of 10 SPBU 
   - Road segments for all 10 sites, validated and user-checked (`data/routes.csv`).
   - BigQuery dataset `gcp-coe-sandbox.traffic` (asia-southeast2) with reference data loaded (10 sites, 20 legs).
   - Collector deployed 2026-10-07 00:40 WIB: Cloud Run job `traffic-collector`, Scheduler `traffic-collector-every-30min` (`*/30` Asia/Jakarta), failure alert by email. Every slot so far has 20 traffic + 10 weather rows, no gaps.
-- In progress: 24 h acceptance run (through ~2026-10-07 18:00 UTC).
-- Dashboard stack decided (2026-10-07): custom app on Cloud Run. Next: dashboard plan; recheck rain flags after 24–48 h.
+  - Dashboard live: https://traffic-dashboard-509833145296.asia-southeast2.run.app (password in Secret Manager `DASHBOARD_PASSWORD`). Screens: overview map, site detail (traffic charts with rain bars, day × hour heatmap in local time, weather, Places), traffic vs rain. Plan: `docs/plans/dashboard.md`.
+  - Places profiling job `places-profiler`: weekly (Mon 02:00 WIB) into `places_details`, `places_nearby`, `places_aggregate`; first two runs 2026-10-07.
+- In progress:
+  - Collector 24 h acceptance run (through ~2026-10-07 18:00 UTC).
+  - UI/UX review and Pertamina Retail redesign (`docs/plans/dashboard-redesign.md`); needs the official logo and brand colours.
+- Next: recheck rain flags after 24–48 h; `demo_rerouted` check; dedicated service accounts.
+- `congestion_index` needs 302 of 336 samples per leg (about 2026-10-13); until then the map colours legs by speed and shows "baseline building".
 
 ## Data sources
 
@@ -48,14 +53,17 @@ Spec: [`docs/plans/data-schema.md`](docs/plans/data-schema.md). DDL: [`sql/ddl.s
 
 | Table | Grain | Purpose |
 |---|---|---|
-| `sites` | SPBU | ID, name, `place_id`, location, road, city |
+| `sites` | SPBU | ID, name, `place_id`, location, road, city, `timezone` (WIB/WITA) |
 | `routes` | SPBU × direction | Segment endpoints with headings, plus the expected polyline and distance. Later becomes the RMI route registration. |
 | `traffic_snapshots` | route × 30-min slot | Duration, static duration and derived metrics. Partitioned by date, clustered by `route_id`. |
 | `weather_slots` | SPBU × 30-min slot | Temperature, precipitation, humidity, wind and pressure. Partitioned by date, clustered by `site_id`. |
+| `places_details` | SPBU × run | Rating, review count, reviews, opening hours. |
+| `places_nearby` | SPBU × radius × place × run | Competitor gas stations (1 km, 3 km), with brand. |
+| `places_aggregate` | SPBU × type × radius × run | POI counts (15 types × 500 m / 1 km / 3 km). |
 
 Views: `v_leg_baseline` (each leg's 7-day p10 duration) and `v_traffic` (snapshots joined with the derived metrics below).
 
-Every table has three column groups:
+Every traffic and weather table has three column groups (Places tables: core + `raw`, since production uses the same API):
 - **core:** compatible with RMI or WeatherNext. Production metrics build only on these.
 - **`demo_*`:** available only from the demo source. Widgets that use them show a "demo-only" label.
 - **`raw`:** the full API response as `JSON`.
@@ -91,9 +99,10 @@ Prices as of 2026-10-06.
 | Re-adding an opposite side | +1,440 per site | Pro | +$14 per site |
 | Routes with `TRAFFIC_ON_POLYLINE` | — | Enterprise $15/1k after 1k free | optional |
 | Weather `currentConditions` | 10 × 48/day ≈ 14,400 | $0.15/1k after 10k free* | ≈ $0.66 |
-| Nearby Search | per profiling run | $32–40/1k by tier* | — |
-| Place Details with reviews | live, per view | $25/1k* | — |
-| Places Aggregate | per profiling run | $10/1k after 5k free* | — |
+| Nearby Search | 20 per weekly run | $32–40/1k by tier* | ≈ $3 |
+| Place Details with reviews | 10 per weekly run (stored, not per view) | $25/1k* | ≈ $1 |
+| Places Aggregate | 450 per weekly run (1,800/month) | $10/1k after 5k free* | ≈ $0 |
+| Dashboard (Cloud Run, BigQuery, Maps JS loads) | demo traffic | free tiers | ≈ $0 |
 
 \* Taken directly from Google's pricing pages but not double-checked like the Routes prices. Recheck in the console; the Weather price looks low.
 
@@ -110,17 +119,21 @@ Tracked in Beads (`bd ready`, epic `pertamina-retail-traffic-907`).
    - collector job ✓
    - Scheduler deploy ✓ (24 h acceptance pending)
    - later: dedicated service accounts instead of the Compute Engine default SA; `demo_rerouted` check
-4. **Dashboard frontend:** stack chosen (custom app on Cloud Run); plan next.
+4. ~~Dashboard frontend~~ done (`docs/plans/dashboard.md`): service, map, traffic charts, weather and rain view, Places job and panels.
+5. **Redesign** (`docs/plans/dashboard-redesign.md`): UX review, then Pertamina Retail branding with `impeccable`.
 
 ## Repo layout
 
 ```
 .claude/           harness: settings, Stop hook, advisor-reviewer agent, rules
 collector/         Cloud Run job: Routes + Weather calls, staging table + guarded MERGE (idempotent)
+dashboard/         Cloud Run service: api/ (FastAPI, password gate, BigQuery, cache), web/ (Vite + React + TS, Maps JS, ECharts)
+places_job/        Cloud Run job: Places Details, Nearby and Aggregate per SPBU into BigQuery
 data/              sites.csv (place_id anchors), segment_links.csv (user links), routes.csv (validated legs)
-docs/plans/        plans and specs (collector, data-schema, sites, places-test-fetch)
+docs/plans/        plans and specs (collector, dashboard, dashboard-redesign, data-schema, sites, places-test-fetch)
 docs/handoffs/     session handoffs
-scripts/           build-and-test.sh, bq_setup.sh, load_reference.py, deploy_collector.sh,
+scripts/           build-and-test.sh, dev-setup.sh, bq_setup.sh, load_reference.py,
+                   deploy_collector.sh, deploy_dashboard.sh, deploy_places_job.sh,
                    places_test_fetch.py, segments (segments_lib, propose_segments, preview_segments)
 sql/               ddl.sql (BigQuery tables and views)
 tests/             unittest, no network
@@ -135,6 +148,9 @@ Always pass `--project gcp-coe-sandbox --billing-project gcp-coe-sandbox`; the g
 scripts/bq_setup.sh                       # dataset, tables, views
 python3 scripts/load_reference.py         # MERGE sites.csv + routes.csv into BigQuery
 scripts/deploy_collector.sh --default-sa  # job + Scheduler + alert; also --dry-run, --no-schedule
+scripts/deploy_dashboard.sh --default-sa  # dashboard service, secrets, browser key; also --dry-run
+scripts/deploy_places_job.sh --default-sa # Places job + weekly Scheduler + alert; also --dry-run
+gcloud run jobs execute places-profiler --region asia-southeast2 --project gcp-coe-sandbox --billing-project gcp-coe-sandbox --wait
 
 # Health check: every execution should succeed
 gcloud run jobs executions list --job traffic-collector --region asia-southeast2 \
@@ -143,7 +159,9 @@ gcloud run jobs executions list --job traffic-collector --region asia-southeast2
 
 In BigQuery, each `slot_time` should have 20 rows in `traffic_snapshots` (all with a duration) and 10 in `weather_slots`, with no missing :00/:30 slots.
 
-- The Maps key lives in Secret Manager (`MAPS_API_KEY`). Never print it.
+- The Maps key lives in Secret Manager (`MAPS_API_KEY`). Never print it. The dashboard's browser key (`MAPS_BROWSER_KEY`) is restricted to Maps JS on the dashboard URL and `localhost:5173`.
+- Local dev: `scripts/dev-setup.sh` once; then `uvicorn dashboard.api.main:app --port 8080` (with `DASHBOARD_PASSWORD` and `MAPS_BROWSER_KEY` in the env) and `npm run dev` in `dashboard/web`.
+- After `gcloud auth application-default login`, reset the ADC quota project: `gcloud auth application-default set-quota-project gcp-coe-sandbox`.
 - The collector costs about $95/month while the Scheduler is enabled. Pause it with `gcloud scheduler jobs pause traffic-collector-every-30min --location asia-southeast2 --project gcp-coe-sandbox`.
 
 ## Workflow
