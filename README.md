@@ -11,7 +11,7 @@ Terralogiq demo for Pertamina: monitors traffic on the road in front of 10 SPBU 
   - BigQuery dataset `gcp-coe-sandbox.traffic` (asia-southeast2) with reference data loaded (10 sites, 20 legs).
   - Collector deployed 2026-10-07 00:40 WIB: Cloud Run job `traffic-collector`, Scheduler `traffic-collector-every-30min` (`*/30` Asia/Jakarta), failure alert by email. Every slot so far has 20 traffic + 10 weather rows, no gaps.
 - In progress: 24 h acceptance run (through ~2026-10-07 18:00 UTC).
-- Next: recheck rain flags after 24–48 h, then choose the dashboard stack.
+- Dashboard stack decided (2026-10-07): custom app on Cloud Run. Next: dashboard plan; recheck rain flags after 24–48 h.
 
 ## Data sources
 
@@ -33,11 +33,13 @@ Cloud Scheduler (*/30, Asia/Jakarta)
       ├─ Routes computeRoutes   (1 call per SPBU: Approach + Departure legs, SPBU side)
       └─ Weather currentConditions (1 call per SPBU)
   → BigQuery dataset `traffic`
-  → Dashboard: Maps JS basemap + charts from BigQuery + Places panels
+  → Dashboard (Cloud Run): FastAPI /api/* over BigQuery + Vite/React/TS UI,
+      Maps JS basemap, ECharts, Places panels from stored results
 ```
 
 - Times are stored in UTC, and slots are aligned to :00 and :30.
-- Frontend recommendation (not final): a custom app. Looker Studio can't make live Places calls.
+- Dashboard access: public URL behind one static password (Secret Manager). Maps JS uses a separate referrer-restricted browser key; `MAPS_API_KEY` stays server-side.
+- Places panels read results stored by a profiling job, not live calls per view.
 - Maps use a Google basemap only (no Leaflet, OSM or Mapbox).
 
 ## Data model
@@ -108,7 +110,7 @@ Tracked in Beads (`bd ready`, epic `pertamina-retail-traffic-907`).
    - collector job ✓
    - Scheduler deploy ✓ (24 h acceptance pending)
    - later: dedicated service accounts instead of the Compute Engine default SA; `demo_rerouted` check
-4. **Dashboard frontend:** stack not chosen yet.
+4. **Dashboard frontend:** stack chosen (custom app on Cloud Run); plan next.
 
 ## Repo layout
 
