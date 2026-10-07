@@ -112,7 +112,9 @@ KEY_NAME=$(gcloud services api-keys list --filter="displayName=\"$KEY_DISPLAY_NA
   --format='value(name)' "${GC_PROJ[@]}" | head -n 1)
 if [ -n "$KEY_NAME" ]; then
   echo "  key exists: $KEY_NAME; re-applying restrictions"
-  run gcloud services api-keys update "$KEY_NAME" "${KEY_TARGET[@]}" "${GC_PROJ[@]}"
+  # stderr carries the full Key, keyString included: keep it out of the terminal
+  run gcloud services api-keys update "$KEY_NAME" "${KEY_TARGET[@]}" "${GC_PROJ[@]}" 2>/dev/null \
+    || { echo "api-keys update failed (stderr suppressed: it carries the key string)" >&2; exit 1; }
 elif [ "$DRY_RUN" = 1 ]; then
   run gcloud services api-keys create --display-name "$KEY_DISPLAY_NAME" "${KEY_TARGET[@]}" \
     --format 'value(response.name)' "${GC_PROJ[@]}"
