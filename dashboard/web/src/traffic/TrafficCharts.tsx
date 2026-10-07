@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
 import { PatternCell, TrafficPoint, getSiteTimezones, getTrafficPattern, getTrafficSeries } from "./api";
 import Chart from "./Chart";
 import {
@@ -11,23 +12,38 @@ import {
   heatmapData,
   legSeries,
   patternLegs,
+  precipitationSeries,
   tzLabel,
   utcOffsetMinutes,
   windowStart,
 } from "./model";
 
-function lineOption(points: TrafficPoint[], field: MetricField, unit: string, offsetMin: number, tz: string) {
+function lineOption(
+  points: TrafficPoint[], rain: [number, number][], field: MetricField, unit: string, offsetMin: number, tz: string,
+) {
+  const lines = legSeries(points, field, offsetMin).map(({ leg, data }) => ({
+    name: leg, type: "line", showSymbol: false, connectNulls: false, data,
+  }));
   return {
     useUTC: true, // timestamps are pre-shifted to site-local time (see legSeries)
     animation: false,
     tooltip: { trigger: "axis" },
     legend: { top: 0 },
-    grid: { left: 56, right: 16, top: 32, bottom: 28 },
     xAxis: { type: "time", name: tz, nameLocation: "end" },
-    yAxis: { type: "value", scale: true, name: unit },
-    series: legSeries(points, field, offsetMin).map(({ leg, data }) => ({
-      name: leg, type: "line", showSymbol: false, connectNulls: false, data,
-    })),
+    // precipitation_mm (core) as bars on a secondary mm axis, only when the weather series has any
+    yAxis: rain.length === 0
+      ? { type: "value", scale: true, name: unit }
+      : [
+          { type: "value", scale: true, name: unit },
+          { type: "value", min: 0, name: "mm", splitLine: { show: false } },
+        ],
+    grid: { left: 56, right: rain.length === 0 ? 16 : 40, top: 32, bottom: 28 },
+    series: rain.length === 0
+      ? lines
+      : [...lines, {
+          name: "Rain (mm)", type: "bar", yAxisIndex: 1, data: rain, barMaxWidth: 8,
+          itemStyle: { color: "rgba(66, 133, 244, 0.45)" },
+        }],
   };
 }
 
@@ -57,6 +73,7 @@ export default function TrafficCharts({ siteId }: { siteId?: string }) {
   const [range, setRange] = useState<Range>("24h");
   const [timezone, setTimezone] = useState<string | null>(null);
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
+  const [weather, setWeather] = useState<WeatherSeriesPoint[]>([]);
   const [pattern, setPattern] = useState<PatternCell[] | null>(null);
   const [error, setError] = useState("");
 
@@ -81,9 +98,15 @@ export default function TrafficCharts({ siteId }: { siteId?: string }) {
     if (!siteId) return;
     let live = true;
     setPoints(null);
-    getTrafficSeries(siteId, windowStart(range, new Date()))
+    setWeather([]);
+    const from = windowStart(range, new Date());
+    getTrafficSeries(siteId, from)
       .then((rows) => live && setPoints(rows))
       .catch((e) => live && setError(String(e)));
+    // rain bars are optional: a failed weather fetch leaves the charts without them
+    getWeatherSeries(siteId, from)
+      .then((rows) => live && setWeather(rows))
+      .catch(() => {});
     return () => {
       live = false;
     };
@@ -92,9 +115,10 @@ export default function TrafficCharts({ siteId }: { siteId?: string }) {
   const tz = tzLabel(timezone);
   const offsetMin = utcOffsetMinutes(timezone, new Date());
   const building = useMemo(() => (points ? baselineBuilding(points) : null), [points]);
+  const rain = useMemo(() => precipitationSeries(weather, offsetMin), [weather, offsetMin]);
   const lines = useMemo(
-    () => (points ?? []).length === 0 ? [] : METRICS.map((m) => ({ ...m, option: lineOption(points!, m.field, m.unit, offsetMin, tz) })),
-    [points, offsetMin, tz],
+    () => (points ?? []).length === 0 ? [] : METRICS.map((m) => ({ ...m, option: lineOption(points!, rain, m.field, m.unit, offsetMin, tz) })),
+    [points, rain, offsetMin, tz],
   );
   const legs = useMemo(() => patternLegs(pattern ?? []), [pattern]);
 

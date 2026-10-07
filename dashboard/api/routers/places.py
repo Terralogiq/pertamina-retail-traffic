@@ -28,12 +28,19 @@ LIMIT 1
 """
 
 # One row per radius x brand x is_self over the whole run (self included), so the cap can be judged on every
-# result and the competitor counts can leave the site's own place out.
+# result and the competitor counts can leave the site's own place out. A retry under the same run_id re-fetches
+# (MERGE bumps fetched_at) but leaves rows the retry no longer returned at the older fetched_at, so only the
+# latest attempt per (site_id, radius_m) counts. The window runs before the aggregation, hence the CTE.
 NEARBY_SQL = f"""
+WITH latest AS (
+  SELECT n.site_id, n.radius_m, n.brand, n.place_id
+  FROM {bq.table("places_nearby")} AS n
+  WHERE n.site_id = @site_id AND n.fetched_at >= @since AND n.run_id = @run_id
+  QUALIFY n.fetched_at = MAX(n.fetched_at) OVER (PARTITION BY n.site_id, n.radius_m)
+)
 SELECT n.radius_m, IFNULL(n.brand, 'other') AS brand, n.place_id = s.place_id AS is_self, COUNT(*) AS count
-FROM {bq.table("places_nearby")} AS n
+FROM latest AS n
 JOIN {bq.table("sites")} AS s ON s.site_id = n.site_id
-WHERE n.site_id = @site_id AND n.fetched_at >= @since AND n.run_id = @run_id
 GROUP BY n.radius_m, brand, is_self
 """
 

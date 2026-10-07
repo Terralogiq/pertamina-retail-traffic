@@ -140,6 +140,13 @@ class PlacesTest(unittest.TestCase):
             self.assertEqual(call.args[1]["run_id"], "run-2")
         self.assertIn("n.place_id = s.place_id", q.call_args_list[1].args[0])
 
+    def test_nearby_keeps_only_the_latest_attempt_per_radius(self):
+        # a retry under one run_id leaves stale rows at the older fetched_at; they must not reach the counts
+        _, q = self.get(details=DETAILS, nearby_rows=NEARBY)
+        sql = q.call_args_list[1].args[0]
+        self.assertIn("QUALIFY n.fetched_at = MAX(n.fetched_at) OVER (PARTITION BY n.site_id, n.radius_m)", sql)
+        self.assertLess(sql.index("QUALIFY"), sql.index("GROUP BY"))  # filter first, aggregate after
+
     def test_cached(self):
         with mock.patch("dashboard.api.bq.query", side_effect=fake_query(details=DETAILS)) as q:
             self.client.get("/api/places/34.121.03")

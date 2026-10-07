@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTrafficPattern, getTrafficSeries, TrafficPoint, PatternCell } from "./api";
-import { baselineBuilding, heatmapData, legSeries, tzLabel, utcOffsetMinutes, windowStart } from "./model";
+import type { WeatherSeriesPoint } from "../weather/api";
+import { baselineBuilding, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes, windowStart } from "./model";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,6 +50,30 @@ describe("legSeries", () => {
       [Date.parse("2026-10-07T09:00:00Z"), 10],
     ]);
     expect(lines[1].data).toEqual([[Date.parse("2026-10-07T08:30:00Z"), null]]);
+  });
+});
+
+describe("precipitationSeries", () => {
+  const slot = (slot_time: string, precipitation_mm: number | null): WeatherSeriesPoint => ({
+    site_id: "s", slot_time, temperature_c: null, relative_humidity: null, precipitation_mm, rain_flag: null,
+    wind_speed_kmh: null, demo_rain_flag: null, demo_precip_probability: null,
+  });
+
+  it("sorts, drops empty slots and shifts by the same offset as legSeries", () => {
+    const rain = precipitationSeries(
+      [slot("2026-10-07T01:00:00Z", 0), slot("2026-10-07T00:30:00Z", 1.5), slot("2026-10-07T00:00:00Z", null)],
+      480,
+    );
+    expect(rain).toEqual([
+      [Date.parse("2026-10-07T08:30:00Z"), 1.5],
+      [Date.parse("2026-10-07T09:00:00Z"), 0],
+    ]);
+    const line = legSeries([pt("approach", "2026-10-07T00:30:00Z")], "delay_s", 480)[0].data;
+    expect(rain[0][0]).toBe(line[0][0]);
+  });
+
+  it("is empty without weather", () => {
+    expect(precipitationSeries([], 420)).toEqual([]);
   });
 });
 

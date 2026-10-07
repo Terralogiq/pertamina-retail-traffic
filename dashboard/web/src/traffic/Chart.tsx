@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { HeatmapChart, LineChart } from "echarts/charts";
+import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
 echarts.use([
   LineChart,
+  BarChart,
   HeatmapChart,
   GridComponent,
   LegendComponent,

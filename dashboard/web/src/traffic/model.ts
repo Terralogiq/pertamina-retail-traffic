@@ -1,4 +1,5 @@
 import { BASELINE_FULL } from "../map/bands";
+import type { WeatherSeriesPoint } from "../weather/api";
 import type { PatternCell, TrafficPoint } from "./api";
 
 // One threshold for the map badge and the charts: 90% of a 7-day window (see map/bands.ts).
@@ -61,6 +62,17 @@ export function legSeries(
     byLeg.set(p.leg, data);
   }
   return [...byLeg].map(([leg, data]) => ({ leg, data: data.sort((a, b) => a[0] - b[0]) }));
+}
+
+/**
+ * Precipitation bars as [timestamp, mm], shifted by the same site UTC offset as legSeries so both share one time
+ * axis. Slots without a value are dropped (no bar rather than a zero-height one).
+ */
+export function precipitationSeries(slots: WeatherSeriesPoint[], offsetMin: number): [number, number][] {
+  return slots
+    .filter((w) => w.precipitation_mm !== null)
+    .map((w): [number, number] => [Date.parse(w.slot_time) + offsetMin * 60 * 1000, w.precipitation_mm as number])
+    .sort((a, b) => a[0] - b[0]);
 }
 
 /**
