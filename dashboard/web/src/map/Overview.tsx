@@ -44,12 +44,7 @@ export default function Overview() {
   const select = useCallback((id: string) => navigate(`/site/${id}`), [navigate]);
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <header style={{ padding: "8px 16px" }}>
-        <strong>Pertamina SPBU traffic</strong> · overview
-        {" · "}
-        <Link to="/rain">Traffic vs rain</Link>
-      </header>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {error && <div role="alert">{error}</div>}
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>

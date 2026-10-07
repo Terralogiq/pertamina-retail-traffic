@@ -3,6 +3,7 @@ import * as echarts from "echarts/core";
 import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { CHART_THEME } from "../theme/echarts";
 
 echarts.use([
   LineChart,
@@ -21,7 +22,7 @@ export default function Chart({ option, height }: { option: echarts.EChartsCoreO
   const chart = useRef<echarts.ECharts | null>(null);
 
   useEffect(() => {
-    const instance = echarts.init(el.current!);
+    const instance = echarts.init(el.current!, CHART_THEME);
     chart.current = instance;
     const onResize = () => instance.resize();
     window.addEventListener("resize", onResize);

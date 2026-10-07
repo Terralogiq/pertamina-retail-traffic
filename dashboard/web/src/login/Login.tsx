@@ -1,13 +1,20 @@
 import { FormEvent, useState } from "react";
 import { login } from "../api";
+import { usePageTitle, Wordmark } from "../shell/AppShell";
+import "./Login.css";
 
 export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  usePageTitle("Sign in");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!password) {
+      setError("Enter the dashboard password.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -15,29 +22,42 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         setPassword("");
         onSuccess();
       } else {
-        setError("Wrong password");
+        setError("That password isn't right. Check it and try again.");
       }
     } catch {
-      setError("Login failed, try again");
+      setError("Couldn't reach the dashboard. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={submit} style={{ maxWidth: 320, margin: "20vh auto", display: "grid", gap: 12 }}>
-      <h1>Pertamina SPBU traffic</h1>
-      <input
-        type="password"
-        placeholder="Password"
-        autoFocus
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit" disabled={busy || !password}>
-        Sign in
-      </button>
-      {error && <div role="alert">{error}</div>}
-    </form>
+    <main className="login">
+      <form className="login-card" onSubmit={submit} noValidate>
+        <Wordmark />
+        <h1 className="login-title">Sign in</h1>
+        <p className="login-lede">Traffic, weather and site profiles for 10 SPBU, updated every 30 minutes.</p>
+        <label className="login-label" htmlFor="login-password">
+          Password
+        </label>
+        <input
+          id="login-password"
+          className="login-input"
+          type="password"
+          autoComplete="current-password"
+          autoFocus
+          value={password}
+          aria-invalid={error ? true : undefined}
+          aria-describedby="login-error"
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <p id="login-error" className="login-error" role="alert" aria-live="polite">
+          {error}
+        </p>
+        <button type="submit" className="button button-primary login-submit" aria-busy={busy} disabled={busy}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+    </main>
   );
 }

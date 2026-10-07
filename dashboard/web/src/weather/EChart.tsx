@@ -2,6 +2,7 @@ import * as echarts from "echarts/core";
 import { BarChart, LineChart, ScatterChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { CHART_THEME } from "../theme/echarts";
 import { useEffect, useRef } from "react";
 
 echarts.use([LineChart, BarChart, ScatterChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
@@ -12,7 +13,7 @@ export function EChart({ option, height = 260 }: { option: echarts.EChartsCoreOp
   const chart = useRef<echarts.ECharts | null>(null);
 
   useEffect(() => {
-    const c = echarts.init(el.current!);
+    const c = echarts.init(el.current!, CHART_THEME);
     chart.current = c;
     const onResize = () => c.resize();
     window.addEventListener("resize", onResize);

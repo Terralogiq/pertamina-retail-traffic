@@ -1,0 +1,15 @@
+.band-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.band-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+}

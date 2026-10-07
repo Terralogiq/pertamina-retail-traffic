@@ -1,6 +1,5 @@
 import type { EChartsOption } from "echarts";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { DemoBadge, Widget } from "./DemoBadge";
 import { EChart } from "./EChart";
 import { RainResponse, RainSplit, ScatterPoint, SiteInfo, getRain, getSites } from "./api";
@@ -112,9 +111,7 @@ export function RainView() {
   const names: Names = Object.fromEntries(sites.map((s) => [s.site_id, s.name]));
 
   return (
-    <div style={{ padding: 16 }}>
-      <Link to="/">Overview</Link>
-      <h1>Traffic vs rain</h1>
+    <div>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
         <label>
           Site{" "}

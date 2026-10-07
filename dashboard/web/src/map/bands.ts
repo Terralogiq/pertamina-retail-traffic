@@ -1,14 +1,15 @@
 // Pure helpers for the map: colour bands, GeoJSON conversion, bounds, formatting. No Google Maps types at runtime.
 import type { LatestLeg, Site } from "./api";
+import { BANDS } from "../theme/palette";
 
 /** The baseline counts as full at 90% of 7 days x 48 half-hour slots (336), so one missed slot does not hold a leg in fallback. */
 export const BASELINE_FULL = 302;
 
-export const GREY = "#9e9e9e";
-const GREEN = "#2e9e4f";
-const AMBER = "#f2b100";
-const ORANGE = "#f57c00";
-const RED = "#d32f2f";
+export const GREY = BANDS.none.color;
+const GREEN = BANDS.free.color;
+const AMBER = BANDS.moderate.color;
+const ORANGE = BANDS.heavy.color;
+const RED = BANDS.jam.color;
 
 export type Basis = "congestion" | "speed" | "none";
 
