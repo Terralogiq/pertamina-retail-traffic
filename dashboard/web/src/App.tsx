@@ -3,6 +3,7 @@ import { Link, Route, Routes, useParams } from "react-router-dom";
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import { AppConfig, getConfig, setUnauthorizedHandler } from "./api";
 import { Login } from "./login";
+import { RainView, WeatherPanel } from "./weather";
 
 // Placeholders: .4.2 (map), .4.3 (charts), .4.4 (weather), .4.5 (places) each add their routes here, one line each.
 
@@ -41,7 +42,10 @@ function SiteDetail() {
   return (
     <div style={{ padding: 16 }}>
       <Link to="/">Overview</Link>
+      {" · "}
+      <Link to="/rain">Traffic vs rain</Link>
       <h1>Site {site_id}</h1>
+      <WeatherPanel siteId={site_id!} />
     </div>
   );
 }
@@ -67,6 +71,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Overview config={config} />} />
       <Route path="/site/:site_id" element={<SiteDetail />} />
+      <Route path="/rain" element={<RainView />} />
     </Routes>
   );
 }
