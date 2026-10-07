@@ -160,6 +160,7 @@ export default function TrafficCharts({
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
   const [weather, setWeather] = useState<WeatherSeriesPoint[] | null>(null);
   const [error, setError] = useState("");
+  const [rainError, setRainError] = useState("");
   const [now] = useState(() => new Date());
 
   const from = windowStart(range, now);
@@ -168,13 +169,14 @@ export default function TrafficCharts({
     setPoints(null);
     setWeather(null);
     setError("");
+    setRainError("");
     getTrafficSeries(siteId, from)
       .then((rows) => live && setPoints(rows))
       .catch((e) => live && setError(String(e)));
-    // The rain strip is optional: a failed weather fetch shows a note, the traffic charts still render.
+    // The rain strip is optional: a failed weather fetch shows an error in its block, the traffic charts still render.
     getWeatherSeries(siteId, from)
       .then((rows) => live && setWeather(rows))
-      .catch(() => live && setWeather([]));
+      .catch((e) => live && setRainError(String(e)));
     return () => {
       live = false;
     };
@@ -192,6 +194,7 @@ export default function TrafficCharts({
     () => (points && points.length ? METRICS.map((m) => ({ ...m, option: lineOption(points, m.field, m.unit, offsetMin, x) })) : []),
     [points, offsetMin, x],
   );
+  const rainChart = useMemo(() => (hadRain(rain) ? rainOption(rain, x) : null), [rain, x]);
   const legs = useMemo(() => [...new Set((points ?? []).map((p) => p.leg))].sort(), [points]);
   const group = `traffic-${siteId}`;
   const windowLabel = range === "24h" ? "last 24 hours" : "last 7 days";
@@ -223,10 +226,12 @@ export default function TrafficCharts({
             </Block>
           ))}
           <Block title="Rain (mm)" aside="measured, per half hour">
-            {weather === null ? (
+            {rainError ? (
+              <Notice tone="error">Couldn't load rain: {rainError}</Notice>
+            ) : weather === null ? (
               <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
-            ) : hadRain(rain) ? (
-              <Chart option={rainOption(rain, x)} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
+            ) : rainChart ? (
+              <Chart option={rainChart} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
             ) : (
               <Notice>No rain in the {windowLabel}.</Notice>
             )}
@@ -255,6 +260,7 @@ export function TrafficPattern({ siteId, timezone }: { siteId: string; timezone:
   }, [siteId]);
 
   const legs = useMemo(() => patternLegs(pattern ?? []), [pattern]);
+  const heatmaps = useMemo(() => legs.map((leg) => ({ leg, option: heatmapOption(pattern ?? [], leg) })), [legs, pattern]);
   const tz = tzLabel(timezone);
 
   return (
@@ -269,9 +275,9 @@ export function TrafficPattern({ siteId, timezone }: { siteId: string; timezone:
       {pattern !== null && legs.length === 0 && <Notice>No readings in the last 28 days.</Notice>}
       {legs.length > 0 && (
         <div className="pattern-grid">
-          {legs.map((leg) => (
+          {heatmaps.map(({ leg, option }) => (
             <Block key={leg} title={legLabel(leg)}>
-              <Chart option={heatmapOption(pattern!, leg)} height={HEATMAP_HEIGHT} label={`${legLabel(leg)} weekly pattern`} />
+              <Chart option={option} height={HEATMAP_HEIGHT} label={`${legLabel(leg)} weekly pattern`} />
             </Block>
           ))}
         </div>

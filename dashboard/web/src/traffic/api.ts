@@ -23,11 +23,6 @@ export interface PatternCell {
   n: number;
 }
 
-export interface SiteTimezone {
-  site_id: string;
-  timezone: string | null;
-}
-
 export const getTrafficSeries = (siteId: string, from: string, to?: string) => {
   const q = new URLSearchParams({ site_id: siteId, from });
   if (to) q.set("to", to);
@@ -36,6 +31,3 @@ export const getTrafficSeries = (siteId: string, from: string, to?: string) => {
 
 export const getTrafficPattern = (siteId: string, days = 28) =>
   getJson<PatternCell[]>(`/api/traffic/pattern?${new URLSearchParams({ site_id: siteId, days: String(days) })}`);
-
-/** The site list is cached server-side per slot; only the timezone is used here. */
-export const getSiteTimezones = () => getJson<SiteTimezone[]>("/api/sites");

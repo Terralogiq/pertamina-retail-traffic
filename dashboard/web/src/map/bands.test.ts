@@ -3,7 +3,6 @@ import type { LatestLeg, Site } from "./api";
 import {
   BASELINE_FULL,
   GREY,
-  baselineBadge,
   baselineProgress,
   boundsOf,
   congestionColor,
@@ -13,7 +12,6 @@ import {
   legBand,
   legColor,
   lineToPath,
-  siteLatest,
   sitePoints,
   speedColor,
 } from "./bands";
@@ -115,23 +113,16 @@ describe("latest rows", () => {
     const m = indexLatest([row({ slot_time: "2026-10-07T07:30:00Z", delay_s: 1 }), row({ slot_time: "2026-10-07T08:00:00Z", delay_s: 2 })]);
     expect(m.get("r1")?.delay_s).toBe(2);
   });
-  it("lists rows for a site's legs in leg order", () => {
-    const m = indexLatest([row({ selected_route_id: "r2" }), row()]);
-    expect(siteLatest(site, m).map((r) => r.selected_route_id)).toEqual(["r1", "r2"]);
-    expect(siteLatest(site, new Map())).toEqual([]);
-  });
 });
 
-describe("baseline badge", () => {
-  it("shows the lowest progress over the legs", () => {
-    const p = baselineProgress([row({ baseline_samples: 120 }), row({ baseline_samples: 90 })]);
-    expect(p).toBe(90);
-    expect(baselineBadge(p)).toBe("baseline building (90/302)");
+describe("baselineProgress", () => {
+  it("is the lowest progress over the legs", () => {
+    expect(baselineProgress([row({ baseline_samples: 120 }), row({ baseline_samples: 90 })])).toBe(90);
   });
-  it("counts a null as 0, caps at the full window and hides when full or without data", () => {
-    expect(baselineBadge(baselineProgress([row({ baseline_samples: null })]))).toBe("baseline building (0/302)");
-    expect(baselineBadge(baselineProgress([row({ baseline_samples: 400 })]))).toBeNull();
-    expect(baselineBadge(baselineProgress([]))).toBeNull();
+  it("counts a null as 0, caps at the full window and is null without data", () => {
+    expect(baselineProgress([row({ baseline_samples: null })])).toBe(0);
+    expect(baselineProgress([row({ baseline_samples: 400 })])).toBe(BASELINE_FULL);
+    expect(baselineProgress([])).toBeNull();
   });
 });
 

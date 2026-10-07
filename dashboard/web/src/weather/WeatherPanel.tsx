@@ -10,6 +10,8 @@ import { localTime, zoneLabel } from "./time";
 import "./WeatherPanel.css";
 
 const CHART_HEIGHT = 160;
+/** Height of the current-conditions block, so the skeleton matches what loads into it. */
+const NOW_HEIGHT = 136;
 const GRID = { left: 44, right: 12, top: 12, bottom: 24 };
 
 const fmt = (v: number | null | undefined, unit: string, digits = 1) =>
@@ -50,7 +52,7 @@ export function DemoConditions({ now }: { now: WeatherLatest }) {
   return (
     <Block title="Google Weather condition" aside={<DemoBadge />}>
       <div className="weather-condition">
-        {now.demo_icon_uri && <img src={`${now.demo_icon_uri}.svg`} alt="" width={40} height={40} />}
+        {now.demo_icon_uri && <img src={`${now.demo_icon_uri}.svg`} alt="" />}
         {/* The condition code (e.g. LIGHT_RAIN) stays available on hover rather than as a raw enum in the copy. */}
         <p title={now.demo_condition_type ?? undefined}>{now.demo_condition_text ?? "n/a"}</p>
       </div>
@@ -150,7 +152,7 @@ export function WeatherPanel({
 
   return (
     <Section id="weather" title="Weather">
-      {now === undefined && <Skeleton height={136} label="Loading current weather" />}
+      {now === undefined && <Skeleton height={NOW_HEIGHT} label="Loading current weather" />}
       {now instanceof Error && <Notice tone="error">Couldn't load the current weather: {now.message}</Notice>}
       {now === null && <Notice>No weather reading in the last 2 hours.</Notice>}
       {now && !(now instanceof Error) && <CoreConditions now={now} tz={tz} />}

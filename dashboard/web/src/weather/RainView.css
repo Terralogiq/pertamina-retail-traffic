@@ -1,4 +1,16 @@
-/* Traffic vs rain (Screen 3). Tokens only; data colours come from --series-* (theme/palette.ts). */
+/* Traffic vs rain (Screen 3). Tokens only; data colours come from --series-* (theme/palette.ts).
+   The controls sit in the page header, outside .rain-grid, so this screen's dimensions live on :root. */
+
+:root {
+  --rain-segmented-pad: 2px;
+  --rain-segment-height: 2.25rem;
+  --rain-select-height: 2.5rem;
+  --rain-loading-height: 12rem;
+  --rain-leg-name-width: 6rem;
+  --rain-leg-values-width: 13rem;
+  --rain-track-height: 1.25rem;
+  --rain-span-height: 2px;
+}
 
 .rain-grid {
   display: grid;
@@ -23,7 +35,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   margin: 0;
-  padding: 2px;
+  padding: var(--rain-segmented-pad);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
@@ -32,7 +44,7 @@
 .rain-segment {
   display: inline-flex;
   align-items: center;
-  min-height: 2.25rem;
+  min-height: var(--rain-segment-height);
   padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
@@ -66,7 +78,7 @@
 }
 
 .rain-select select {
-  min-height: 2.5rem;
+  min-height: var(--rain-select-height);
   max-width: 100%;
   padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
@@ -116,7 +128,7 @@
 }
 
 .rain-loading {
-  min-height: 12rem;
+  min-height: var(--rain-loading-height);
   padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -174,7 +186,7 @@
 
 .rain-leg {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr) 13rem;
+  grid-template-columns: var(--rain-leg-name-width) minmax(0, 1fr) var(--rain-leg-values-width);
   align-items: center;
   gap: var(--space-1) var(--space-3);
   min-height: 2rem;
@@ -187,7 +199,7 @@
 
 .rain-track {
   position: relative;
-  height: 1.25rem;
+  height: var(--rain-track-height);
   margin: 0 var(--space-2);
 }
 
@@ -200,8 +212,8 @@
 
 .rain-span {
   position: absolute;
-  top: calc(50% - 1px);
-  height: 2px;
+  top: calc(50% - var(--rain-span-height) / 2);
+  height: var(--rain-span-height);
   background: var(--border-strong);
 }
 

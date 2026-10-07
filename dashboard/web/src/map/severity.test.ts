@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "./api";
 import { BASELINE_FULL, indexLatest } from "./bands";
-import { baselineDaysLeft, clusterPoints, rankSites, summarize } from "./severity";
+import { baselineDaysLeft, clusterPoints, orderSites, rankSites, summarize } from "./severity";
 
 const mkSite = (id: string, name: string, lat: number, lng: number): Site => ({
   site_id: id,
@@ -64,9 +64,35 @@ describe("rankSites", () => {
     expect(s.worst?.site.site_id).toBe("b");
   });
 
+  it("names the head of the ranking as worst, even when another site has a larger delay", () => {
+    // b: jam by speed (rank first) with a delay of 50 s; a: lighter band but 90 s.
+    const mixed = indexLatest([
+      reading("a-approach", { speed_kmh: 40, delay_s: 90 }),
+      reading("b-approach", { speed_kmh: 12, delay_s: 50 }),
+    ]);
+    const ranked = rankSites([a, b], mixed);
+    expect(summarize(ranked, mixed).worst).toBe(ranked.find((s) => s.worstDelay !== null));
+    expect(summarize(ranked, mixed).worst?.site.site_id).toBe("b");
+  });
+
   it("summarises an empty feed without a worst site or baseline", () => {
     const s = summarize(rankSites([a], new Map()), new Map());
     expect(s).toMatchObject({ reporting: 0, slowed: 0, worst: null, slotTime: null, baseline: null });
+  });
+});
+
+describe("orderSites", () => {
+  const latest = indexLatest([reading("a-approach", { speed_kmh: 40 }), reading("b-approach", { speed_kmh: 12 })]);
+  const withCity = (s: Site, city: string): Site => ({ ...s, city });
+  const ranked = rankSites([withCity(a, "Zeta"), withCity(b, "Beta"), withCity(c, "Beta")], latest); // b, a, c
+
+  it("keeps the ranking for worst first and filters to slowed sites", () => {
+    expect(orderSites(ranked, "worst", "all").map((s) => s.site.site_id)).toEqual(["b", "a", "c"]);
+    expect(orderSites(ranked, "worst", "slowed").map((s) => s.site.site_id)).toEqual(["b"]);
+  });
+  it("sorts by name, or by city then name", () => {
+    expect(orderSites(ranked, "name", "all").map((s) => s.site.name)).toEqual(["Alpha", "Bravo", "Charlie"]);
+    expect(orderSites(ranked, "city", "all").map((s) => s.site.name)).toEqual(["Bravo", "Charlie", "Alpha"]);
   });
 });
 

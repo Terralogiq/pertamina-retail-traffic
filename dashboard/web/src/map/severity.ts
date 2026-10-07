@@ -45,6 +45,17 @@ export function rankSites(sites: Site[], latest: Map<string, LatestLeg>): SiteSt
     );
 }
 
+export type SiteSort = "worst" | "name" | "city";
+export type SiteFilter = "all" | "slowed";
+
+/** The list as shown: `ranked` is already worst first; filter to slowed sites, then re-sort by name or city (name breaks ties). */
+export function orderSites(ranked: SiteState[], sort: SiteSort, filter: SiteFilter): SiteState[] {
+  const rows = filter === "slowed" ? ranked.filter((s) => isSlowed(s.band)) : ranked;
+  if (sort === "worst") return rows;
+  const city = (s: SiteState) => s.site.city ?? "";
+  return [...rows].sort((a, b) => (sort === "city" ? city(a).localeCompare(city(b)) : 0) || a.site.name.localeCompare(b.site.name));
+}
+
 export interface Summary {
   total: number;
   /** Sites with at least one reading. */
@@ -59,13 +70,13 @@ export interface Summary {
 
 export function summarize(ranked: SiteState[], latest: Map<string, LatestLeg>): Summary {
   const rows = [...latest.values()];
-  const withDelay = ranked.filter((s) => s.worstDelay !== null);
   const slots = rows.map((r) => r.slot_time).sort();
   return {
     total: ranked.length,
     reporting: ranked.filter((s) => s.band !== "none").length,
     slowed: ranked.filter((s) => isSlowed(s.band)).length,
-    worst: withDelay.length ? withDelay.reduce((a, b) => (b.worstDelay! > a.worstDelay! ? b : a)) : null,
+    // The first ranked site with a delay, so "Worst" matches the head of the list (rank is band first, then delay).
+    worst: ranked.find((s) => s.worstDelay !== null) ?? null,
     slotTime: slots.length ? slots[slots.length - 1] : null,
     baseline: rows.length ? Math.min(...rows.map((r) => Math.min(r.baseline_samples ?? 0, BASELINE_FULL))) : null,
   };

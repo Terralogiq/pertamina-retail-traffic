@@ -1,4 +1,3 @@
-import Legend from "./Legend";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
@@ -21,7 +20,6 @@ export default function SiteMap({ siteId }: { siteId: string }) {
       )}
       <div className="map-frame site-map-frame">
         {sites && site ? <TrafficMap sites={sites} latest={latest} siteId={siteId} /> : <div className="map-canvas map-placeholder" />}
-        {site && <Legend sites={[site]} latest={latest} />}
       </div>
     </div>
   );

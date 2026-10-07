@@ -1,9 +1,15 @@
 /* Overview (map + ranked site list) and the site map. Colours and type from tokens.css; the only
    literals are this screen's layout dimensions, named below, and the shared breakpoints. */
 
+/* The sort and filter controls sit in the page header, outside .overview, so their dimensions are on :root. */
+:root {
+  --segmented-pad: 2px;
+  --segment-height: 2.25rem;
+}
+
 .overview {
   --site-list-width: 23rem;
-  --map-compact-height: 45dvh;
+  --map-compact-height: 45vh;
 
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--site-list-width);
@@ -104,12 +110,11 @@
   color: var(--ink-1);
 }
 
+/* A Google map control (LEFT_BOTTOM): the map stacks it above its logo and Terms. */
 .map-legend {
-  position: absolute;
-  left: var(--space-3);
-  bottom: var(--space-3);
   display: grid;
   gap: var(--space-3);
+  margin: var(--space-3);
   max-width: calc(100% - 2 * var(--space-3));
   padding: var(--space-3);
   border: 1px solid var(--border);
@@ -165,7 +170,7 @@
 }
 
 .now-slot {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .baseline-notice {
@@ -180,6 +185,44 @@
 
 .baseline-notice strong {
   color: var(--state-warning);
+}
+
+/* Sort and filter controls in the page header */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: var(--segmented-pad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.segment {
+  min-height: var(--segment-height);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.segment:hover {
+  color: var(--ink-1);
+}
+
+.segment.selected {
+  background: var(--surface-1);
+  color: var(--ink-1);
+  box-shadow: var(--shadow-1);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 /* Site list */
@@ -329,6 +372,13 @@
   }
 }
 
+/* Dynamic viewport units where supported; vh otherwise. */
+@supports (height: 1dvh) {
+  .overview {
+    --map-compact-height: 45dvh;
+  }
+}
+
 /* Compact: map on top at a fixed share of the viewport, the list flows with the page (no inner scroll). */
 @media (max-width: 767px) {
   .overview {
@@ -345,8 +395,7 @@
   }
 
   .map-legend {
-    left: var(--space-2);
-    bottom: var(--space-2);
+    margin: var(--space-2);
     padding: var(--space-2);
   }
 

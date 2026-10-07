@@ -20,6 +20,9 @@ import {
 } from "./model";
 import "./PlacesPanel.css";
 
+/** Height of the loaded Places section, so the skeleton matches what loads into it. */
+const PLACES_HEIGHT = 320;
+
 /** One review, clamped to 3 lines until expanded (F21). */
 function Review({ review }: { review: PlaceReview }) {
   const [open, setOpen] = useState(false);
@@ -81,21 +84,30 @@ export function PlaceSummary({ details }: { details: PlaceDetails }) {
 export function OpeningHours({ details }: { details: PlaceDetails }) {
   const lines = details.weekday_descriptions;
   const collapsed = collapsedHours(lines);
+  const list = (
+    <ul>
+      {lines.map((line) => (
+        <li key={line}>{line}</li>
+      ))}
+    </ul>
+  );
   return (
     <Block title="Opening hours">
       {lines.length === 0 ? (
         <Notice>No opening hours stored.</Notice>
       ) : (
         <>
-          {collapsed && <p className="hours-summary">{collapsed}</p>}
-          <details className="hours" open={!collapsed}>
-            {collapsed && <summary>Daily hours as listed on Google</summary>}
-            <ul>
-              {lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </details>
+          {collapsed ? (
+            <>
+              <p className="hours-summary">{collapsed}</p>
+              <details className="hours">
+                <summary>Daily hours as listed on Google</summary>
+                {list}
+              </details>
+            </>
+          ) : (
+            <div className="hours">{list}</div>
+          )}
         </>
       )}
     </Block>
@@ -208,7 +220,7 @@ export function PlacesPanel({ data }: { data: Load<PlacesResponse> }) {
   const note = data && !(data instanceof Error) && data.fetched_at ? `Google Places, refreshed weekly · last run ${longDate(data.fetched_at)}` : undefined;
   return (
     <Section id="places" title="Places" note={note}>
-      {data === undefined && <Skeleton height={320} label="Loading Places" />}
+      {data === undefined && <Skeleton height={PLACES_HEIGHT} label="Loading Places" />}
       {data instanceof Error && <Notice tone="error">Couldn't load Places: {data.message}</Notice>}
       {(data === null || (data && !(data instanceof Error) && !data.details)) && (
         <Notice>No Places run stored for this site yet. The profiler runs every Monday at 02:00 WIB.</Notice>

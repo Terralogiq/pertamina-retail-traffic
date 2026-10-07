@@ -1,9 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "../map/api";
-import { BASELINE_FULL } from "../map/bands";
+import { BASELINE_FULL, legBand } from "../map/bands";
 import { BANDS } from "../theme/palette";
-import { legBand } from "../map/bands";
 import { StatusStrip, baselineNotice, siteContext } from "./SiteDetail";
 
 const site: Site = {
@@ -61,8 +60,8 @@ describe("site header", () => {
   });
 });
 
-describe("legBand shim", () => {
-  it("maps legColor to a band id with its basis", () => {
+describe("legBand", () => {
+  it("returns the band id with its basis", () => {
     expect(legBand(undefined)).toEqual({ band: "none", basis: "none" });
     expect(legBand(leg("approach", { speed_kmh: 10 }))).toEqual({ band: "jam", basis: "speed" });
     expect(legBand(leg("approach", { baseline_samples: BASELINE_FULL, congestion_index: 1.1 }))).toEqual({

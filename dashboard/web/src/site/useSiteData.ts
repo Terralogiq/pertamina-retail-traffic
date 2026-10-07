@@ -20,35 +20,42 @@ const fail = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
  * /api/sites each). Each part resolves on its own, so a slow Places query doesn't hold back the traffic header.
  */
 export function useSiteData(siteId: string): SiteData {
-  const [site, setSite] = useState<Load<Site>>(undefined);
-  const [legs, setLegs] = useState<Load<LatestLeg[]>>(undefined);
-  const [weather, setWeather] = useState<Load<WeatherLatest>>(undefined);
-  const [places, setPlaces] = useState<Load<PlacesResponse>>(undefined);
+  const [data, setData] = useState<{ siteId: string } & SiteData>({
+    siteId,
+    site: undefined,
+    legs: undefined,
+    weather: undefined,
+    places: undefined,
+  });
 
   useEffect(() => {
     let live = true;
-    const set = <T,>(setter: (v: Load<T>) => void) => (v: Load<T>) => live && setter(v);
-    setSite(undefined);
-    setLegs(undefined);
-    setWeather(undefined);
-    setPlaces(undefined);
+    const set =
+      <K extends keyof SiteData>(key: K) =>
+      (v: SiteData[K]) =>
+        live && setData((d) => (d.siteId === siteId ? { ...d, [key]: v } : d));
+    // Start from an empty record for this site, so the previous site's data never shows under the new heading.
+    setData({ siteId, site: undefined, legs: undefined, weather: undefined, places: undefined });
     getSites()
-      .then((all) => set(setSite)(all.find((s) => s.site_id === siteId) ?? null))
-      .catch((e) => set(setSite)(fail(e)));
+      .then((all) => set("site")(all.find((s) => s.site_id === siteId) ?? null))
+      .catch((e) => set("site")(fail(e)));
     getLatestTraffic()
-      .then((rows) => set(setLegs)(rows.filter((r) => r.site_id === siteId)))
-      .catch((e) => set(setLegs)(fail(e)));
+      .then((rows) => set("legs")(rows.filter((r) => r.site_id === siteId)))
+      .catch((e) => set("legs")(fail(e)));
     getWeatherLatest()
-      .then((rows) => set(setWeather)(rows.find((w) => w.site_id === siteId) ?? null))
-      .catch((e) => set(setWeather)(fail(e)));
+      .then((rows) => set("weather")(rows.find((w) => w.site_id === siteId) ?? null))
+      .catch((e) => set("weather")(fail(e)));
     getPlaces(siteId)
-      .then((d) => set(setPlaces)(d))
-      .catch((e) => set(setPlaces)(fail(e)));
+      .then((d) => set("places")(d))
+      .catch((e) => set("places")(fail(e)));
     return () => {
       live = false;
     };
   }, [siteId]);
 
+  // Until the effect has reset for a new siteId, report loading rather than the previous site's data.
+  if (data.siteId !== siteId) return { site: undefined, legs: undefined, weather: undefined, places: undefined };
+  const { site, legs, weather, places } = data;
   return { site, legs, weather, places };
 }
 

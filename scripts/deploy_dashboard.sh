@@ -13,6 +13,9 @@
 #                                             (has Editor) instead of creating traffic-dashboard. Only grants
 #                                             added: secretAccessor on the two dashboard secrets.
 #                                             Re-running without it moves to the dedicated account (bead pertamina-retail-traffic-907.7.12).
+#   scripts/deploy_dashboard.sh --map-id ID   set MAPS_MAP_ID on the service (cloud-styled Map ID); same as exporting
+#                                             MAPS_MAP_ID. Without either, the service keeps its current value and the
+#                                             map uses Google's DEMO_MAP_ID.
 set -euo pipefail
 
 PROJECT=gcp-coe-sandbox
@@ -30,13 +33,20 @@ export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 DS_FILE=""
 DRY_RUN=0
 DEFAULT_SA=0
-for arg in "$@"; do
-  case "$arg" in
+MAP_ID="${MAPS_MAP_ID:-}"
+while [ $# -gt 0 ]; do
+  case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --default-sa) DEFAULT_SA=1 ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
-    *) echo "unknown argument: $arg" >&2; exit 2 ;;
+    --map-id)
+      [ $# -ge 2 ] && [ -n "$2" ] || { echo "--map-id needs a value" >&2; exit 2; }
+      MAP_ID="$2"
+      shift
+      ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
+  shift
 done
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -211,12 +221,23 @@ fi
 # --quiet accepts the prompt to create the Artifact Registry repo cloud-run-source-deploy.
 # The page and static files are public; /api/* is gated by the password cookie (docs/plans/dashboard.md).
 step "7. Cloud Run service $SERVICE (build from dashboard/)"
+# MAPS_MAP_ID is optional (the map falls back to DEMO_MAP_ID). The script sets no other plain env var, so
+# --set-env-vars is safe here; when no Map ID is given the service's current env is left untouched.
+MAP_ENV=()
+MAP_NOTE="not set (DEMO_MAP_ID, or the value already on the service)"
+if [ -n "$MAP_ID" ]; then
+  MAP_ENV=(--set-env-vars "MAPS_MAP_ID=$MAP_ID")
+  MAP_NOTE="$MAP_ID"
+else
+  echo "  MAPS_MAP_ID not set (export it or pass --map-id ID): the map uses DEMO_MAP_ID, and an existing value on the service is kept"
+fi
 run gcloud run deploy "$SERVICE" \
   --source dashboard \
   --region "$REGION" \
   --service-account "$SA_RUN_EMAIL" \
   --allow-unauthenticated \
   --set-secrets "$SECRET_PASSWORD=$SECRET_PASSWORD:latest,$SECRET_KEY=$SECRET_KEY:latest" \
+  ${MAP_ENV[@]+"${MAP_ENV[@]}"} \
   --min-instances 0 \
   --max-instances 3 \
   --quiet "${GC_PROJ[@]}"
@@ -227,6 +248,7 @@ cat <<EOF
   project / region : $PROJECT / $REGION
   service          : $SERVICE (runs as $SA_RUN_EMAIL)
   url              : $SERVICE_URL
+  map id           : $MAP_NOTE
   browser key      : restricted to maps-backend.googleapis.com, referrers $REFERRERS
 $([ "$DRY_RUN" = 1 ] && echo "  DRY RUN          : nothing was changed")
 

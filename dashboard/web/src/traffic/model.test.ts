@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTrafficPattern, getTrafficSeries, TrafficPoint, PatternCell } from "./api";
 import type { WeatherSeriesPoint } from "../weather/api";
 import {
-  baselineBuilding, emptyCells, formatDelay, hadRain, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes,
+  emptyCells, formatDelay, hadRain, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes,
   windowStart,
 } from "./model";
 
@@ -77,24 +77,6 @@ describe("precipitationSeries", () => {
 
   it("is empty without weather", () => {
     expect(precipitationSeries([], 420)).toEqual([]);
-  });
-});
-
-describe("baselineBuilding", () => {
-  it("returns the smallest sample count of the legs' latest slots while under 302", () => {
-    const points = [
-      pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 10 }),
-      pt("approach", "2026-10-07T00:30:00Z", { baseline_samples: 100 }),
-      pt("departure", "2026-10-07T00:30:00Z", { baseline_samples: 90 }),
-    ];
-    expect(baselineBuilding(points)).toBe(90);
-  });
-
-  it("counts a missing baseline as 0 and is null once the window is full or empty", () => {
-    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: null })])).toBe(0);
-    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 302 })])).toBeNull();
-    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 301 })])).toBe(301);
-    expect(baselineBuilding([])).toBeNull();
   });
 });
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { WeatherLatest } from "../weather/api";
 import { BASELINE_FULL } from "./bands";
 import { BaselineNotice, NowSummary, SiteWeatherCell } from "./Overview";
-import type { Summary } from "./severity";
+import type { SiteState, Summary } from "./severity";
 
 const html = (node: ReactElement) => renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter>);
 
@@ -43,6 +43,23 @@ describe("NowSummary", () => {
     const out = html(<NowSummary summary={base} />);
     expect(out).toContain("3 of 10");
     expect(out).toContain("14:30 WIB");
+  });
+  it("names the worst site with its leg and delay, linked to its page", () => {
+    const worst = {
+      site: { site_id: "b", name: "Bravo" },
+      band: "jam",
+      basis: "speed",
+      worstLeg: "approach",
+      worstDelay: 50,
+    } as unknown as SiteState;
+    const out = html(<NowSummary summary={{ ...base, worst }} />);
+    expect(out).toContain("Worst:");
+    expect(out).toContain('href="/site/b"');
+    expect(out).toContain("Bravo");
+    expect(out).toContain("50 s");
+  });
+  it("omits Worst when no site has a delay", () => {
+    expect(html(<NowSummary summary={base} />)).not.toContain("Worst:");
   });
   it("waits for data", () => {
     expect(html(<NowSummary summary={{ ...base, reporting: 0 }} />)).toContain("Waiting for the first traffic readings");

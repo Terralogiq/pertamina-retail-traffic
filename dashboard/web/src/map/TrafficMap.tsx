@@ -1,8 +1,10 @@
 import { ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { BANDS, CHART_INK } from "../theme/palette";
 import { LatestLeg, Site } from "./api";
 import { boundsOf, formatDelay, formatSpeed, legColor, legLabel, lineToPath, sitePoints } from "./bands";
+import Legend from "./Legend";
 import { loadMaps } from "./maps";
 import { MapMarker } from "./MapMarker";
 import { clusterPoints, rankSites } from "./severity";
@@ -11,6 +13,8 @@ type Libs = Awaited<ReturnType<typeof loadMaps>>;
 
 /** Initial zoom (Indonesia) until the fit below runs. */
 const START = { center: { lat: -2.5, lng: 118 }, zoom: 5 };
+/** On the overview, the legs are drawn from this zoom; below it the markers alone carry the picture. */
+const LEGS_MIN_ZOOM = 14;
 
 function infoContent(title: string, lines: string[]): HTMLElement {
   const root = document.createElement("div");
@@ -68,6 +72,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   const el = useRef<HTMLDivElement>(null);
   const [libs, setLibs] = useState<Libs | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [legendEl, setLegendEl] = useState<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(START.zoom);
   const [error, setError] = useState("");
 
@@ -76,6 +81,9 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   const select = useRef(onSelectSite);
   select.current = onSelectSite;
   const clickable = !!onSelectSite;
+  const showLegs = !!siteId || zoom >= LEGS_MIN_ZOOM;
+  // Group markers depend on the zoom on the overview only; the site map never regroups.
+  const groupZoom = siteId ? 0 : zoom;
 
   // Create the map once.
   useEffect(() => {
@@ -91,7 +99,12 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
           fullscreenControl: false,
           clickableIcons: false,
         });
-        m.addListener("zoom_changed", () => setZoom(Math.round(m.getZoom() ?? START.zoom)));
+        // `idle`, not `zoom_changed`: one update when the zoom (or fit) settles, not one per animation step.
+        m.addListener("idle", () => setZoom(Math.round(m.getZoom() ?? START.zoom)));
+        // The legend is a map control so it stacks above Google's logo and Terms instead of covering them.
+        const legend = document.createElement("div");
+        m.controls[l.core.ControlPosition.LEFT_BOTTOM].push(legend);
+        setLegendEl(legend);
         setLibs(l);
         setMap(m);
       })
@@ -109,7 +122,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
 
   // Legs: a light casing under each coloured line so it holds against any basemap; redraw on new data.
   useEffect(() => {
-    if (!map || !libs) return;
+    if (!map || !libs || !showLegs) return;
     const info = new libs.maps.InfoWindow();
     const cleanups: (() => void)[] = [];
     for (const site of shown) {
@@ -159,7 +172,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       info.close();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable]);
+  }, [map, libs, shown, latest, clickable, showLegs]);
 
   // Markers: one per site showing its worst band and delay; on the overview, sites that would overlap at
   // this zoom share one group marker (its worst member's band) that zooms in on click.
@@ -170,7 +183,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
     const byId = new Map(ranked.map((s) => [s.site.site_id, s]));
     const groups = siteId
       ? ranked.map((s) => ({ ids: [s.site.site_id], ...s.site.location }))
-      : clusterPoints(ranked.map((s) => ({ id: s.site.site_id, ...s.site.location })), zoom);
+      : clusterPoints(ranked.map((s) => ({ id: s.site.site_id, ...s.site.location })), groupZoom);
     const cleanups: (() => void)[] = [];
 
     for (const group of groups) {
@@ -214,7 +227,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       info.close();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, siteId, zoom]);
+  }, [map, libs, shown, latest, clickable, siteId, groupZoom]);
 
   return (
     <>
@@ -224,6 +237,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         </div>
       )}
       <div ref={el} className="map-canvas" />
+      {legendEl && createPortal(<Legend sites={shown} latest={latest} />, legendEl)}
     </>
   );
 }

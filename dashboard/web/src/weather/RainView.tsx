@@ -23,6 +23,12 @@ const SOURCE_LABEL: Record<RainSource, string> = {
 
 const LEG_LABEL: Record<string, string> = { approach: "Approach", departure: "Departure" };
 
+// Scatter chart layout (ECharts takes pixels).
+const SCATTER_HEIGHT = 320;
+const SCATTER_GRID = { top: 36, left: 8, right: 16, bottom: 8, containLabel: true };
+const SCATTER_SYMBOL_SIZE = 8;
+const SCATTER_BORDER_WIDTH = 1;
+
 /** Which slots count as rainy: measured precipitation (core) or Google's condition type (demo-only). */
 export function RainToggle({ value, onChange }: { value: RainSource; onChange: (v: RainSource) => void }) {
   return (
@@ -115,7 +121,7 @@ function LegRow({ row, scale }: { row: RainSplit; scale: { min: number; max: num
         )}
       </span>
       <span className="rain-leg-values num">
-        <span className="rain-effect">{effect == null ? "no rain slots" : signedSeconds(effect)}</span>
+        <span className="rain-effect">{effect == null ? (rain.n > 0 ? "no dry slots" : "no rain slots") : signedSeconds(effect)}</span>
         <span className="rain-leg-detail">
           dry {seconds(dry.mean_delay_s)} · rain {seconds(rain.mean_delay_s)} · n {rain.n}/{dry.n}
         </span>
@@ -191,21 +197,21 @@ export function RainScatter({ points, names }: { points: ScatterPoint[]; names: 
       },
     },
     legend: { top: 0, left: 0, data: legs.map((l) => LEG_LABEL[l]), icon: "circle" },
-    grid: { top: 36, left: 8, right: 16, bottom: 8, containLabel: true },
+    grid: SCATTER_GRID,
     xAxis: { type: "value", name: "mm", nameLocation: "end", min: 0 },
     yAxis: { type: "value", name: "congestion", scale: true },
     series: legs.map((leg) => ({
       name: LEG_LABEL[leg],
       type: "scatter" as const,
-      symbolSize: 8,
-      itemStyle: { color: SERIES[leg], borderColor: CHART_INK.surface, borderWidth: 1 },
+      symbolSize: SCATTER_SYMBOL_SIZE,
+      itemStyle: { color: SERIES[leg], borderColor: CHART_INK.surface, borderWidth: SCATTER_BORDER_WIDTH },
       data: wet.filter((p) => p.leg === leg).map((p) => [p.precipitation_mm, p.congestion_index, p.site_id, p.leg]),
     })),
   };
   return (
     <Widget title="Rain amount vs congestion">
       <p className="rain-caption">Rainy slots only. Congestion index is the leg's travel time over its free-flow baseline (1 = free flow).</p>
-      {wet.length ? <EChart option={option} height={320} /> : <p className="rain-empty">No measured rain in this window yet.</p>}
+      {wet.length ? <EChart option={option} height={SCATTER_HEIGHT} /> : <p className="rain-empty">No measured rain in this window yet.</p>}
     </Widget>
   );
 }

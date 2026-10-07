@@ -63,19 +63,10 @@ export function indexLatest(rows: LatestLeg[]): Map<string, LatestLeg> {
   return out;
 }
 
-/** Rows of a site's legs, in leg order, skipping legs with no row yet. */
-export function siteLatest(site: Site, latest: Map<string, LatestLeg>): LatestLeg[] {
-  return site.legs.flatMap((leg) => latest.get(leg.selected_route_id) ?? []);
-}
-
 /** Baseline progress for a site: the lowest baseline_samples over its legs with data; null when there is no data. */
 export function baselineProgress(rows: LatestLeg[]): number | null {
   if (rows.length === 0) return null;
   return Math.min(...rows.map((r) => Math.min(r.baseline_samples ?? 0, BASELINE_FULL)));
-}
-
-export function baselineBadge(progress: number | null): string | null {
-  return progress !== null && progress < BASELINE_FULL ? `baseline building (${progress}/${BASELINE_FULL})` : null;
 }
 
 export interface LatLng {

@@ -55,6 +55,13 @@ describe("rain view widgets", () => {
     expect(html).toContain("Only 2 rain slots");
   });
 
+  it("says which side is missing: no dry slots when rain has a sample but dry has none", () => {
+    const dryMissing = renderToStaticMarkup(<RainBars data={[row("a", "approach", [40, 8], [null, 0])]} source="core" names={names} />);
+    expect(dryMissing).toContain("no dry slots");
+    const rainMissing = renderToStaticMarkup(<RainBars data={[row("a", "approach", [null, 0], [20, 90])]} source="core" names={names} />);
+    expect(rainMissing).toContain("no rain slots");
+  });
+
   it("uses human labels, never field names", () => {
     const html =
       renderToStaticMarkup(<RainToggle value="core" onChange={() => {}} />) +

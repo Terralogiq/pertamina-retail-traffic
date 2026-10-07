@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import type { LatestLeg, Site } from "../map/api";
-import { BASELINE_FULL, baselineProgress } from "../map/bands";
+import { BASELINE_FULL, baselineProgress, legBand } from "../map/bands";
 import { SiteMap } from "../map";
 import { PlacesPanel } from "../places";
 import { Page } from "../shell/AppShell";
@@ -11,7 +11,6 @@ import { WeatherPanel } from "../weather";
 import type { WeatherLatest } from "../weather/api";
 import type { PlacesResponse } from "../places/api";
 import { Section } from "./Section";
-import { legBand } from "../map/bands";
 import { Load, isReady, useSiteData } from "./useSiteData";
 import "./SiteDetail.css";
 

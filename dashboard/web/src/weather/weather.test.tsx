@@ -1,15 +1,18 @@
 import { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SiteWeatherCell } from "../map/Overview";
 import { DEMO_ONLY_FIELDS, WIDGET_DEMO_FIELDS } from "./fields";
 import { CoreConditions, DemoConditions, PrecipProbabilityChart, WeatherChart } from "./WeatherPanel";
 import { RainBars, RainScatter, RainToggle } from "./RainView";
-import { SiteWeather } from "./SiteWeather";
 import { WeatherLatest, WeatherSeriesPoint, getRain, getWeatherSeries, RainSplit } from "./api";
 import { localTime, zoneLabel } from "./time";
 
 // The visible badge element, not any "demo-only" text (DemoMarker keeps that text for screen readers only).
 const BADGE = 'class="demo-badge"';
+// The list cell marks its icon with the small marker, under the section's note.
+const MARKER = 'class="demo-marker"';
+const MARKER_WIDGETS = ["SiteWeather"];
 
 const now: WeatherLatest = {
   site_id: "34.121.03",
@@ -34,7 +37,7 @@ const names = { "34.121.03": "SPBU Simatupang" };
 // One renderer per entry of WIDGET_DEMO_FIELDS.
 const demoWidgets: Record<keyof typeof WIDGET_DEMO_FIELDS, () => ReactElement> = {
   DemoConditions: () => <DemoConditions now={now} />,
-  SiteWeather: () => <SiteWeather now={now} />,
+  SiteWeather: () => <SiteWeatherCell now={now} />,
   PrecipProbabilityChart: () => <PrecipProbabilityChart series={series} />,
   RainBars_demo: () => <RainBars data={split} source="demo" names={names} />,
   RainToggle: () => <RainToggle value="core" onChange={() => {}} />,
@@ -43,7 +46,7 @@ const demoWidgets: Record<keyof typeof WIDGET_DEMO_FIELDS, () => ReactElement> =
 const coreWidgets: Record<string, () => ReactElement> = {
   CoreConditions: () => <CoreConditions now={now} tz="Asia/Jakarta" />,
   WeatherChart: () => <WeatherChart series={series} />,
-  SiteWeather_core: () => <SiteWeather now={{ ...now, demo_icon_uri: null }} />,
+  SiteWeather_core: () => <SiteWeatherCell now={{ ...now, demo_icon_uri: null }} />,
   RainBars_core: () => <RainBars data={split} source="core" names={names} />,
   RainScatter: () => <RainScatter points={[]} names={names} />,
 };
@@ -54,13 +57,15 @@ describe("demo-only badge", () => {
   it("every widget listed in WIDGET_DEMO_FIELDS renders the badge", () => {
     expect(Object.keys(demoWidgets).sort()).toEqual(Object.keys(WIDGET_DEMO_FIELDS).sort());
     for (const [name, render] of Object.entries(demoWidgets)) {
-      expect(renderToStaticMarkup(render()), name).toContain(BADGE);
+      expect(renderToStaticMarkup(render()), name).toContain(MARKER_WIDGETS.includes(name) ? MARKER : BADGE);
     }
   });
 
   it("core widgets carry no badge", () => {
     for (const [name, render] of Object.entries(coreWidgets)) {
-      expect(renderToStaticMarkup(render()), name).not.toContain(BADGE);
+      const markup = renderToStaticMarkup(render());
+      expect(markup, name).not.toContain(BADGE);
+      expect(markup, name).not.toContain(MARKER);
     }
   });
 
@@ -87,8 +92,8 @@ describe("demo-only badge", () => {
 
 describe("site list weather", () => {
   it("shows temperature_c, and nothing without a slot", () => {
-    expect(renderToStaticMarkup(<SiteWeather now={now} />)).toContain("29.1 °C");
-    expect(renderToStaticMarkup(<SiteWeather now={undefined} />)).toBe("");
+    expect(renderToStaticMarkup(<SiteWeatherCell now={now} />)).toContain("29 °C");
+    expect(renderToStaticMarkup(<SiteWeatherCell now={undefined} />)).toBe("");
   });
 });
 

@@ -75,21 +75,6 @@ export function precipitationSeries(slots: WeatherSeriesPoint[], offsetMin: numb
     .sort((a, b) => a[0] - b[0]);
 }
 
-/**
- * Samples behind the least-established baseline among the legs' latest slots (null baseline counts as 0),
- * or null once every leg has a full window (or there is no data).
- */
-export function baselineBuilding(points: TrafficPoint[]): number | null {
-  const latest = new Map<string, TrafficPoint>();
-  for (const p of points) {
-    const seen = latest.get(p.selected_route_id);
-    if (!seen || p.slot_time > seen.slot_time) latest.set(p.selected_route_id, p);
-  }
-  if (latest.size === 0) return null;
-  const n = Math.min(...[...latest.values()].map((p) => p.baseline_samples ?? 0));
-  return n < BASELINE_FULL ? n : null;
-}
-
 /** Heatmap cells for one leg as [hour, dow - 1, mean congestion]; cells without a value are dropped. */
 export function heatmapData(cells: PatternCell[], leg: string): [number, number, number][] {
   return cells

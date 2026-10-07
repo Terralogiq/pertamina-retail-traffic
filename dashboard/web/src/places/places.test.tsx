@@ -142,6 +142,18 @@ describe("panels", () => {
     expect(html).toContain("Selasa: Buka 24 jam");
   });
 
+  it("hours: no disclosure when the days differ; one when seven identical days collapse", () => {
+    const week = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+    const varied = renderToStaticMarkup(<OpeningHours details={data.details!} />);
+    expect(varied).not.toContain("<details");
+    expect(varied).not.toContain("<summary");
+    const same = renderToStaticMarkup(
+      <OpeningHours details={{ ...data.details!, weekday_descriptions: week.map((d) => `${d}: Buka 24 jam`) }} />,
+    );
+    expect(same).toContain("<details");
+    expect(same).toContain("Open 24 hours, every day");
+  });
+
   it("competitor table headers are 1 km / 3 km and the capped total has the asterisk", () => {
     const html = renderToStaticMarkup(<Competitors data={data} />);
     expect(html).toContain("1 km");

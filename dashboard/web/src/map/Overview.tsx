@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
@@ -6,8 +6,7 @@ import { DemoMarker, DemoNote } from "../weather/DemoBadge";
 import type { WeatherLatest } from "../weather/api";
 import { LatestLeg } from "./api";
 import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legLabel } from "./bands";
-import Legend from "./Legend";
-import { SiteState, Summary, baselineDaysLeft, rankSites, summarize } from "./severity";
+import { SiteFilter, SiteSort, SiteState, Summary, baselineDaysLeft, orderSites, rankSites, summarize } from "./severity";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
@@ -92,18 +91,66 @@ export function BaselineNotice({ samples }: { samples: number | null }) {
   );
 }
 
+const SORTS: { value: SiteSort; label: string; heading: string }[] = [
+  { value: "worst", label: "Worst first", heading: "Sites, worst first" },
+  { value: "name", label: "Name", heading: "Sites, by name" },
+  { value: "city", label: "City", heading: "Sites, by city" },
+];
+const FILTERS: { value: SiteFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "slowed", label: "Slowed only" },
+];
+
+/** A small group of toggle buttons; `aria-pressed` marks the current one. */
+export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="segmented" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={value === o.value ? "segment selected" : "segment"}
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Overview() {
   const { sites, latest, weatherBySite, error } = useTrafficData();
   const navigate = useNavigate();
   const select = useCallback((id: string) => navigate(`/site/${id}`), [navigate]);
   const ranked = useMemo(() => (sites ? rankSites(sites, latest) : []), [sites, latest]);
   const summary = useMemo(() => summarize(ranked, latest), [ranked, latest]);
-  const anyDemoIcon = ranked.some((s) => weatherBySite.get(s.site.site_id)?.demo_icon_uri);
+  const [sort, setSort] = useState<SiteSort>("worst");
+  const [filter, setFilter] = useState<SiteFilter>("all");
+  const listed = useMemo(() => orderSites(ranked, sort, filter), [ranked, sort, filter]);
+  const anyDemoIcon = listed.some((s) => weatherBySite.get(s.site.site_id)?.demo_icon_uri);
 
   return (
     <Page
       title="Overview"
       fill
+      actions={
+        <>
+          <Segmented label="Sort sites" options={SORTS} value={sort} onChange={setSort} />
+          <Segmented label="Show sites" options={FILTERS} value={filter} onChange={setFilter} />
+        </>
+      }
       context={
         sites && (
           <>
@@ -121,15 +168,16 @@ export default function Overview() {
       <div className="overview">
         <div className="map-frame">
           {sites ? <TrafficMap sites={sites} latest={latest} onSelectSite={select} /> : <div className="map-canvas map-placeholder" />}
-          {sites && <Legend sites={sites} latest={latest} />}
         </div>
         <section className="site-list" aria-labelledby="site-list-title">
           <h2 id="site-list-title" className="site-list-title">
-            Sites, worst first
+            {SORTS.find((o) => o.value === sort)!.heading}
+            {filter === "slowed" && ", slowed only"}
           </h2>
           {!sites && !error && <p className="site-list-empty">Loading sites…</p>}
+          {sites && listed.length === 0 && <p className="site-list-empty">No sites are slowed right now.</p>}
           <ol className="site-rows">
-            {ranked.map((state) => (
+            {listed.map((state) => (
               <SiteRow key={state.site.site_id} state={state} latest={latest} weather={weatherBySite.get(state.site.site_id)} />
             ))}
           </ol>
