@@ -167,3 +167,54 @@ CLUSTER BY site_id;
 
 ## Places
 Places ToS storage limits are waived for the demo (2026-10-07). Places responses (details, ratings, reviews, Nearby and Aggregate results) may be stored to measure their quality before Places Aggregate is relied on. `place_id` stays the site anchor. Test-fetch results: `docs/plans/places-test-fetch.md`.
+
+## Places tables
+Written by the Cloud Run job `places-profiler` (`places_job/`, bead `.4.6`), weekly plus manual runs. DDL: the Places section at the end of `sql/ddl.sql`. All three are partitioned by `DATE(fetched_at)` and clustered by `site_id`.
+
+**Runs.** One run has one `run_id`; its rows share one `fetched_at`, except after a Cloud Run retry (see below). `run_id` is the Cloud Run execution name (`CLOUD_RUN_EXECUTION`, the same for every attempt of a task; a uuid when run outside Cloud Run). The job MERGEs each table on a key that starts with `run_id`: a Cloud Run retry of the same execution overwrites its own rows, and a new execution (the next Monday, or `gcloud run jobs execute`) has a new `run_id` and only adds rows, so earlier runs are never touched. A retry overwrites the rows it fetches again, `fetched_at` included, and leaves rows it did not return with the first attempt's `fetched_at`; so one `run_id` can hold two `fetched_at` values a few minutes apart. `run_id` is therefore the run key, and `fetched_at` is only the partition column: take the latest run as the `run_id` of the row with the greatest `fetched_at` (filter `fetched_at` to bound the scan), then filter `run_id = <that>`. Only successful API calls produce rows: a failed call leaves no row, it is not stored as null.
+
+**Column groups.** core + `raw`. No `demo_*` column: Place Details, Nearby Search and Places Aggregate are the production sources, so nothing here is demo-only and no Places panel carries a "demo-only" badge.
+
+| Table | Grain (MERGE key) | Rows per run |
+|---|---|---|
+| `places_details` | `run_id`, `site_id` | 10 |
+| `places_nearby` | `run_id`, `site_id`, `radius_m`, `place_id` | up to 20 per site and radius; about 240 observed |
+| `places_aggregate` | `run_id`, `site_id`, `place_type`, `radius_m` | 15 types × 3 radii × 10 sites = 450 |
+
+### places_details
+| Column | Type | Source |
+|---|---|---|
+| `run_id`, `site_id`, `fetched_at` | STRING, STRING, TIMESTAMP | run; `sites.site_id` |
+| `place_id` | STRING | `id` |
+| `display_name` | STRING | `displayName.text` |
+| `rating`, `user_rating_count` | FLOAT64, INT64 | `rating`, `userRatingCount` |
+| `business_status`, `primary_type` | STRING | `businessStatus`, `primaryType` |
+| `open_now` | BOOL | `currentOpeningHours.openNow` at `fetched_at` |
+| `weekday_descriptions` | ARRAY<STRING> | `regularOpeningHours.weekdayDescriptions` (language `id`) |
+| `utc_offset_minutes` | INT64 | `utcOffsetMinutes` |
+| `reviews` | ARRAY<STRUCT<rating INT64, text STRING, language STRING, publish_time TIMESTAMP, author_name STRING>> | `reviews[]`: `rating`, `originalText.text`, `originalText.languageCode`, `publishTime` (cut to microseconds), `authorAttribution.displayName`. At most 5 per site |
+| `raw` | JSON | the whole response, requested with the full field mask of `scripts/places_test_fetch.py` (36 fields) |
+
+### places_nearby
+Nearby Search: `includedTypes = [gas_station]`, `rankPreference = DISTANCE`, `maxResultCount = 20`, radii 1000 and 3000 m, centred on the site's Details location. 20 results means the list is capped, so a count is a lower bound.
+
+| Column | Type | Source |
+|---|---|---|
+| `run_id`, `site_id`, `radius_m`, `place_id`, `fetched_at` | | `place_id` is the result place |
+| `name` | STRING | `displayName.text` |
+| `brand` | STRING | `Pertamina`, `Shell`, `BP`, `Vivo` or `other`, derived from `name` by `brand_of` |
+| `primary_type`, `rating`, `user_rating_count`, `business_status` | | same fields as Details |
+| `distance_m` | INT64 | haversine from the site's Details location; the API does not return it |
+| `rank` | INT64 | 1-based position in the response (distance order) |
+| `raw` | JSON | the one result, with `fuelOptions` (0 of 240 filled in the test fetch) |
+
+The site itself is in the results and is stored like any other place. Exclude it when counting competitors: `place_id != sites.place_id`.
+
+### places_aggregate
+Places Aggregate `computeInsights`, `INSIGHT_COUNT`, circle around `places/<place_id>`, operational places only. The 15 types are those of the test fetch; radii 500, 1000 and 3000 m.
+
+| Column | Type | Source |
+|---|---|---|
+| `run_id`, `site_id`, `place_type`, `radius_m`, `fetched_at` | | |
+| `count` | INT64 | `count`; the API omits it for zero, stored as 0 |
+| `raw` | JSON | the response |

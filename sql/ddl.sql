@@ -118,3 +118,63 @@ SELECT
   t.duration_in_seconds - b.baseline_s AS delay_s
 FROM traffic.traffic_snapshots AS t
 LEFT JOIN traffic.v_leg_baseline AS b USING (selected_route_id);
+
+-- Places tables (bead .4.6, job places-profiler). One run = one run_id (rows share one fetched_at, except
+-- after a Cloud Run retry: select the latest run by run_id, see data-schema.md); the job MERGEs on a key that starts with run_id, so a retry of the same Cloud Run
+-- execution does not duplicate and a new run adds rows. No demo_* columns: Details, Nearby Search and
+-- Places Aggregate are the production sources too.
+CREATE TABLE IF NOT EXISTS traffic.places_details (
+  -- core
+  run_id               STRING NOT NULL,     -- CLOUD_RUN_EXECUTION (uuid when run locally)
+  site_id              STRING NOT NULL,
+  fetched_at           TIMESTAMP NOT NULL,
+  place_id             STRING,              -- as returned by Details (may differ from sites.place_id if Google merged ids)
+  display_name         STRING,
+  rating               FLOAT64,
+  user_rating_count    INT64,
+  business_status      STRING,              -- OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY
+  primary_type         STRING,
+  open_now             BOOL,                -- currentOpeningHours.openNow at fetched_at
+  weekday_descriptions ARRAY<STRING>,       -- regularOpeningHours.weekdayDescriptions, language id
+  utc_offset_minutes   INT64,
+  reviews              ARRAY<STRUCT<rating INT64, text STRING, language STRING, publish_time TIMESTAMP, author_name STRING>>,
+  -- raw
+  raw                  JSON                 -- the whole Details response (full field mask)
+)
+PARTITION BY DATE(fetched_at)
+CLUSTER BY site_id;
+
+CREATE TABLE IF NOT EXISTS traffic.places_nearby (
+  -- core
+  run_id            STRING NOT NULL,
+  site_id           STRING NOT NULL,
+  radius_m          INT64 NOT NULL,         -- 1000 | 3000
+  place_id          STRING NOT NULL,        -- the result place (a gas station); may be the site itself
+  fetched_at        TIMESTAMP NOT NULL,
+  name              STRING,
+  brand             STRING,                 -- Pertamina | Shell | BP | Vivo | other, derived from name (brand_of)
+  primary_type      STRING,
+  distance_m        INT64,                  -- haversine from the site's Details location; not in the API response
+  rating            FLOAT64,
+  user_rating_count INT64,
+  business_status   STRING,
+  rank              INT64,                  -- 1-based position in the DISTANCE-ranked response (max 20 results)
+  -- raw
+  raw               JSON                    -- the one result place
+)
+PARTITION BY DATE(fetched_at)
+CLUSTER BY site_id;
+
+CREATE TABLE IF NOT EXISTS traffic.places_aggregate (
+  -- core
+  run_id      STRING NOT NULL,
+  site_id     STRING NOT NULL,
+  place_type  STRING NOT NULL,              -- Places type, e.g. "restaurant"
+  radius_m    INT64 NOT NULL,               -- 500 | 1000 | 3000
+  fetched_at  TIMESTAMP NOT NULL,
+  count       INT64,                        -- operational places of that type within the circle around the site's place_id
+  -- raw
+  raw         JSON                          -- the computeInsights response
+)
+PARTITION BY DATE(fetched_at)
+CLUSTER BY site_id;
