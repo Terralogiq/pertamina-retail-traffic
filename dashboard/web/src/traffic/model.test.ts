@@ -107,9 +107,9 @@ describe("heatmap and rain helpers", () => {
 
   it("formats delay with sign and minutes", () => {
     expect(formatDelay(16.4)).toBe("+16 s");
-    expect(formatDelay(75)).toBe("+1 min 15 s");
-    expect(formatDelay(-4)).toBe("\u22124 s");
-    expect(formatDelay(null)).toBe("n/a");
+    expect(formatDelay(75)).toBe("+1.3 min");
+    expect(formatDelay(-4)).toBe("-4 s");
+    expect(formatDelay(null)).toBe("-");
   });
 });
 

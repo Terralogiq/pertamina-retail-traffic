@@ -54,7 +54,7 @@ describe("site header", () => {
       />,
     );
     expect(html.indexOf("Approach")).toBeLessThan(html.indexOf("Departure"));
-    for (const s of ["+16 s", "+1 min 15 s", "30 km/h", "29.1 °C", "no rain", "4.2"]) expect(html).toContain(s);
+    for (const s of ["+16 s", "+1.3 min", "30 km/h", "29.1 °C", "no rain", "4.2"]) expect(html).toContain(s);
     // colour is never the only signal: the band label is in the markup (speed fallback, 30 km/h = moderate)
     expect(html).toContain(BANDS.moderate.label);
   });

@@ -35,6 +35,9 @@ const RANGES: { id: Range; label: string }[] = [
 
 const legColor = (leg: string) => SERIES[leg as "approach" | "departure"] ?? CHART_INK.text;
 
+/** Midnight reads "7 Oct" instead of a bare day number; other ticks are clock times. */
+const TIME_LABELS = { day: "{d} {MMM}", hour: "{HH}:{mm}", minute: "{HH}:{mm}" };
+
 function lineOption(points: TrafficPoint[], field: MetricField, unit: string, offsetMin: number, x: { min: number; max: number }) {
   const lines = legSeries(points, field, offsetMin).map(({ leg, data }) => ({
     name: legLabel(leg),
@@ -64,7 +67,7 @@ function lineOption(points: TrafficPoint[], field: MetricField, unit: string, of
       valueFormatter: (v: number | null) => (v == null ? "n/a" : `${field === "congestion_index" ? v.toFixed(2) : Math.round(v)}${unit ? ` ${unit}` : ""}`),
     },
     grid: GRID,
-    xAxis: { type: "time", min: x.min, max: x.max },
+    xAxis: { type: "time", min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
     yAxis: { type: "value", scale: true, splitNumber: 3 },
     series: lines,
   };
@@ -76,13 +79,13 @@ function rainOption(rain: [number, number][], x: { min: number; max: number }) {
     animation: false,
     tooltip: { trigger: "axis", valueFormatter: (v: number) => `${v.toFixed(1)} mm` },
     grid: GRID,
-    xAxis: { type: "time", min: x.min, max: x.max },
+    xAxis: { type: "time", min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
     yAxis: { type: "value", min: 0, splitNumber: 2 },
     series: [{ name: "Rain", type: "bar", data: rain, barMaxWidth: 6, itemStyle: { color: SERIES.rain } }],
   };
 }
 
-function heatmapOption(cells: PatternCell[], leg: string) {
+export function heatmapOption(cells: PatternCell[], leg: string) {
   const clamp = (v: number) => Math.min(HEATMAP_SCALE.max, Math.max(HEATMAP_SCALE.min, v));
   // [hour, day, colour value, real value]: colour clamps to the fixed scale, the tooltip keeps the real mean.
   const data = heatmapData(cells, leg).map(([h, d, v]) => [h, d, clamp(v), v]);
@@ -104,17 +107,21 @@ function heatmapOption(cells: PatternCell[], leg: string) {
       splitArea: { show: false },
     },
     yAxis: { type: "category", data: DAYS, inverse: true, axisTick: { show: false }, splitArea: { show: false } },
-    visualMap: {
-      show: false,
-      seriesIndex: 0,
-      dimension: 2,
-      min: HEATMAP_SCALE.min,
-      max: HEATMAP_SCALE.max,
-      inRange: { color: [...SEQUENTIAL] },
-    },
+    // ECharts requires every heatmap series to sit under a visualMap: the second one paints the "no data" cells flat.
+    visualMap: [
+      {
+        show: false,
+        seriesIndex: 0,
+        dimension: 2,
+        min: HEATMAP_SCALE.min,
+        max: HEATMAP_SCALE.max,
+        inRange: { color: [...SEQUENTIAL] },
+      },
+      { show: false, seriesIndex: 1, dimension: 2, min: 0, max: 1, inRange: { color: [CHART_INK.grid, CHART_INK.grid] } },
+    ],
     series: [
       { type: "heatmap", data, itemStyle: cell, emphasis: { itemStyle: { borderColor: CHART_INK.text } } },
-      { type: "heatmap", data: empty, itemStyle: { ...cell, color: CHART_INK.grid }, emphasis: { disabled: true } },
+      { type: "heatmap", data: empty, itemStyle: cell, emphasis: { disabled: true } },
     ],
   };
 }

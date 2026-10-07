@@ -15,6 +15,8 @@ type Libs = Awaited<ReturnType<typeof loadMaps>>;
 const START = { center: { lat: -2.5, lng: 118 }, zoom: 5 };
 /** On the overview, the legs are drawn from this zoom; below it the markers alone carry the picture. */
 const LEGS_MIN_ZOOM = 14;
+/** Marker pills sit above their point, so fits leave extra room at the top to keep the topmost pill inside the map. */
+const FIT_PADDING = { top: 88, right: 56, bottom: 48, left: 56 };
 
 function infoContent(title: string, lines: string[]): HTMLElement {
   const root = document.createElement("div");
@@ -117,7 +119,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   // Fit when the set of shown sites changes, not on every traffic refresh (that would undo the user's panning).
   useEffect(() => {
     const bounds = boundsOf(sitePoints(shown));
-    if (map && bounds) map.fitBounds(bounds, 48);
+    if (map && bounds) map.fitBounds(bounds, FIT_PADDING);
   }, [map, shown]);
 
   // Legs: a light casing under each coloured line so it holds against any basemap; redraw on new data.
@@ -218,7 +220,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         marker.addEventListener("pointerleave", () => info.close());
         marker.addEventListener("gmp-click", () => {
           const bounds = boundsOf(sitePoints(members.map((m) => m.site)));
-          if (bounds) map.fitBounds(bounds, 64);
+          if (bounds) map.fitBounds(bounds, FIT_PADDING);
         });
         cleanups.push(remove);
       }

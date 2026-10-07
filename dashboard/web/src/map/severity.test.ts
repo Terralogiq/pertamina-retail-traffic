@@ -115,6 +115,16 @@ describe("clusterPoints", () => {
     expect(groups.map((g) => g.ids)).toEqual([["a", "b"], ["c"]]);
     expect(groups[0].lat).toBeCloseTo(-6.225);
   });
+  it("merges groups whose marker boxes would still overlap after a first merge", () => {
+    // Four points along a line, each ~70 px apart at zoom 7: pairwise neighbours overlap, so all four end up together
+    // or in groups that no longer overlap each other.
+    const line = [0, 1, 2, 3].map((k) => ({ id: `p${k}`, lat: -6.2, lng: 106.8 + k * 0.1 }));
+    const groups = clusterPoints(line, 7);
+    const px = (g: { lat: number; lng: number }) => (g.lng + 180) / 360 * 256 * 2 ** 7;
+    for (let i = 0; i < groups.length; i++)
+      for (let j = i + 1; j < groups.length; j++) expect(Math.abs(px(groups[i]) - px(groups[j]))).toBeGreaterThanOrEqual(96);
+    expect(groups.flatMap((g) => g.ids).sort()).toEqual(["p0", "p1", "p2", "p3"]);
+  });
   it("splits them once zoomed in", () => {
     expect(clusterPoints(pts, 12).map((g) => g.ids)).toEqual([["a"], ["b"], ["c"]]);
   });

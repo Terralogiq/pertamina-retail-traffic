@@ -9,6 +9,7 @@
 
 .overview {
   --site-list-width: 23rem;
+  --map-legend-compact-width: calc(100vw - 7rem);
   --map-compact-height: 45vh;
 
   display: grid;
@@ -399,7 +400,16 @@
     padding: var(--space-2);
   }
 
+  /* Clear the fullscreen control on the right; ranges drop out so the key stays two short columns. */
+  .map-legend {
+    max-width: var(--map-legend-compact-width);
+  }
+
   .map-legend-rows {
-    grid-template-columns: repeat(2, auto auto);
+    grid-template-columns: repeat(2, auto);
+  }
+
+  .map-legend-range {
+    display: none;
   }
 }

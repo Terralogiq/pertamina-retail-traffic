@@ -25,7 +25,7 @@ const LEG_LABEL: Record<string, string> = { approach: "Approach", departure: "De
 
 // Scatter chart layout (ECharts takes pixels).
 const SCATTER_HEIGHT = 320;
-const SCATTER_GRID = { top: 36, left: 8, right: 16, bottom: 8, containLabel: true };
+const SCATTER_GRID = { top: 56, left: 8, right: 16, bottom: 28, containLabel: true };
 const SCATTER_SYMBOL_SIZE = 8;
 const SCATTER_BORDER_WIDTH = 1;
 
@@ -198,8 +198,8 @@ export function RainScatter({ points, names }: { points: ScatterPoint[]; names: 
     },
     legend: { top: 0, left: 0, data: legs.map((l) => LEG_LABEL[l]), icon: "circle" },
     grid: SCATTER_GRID,
-    xAxis: { type: "value", name: "mm", nameLocation: "end", min: 0 },
-    yAxis: { type: "value", name: "congestion", scale: true },
+    xAxis: { type: "value", name: "Rain (mm)", nameLocation: "middle", nameGap: 28, min: 0 },
+    yAxis: { type: "value", name: "Congestion index", nameLocation: "end", nameGap: 12, nameTextStyle: { align: "left" }, scale: true },
     series: legs.map((leg) => ({
       name: LEG_LABEL[leg],
       type: "scatter" as const,

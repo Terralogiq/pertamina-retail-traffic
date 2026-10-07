@@ -102,11 +102,5 @@ export const hadRain = (rain: [number, number][]) => rain.some(([, mm]) => mm > 
 
 export const legLabel = (leg: string) => leg.charAt(0).toUpperCase() + leg.slice(1);
 
-/** "+16 s", "+1 min 05 s", "−4 s"; "n/a" when missing. */
-export function formatDelay(s: number | null | undefined): string {
-  if (s == null) return "n/a";
-  const sign = s < 0 ? "−" : "+";
-  const abs = Math.round(Math.abs(s));
-  if (abs < 60) return `${sign}${abs} s`;
-  return `${sign}${Math.floor(abs / 60)} min ${String(abs % 60).padStart(2, "0")} s`;
-}
+/** One delay format across the app ("+16 s", "+1.3 min"); the map list and the site header must agree. */
+export { formatDelay } from "../map/bands";

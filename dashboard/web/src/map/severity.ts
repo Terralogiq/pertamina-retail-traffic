@@ -107,18 +107,35 @@ export interface Cluster {
   lng: number;
 }
 
+/** Screen footprint of a marker pill (largest label, "+3.4 min" / "N sites"), used to keep markers from overlapping. */
+export const MARKER_BOX = { width: 96, height: 32 };
+
 /**
- * Greedy grouping of points closer than `radiusPx` on screen at `zoom`. Points are taken in the order
- * given (pass them worst first so the anchor of each group is its worst site); a group sits at its
- * members' mean position.
+ * Groups points whose markers would overlap on screen at `zoom`. Starts with one group per point (pass them
+ * worst first, so each group's first member is its worst site) and keeps merging any two groups whose marker
+ * boxes, centred on the members' mean position, overlap, until none do. A merge can move a group onto a third
+ * one, which is why it loops.
  */
-export function clusterPoints(points: Point[], zoom: number, radiusPx = 40): Cluster[] {
-  const groups: { anchor: { x: number; y: number }; members: Point[] }[] = [];
-  for (const p of points) {
-    const px = toPixel(p, zoom);
-    const hit = groups.find((g) => Math.hypot(g.anchor.x - px.x, g.anchor.y - px.y) < radiusPx);
-    if (hit) hit.members.push(p);
-    else groups.push({ anchor: px, members: [p] });
+export function clusterPoints(points: Point[], zoom: number, box = MARKER_BOX): Cluster[] {
+  let groups = points.map((p) => ({ members: [p], px: toPixel(p, zoom) }));
+  const centre = (members: Point[]) => {
+    const pxs = members.map((m) => toPixel(m, zoom));
+    return { x: pxs.reduce((s, q) => s + q.x, 0) / pxs.length, y: pxs.reduce((s, q) => s + q.y, 0) / pxs.length };
+  };
+  for (;;) {
+    let merged = false;
+    outer: for (let i = 0; i < groups.length; i++) {
+      for (let j = i + 1; j < groups.length; j++) {
+        const a = groups[i].px, b = groups[j].px;
+        if (Math.abs(a.x - b.x) < box.width && Math.abs(a.y - b.y) < box.height) {
+          const members = [...groups[i].members, ...groups[j].members];
+          groups = [...groups.slice(0, i), { members, px: centre(members) }, ...groups.slice(i + 1, j), ...groups.slice(j + 1)];
+          merged = true;
+          break outer;
+        }
+      }
+    }
+    if (!merged) break;
   }
   return groups.map((g) => ({
     ids: g.members.map((m) => m.id),
