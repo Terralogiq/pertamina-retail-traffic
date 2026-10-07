@@ -2,6 +2,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PlacesResponse, PlaceReview } from "./api";
 import {
+  collapsedHours,
+  groupedPoiRows,
+  humanStatus,
+  relativeDate,
   competitorRows,
   formatDate,
   latestReviews,
@@ -96,6 +100,35 @@ describe("helpers", () => {
   });
 });
 
+describe("readable copy", () => {
+  it("collapses seven identical days into one line", () => {
+    const week = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+    expect(collapsedHours(week.map((d) => `${d}: Buka 24 jam`))).toBe("Open 24 hours, every day");
+    expect(collapsedHours(week.map((d) => `${d}: 06.00–22.00`))).toBe("06.00–22.00, every day");
+    expect(collapsedHours([...week.slice(0, 6).map((d) => `${d}: Buka 24 jam`), "Minggu: Tutup"])).toBeNull();
+    expect(collapsedHours(["Senin: Buka 24 jam"])).toBeNull();
+  });
+
+  it("labels and groups POI types; unknown types go to Other", () => {
+    const groups = groupedPoiRows([
+      { place_type: "car_repair", counts: [1, 2, 3] },
+      { place_type: "atm", counts: [1, 4, 31] },
+      { place_type: "zoo", counts: [0, 0, 1] },
+    ]);
+    expect(groups.map((g) => g.group)).toEqual(["Money", "Vehicles", "Other"]);
+    expect(groups[0].rows[0].label).toBe("ATMs");
+    expect(groups[2].rows[0].label).toBe("Zoo");
+  });
+
+  it("relative review dates and readable business status", () => {
+    const now = new Date("2026-10-07T00:00:00Z");
+    expect(relativeDate("2026-09-16T00:00:00Z", now)).toBe("3 weeks ago");
+    expect(relativeDate("2026-10-06T00:00:00Z", now)).toBe("yesterday");
+    expect(relativeDate(null, now)).toBe("");
+    expect(humanStatus("CLOSED_TEMPORARILY")).toBe("Closed temporarily");
+  });
+});
+
 describe("panels", () => {
   it("summary shows rating, count, author, stars, date and text, and no demo badge", () => {
     const html = renderToStaticMarkup(<PlaceSummary details={data.details!} />);
@@ -120,7 +153,8 @@ describe("panels", () => {
 
   it("POI table has the three radius columns", () => {
     const html = renderToStaticMarkup(<PoiTable data={data} />);
-    for (const s of ["500 m", "1 km", "3 km", "atm", ">31<"]) expect(html).toContain(s);
+    for (const s of ["500 m", "1 km", "3 km", "ATMs", "Money", ">31<"]) expect(html).toContain(s);
+    expect(html).not.toContain(">atm<");
     expect(html).not.toContain("demo-only");
   });
 });
