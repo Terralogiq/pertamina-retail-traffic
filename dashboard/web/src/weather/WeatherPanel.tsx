@@ -1,3 +1,4 @@
+import { errorText } from "../api";
 import type { EChartsOption } from "echarts";
 import { useEffect, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
@@ -144,7 +145,7 @@ export function WeatherPanel({
     setSeriesError("");
     getWeatherSeries(siteId)
       .then((rows) => live && setSeries(rows))
-      .catch((e) => live && setSeriesError(String(e)));
+      .catch((e) => live && setSeriesError(errorText(e)));
     return () => {
       live = false;
     };
@@ -153,10 +154,10 @@ export function WeatherPanel({
   return (
     <Section id="weather" title="Weather">
       {now === undefined && <Skeleton height={NOW_HEIGHT} label="Loading current weather" />}
-      {now instanceof Error && <Notice tone="error">Couldn't load the current weather: {now.message}</Notice>}
+      {now instanceof Error && <Notice tone="error">Couldn't load the current weather. {now.message}</Notice>}
       {now === null && <Notice>No weather reading in the last 2 hours.</Notice>}
       {now && !(now instanceof Error) && <CoreConditions now={now} tz={tz} />}
-      {seriesError && <Notice tone="error">Couldn't load the last 24 hours: {seriesError}</Notice>}
+      {seriesError && <Notice tone="error">Couldn't load the last 24 hours. {seriesError}</Notice>}
       {!seriesError && series === null && <Skeleton height={CHART_HEIGHT + 32} label="Loading temperature" />}
       {series !== null && series.length > 0 && <WeatherChart series={series} tz={tz} />}
       {now && !(now instanceof Error) && <DemoConditions now={now} />}

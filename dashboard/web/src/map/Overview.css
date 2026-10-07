@@ -97,6 +97,15 @@
   background: var(--surface-2);
 }
 
+/* Phones: shape-only pills (a count on groups) so nearby sites stay separate at national zoom. */
+.map-marker-compact {
+  padding: var(--space-1);
+}
+
+.map-marker-compact.map-marker-group {
+  padding-inline: var(--space-2);
+}
+
 .map-marker[data-band="free"] { --band-color: var(--band-free); }
 .map-marker[data-band="moderate"] { --band-color: var(--band-moderate); }
 .map-marker[data-band="heavy"] { --band-color: var(--band-heavy); }

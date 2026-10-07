@@ -9,7 +9,7 @@ import { GroupPopup, LegPopup, SitePopup, buildGroupPopup, buildLegPopup, buildS
 import { loadMaps } from "./maps";
 import { MapMarker } from "./MapMarker";
 import { useMapPopup } from "./useMapPopup";
-import { clusterPoints, rankSites } from "./severity";
+import { MARKER_BOX, MARKER_BOX_COMPACT, clusterPoints, rankSites } from "./severity";
 
 type Libs = Awaited<ReturnType<typeof loadMaps>>;
 
@@ -19,6 +19,21 @@ const START = { center: { lat: -2.5, lng: 118 }, zoom: 5 };
 const LEGS_MIN_ZOOM = 14;
 /** Marker pills sit above their point, so fits leave extra room at the top to keep the topmost pill inside the map. */
 const FIT_PADDING = { top: 88, right: 56, bottom: 48, left: 56 };
+/** Phones: the map is ~320 px wide, so the pills shrink to the band shape and the fit keeps less margin. */
+const FIT_PADDING_COMPACT = { top: 40, right: 24, bottom: 24, left: 24 };
+const COMPACT_QUERY = "(max-width: 767px)";
+
+/** True while the viewport matches the shell's compact breakpoint. */
+function useCompact(): boolean {
+  const [compact, setCompact] = useState(() => typeof window !== "undefined" && window.matchMedia(COMPACT_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_QUERY);
+    const onChange = () => setCompact(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return compact;
+}
 
 /** A marker pill sits above its point; a hover card is raised by about its height (pill, tail and hover lift) to clear it. */
 const MARKER_CARD_LIFT_PX = 48;
@@ -67,6 +82,8 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   const [error, setError] = useState("");
 
   const popup = useMapPopup(map, libs);
+  const compact = useCompact();
+  const fitPadding = compact ? FIT_PADDING_COMPACT : FIT_PADDING;
   const shown = useMemo(() => (siteId ? sites.filter((s) => s.site_id === siteId) : sites), [sites, siteId]);
   // Handlers read the callback through a ref so a new function identity does not redraw the overlays.
   const select = useRef(onSelectSite);
@@ -89,17 +106,20 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
           streetViewControl: false,
           fullscreenControl: false,
           clickableIcons: false,
+          // Fits land between integer zooms; on a ~320 px phone map the next integer down merges most markers.
+          isFractionalZoomEnabled: true,
         });
         // `idle`, not `zoom_changed`: one update when the zoom (or fit) settles, not one per animation step.
-        m.addListener("idle", () => setZoom(Math.round(m.getZoom() ?? START.zoom)));
+        m.addListener("idle", () => setZoom(Math.round((m.getZoom() ?? START.zoom) * 4) / 4));
         // The legend is a map control so it stacks above Google's logo and Terms instead of covering them.
         const legend = document.createElement("div");
-        m.controls[l.core.ControlPosition.LEFT_BOTTOM].push(legend);
+        // On the site map the fit leaves room at the top, where the compact legend cannot cover the legs.
+        m.controls[siteId ? l.core.ControlPosition.TOP_LEFT : l.core.ControlPosition.LEFT_BOTTOM].push(legend);
         setLegendEl(legend);
         setLibs(l);
         setMap(m);
       })
-      .catch((e) => !cancelled && setError(`The map could not load: ${String(e)}`));
+      .catch((e) => !cancelled && setError("The map could not load. Check your connection and reload the page."));
     return () => {
       cancelled = true;
     };
@@ -108,8 +128,8 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   // Fit when the set of shown sites changes, not on every traffic refresh (that would undo the user's panning).
   useEffect(() => {
     const bounds = boundsOf(sitePoints(shown));
-    if (map && bounds) map.fitBounds(bounds, FIT_PADDING);
-  }, [map, shown]);
+    if (map && bounds) map.fitBounds(bounds, fitPadding);
+  }, [map, shown, fitPadding]);
 
   // Legs: a light casing under each coloured line so it holds against any basemap; redraw on new data.
   // Hover shows the leg card. Where a click does not navigate (the site map), a click or tap pins it with a
@@ -174,7 +194,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
     const byId = new Map(ranked.map((s) => [s.site.site_id, s]));
     const groups = siteId
       ? ranked.map((s) => ({ ids: [s.site.site_id], ...s.site.location }))
-      : clusterPoints(ranked.map((s) => ({ id: s.site.site_id, ...s.site.location })), groupZoom);
+      : clusterPoints(ranked.map((s) => ({ id: s.site.site_id, ...s.site.location })), groupZoom, compact ? MARKER_BOX_COMPACT : MARKER_BOX);
     const cleanups: (() => void)[] = [];
 
     for (const group of groups) {
@@ -183,7 +203,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       if (members.length === 1) {
         const { site, band, worstDelay } = lead;
         const text = worstDelay === null ? BANDS.none.label : formatDelay(worstDelay);
-        const { marker, remove } = reactMarker(libs, map, site.location, `${site.name}: ${BANDS[band].label}, ${text}`, <MapMarker band={band} text={text} />);
+        const { marker, remove } = reactMarker(libs, map, site.location, `${site.name}: ${BANDS[band].label}, ${text}`, <MapMarker band={band} text={text} compact={compact} />);
         const model = buildSitePopup(site, latest);
         marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(site.location, <SitePopup model={model} />, MARKER_CARD_LIFT_PX)));
         marker.addEventListener("pointerleave", popup.hideSoon);
@@ -202,7 +222,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
           map,
           { lat: group.lat, lng: group.lng },
           title,
-          <MapMarker band={lead.band} text={`${members.length} sites`} group />,
+          <MapMarker band={lead.band} text={compact ? String(members.length) : `${members.length} sites`} group compact={compact} />,
         );
         const model = buildGroupPopup(members);
         const at = { lat: group.lat, lng: group.lng };
@@ -210,7 +230,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         marker.addEventListener("pointerleave", popup.hideSoon);
         marker.addEventListener("gmp-click", () => {
           const bounds = boundsOf(sitePoints(members.map((m) => m.site)));
-          if (bounds) map.fitBounds(bounds, FIT_PADDING);
+          if (bounds) map.fitBounds(bounds, fitPadding);
         });
         cleanups.push(remove);
       }
@@ -219,7 +239,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       popup.hide();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup]);
+  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup, compact, fitPadding]);
 
   return (
     <>

@@ -1,3 +1,4 @@
+import { errorText } from "../api";
 import type { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
 import { Page } from "../shell/AppShell";
@@ -123,7 +124,9 @@ function LegRow({ row, scale }: { row: RainSplit; scale: { min: number; max: num
       <span className="rain-leg-values num">
         <span className="rain-effect">{effect == null ? (rain.n > 0 ? "no dry slots" : "no rain slots") : signedSeconds(effect)}</span>
         <span className="rain-leg-detail">
-          dry {seconds(dry.mean_delay_s)} · rain {seconds(rain.mean_delay_s)} · n {rain.n}/{dry.n}
+          {/* The "no rain slots" line above already says it; don't repeat it as "rain n/a". */}
+          dry {seconds(dry.mean_delay_s)}
+          {rain.mean_delay_s != null && <> · rain {seconds(rain.mean_delay_s)}</>} · n {rain.n}/{dry.n}
         </span>
       </span>
       {thin && rain.n > 0 && <span className="rain-thin-flag">Only {rain.n} rain slot{rain.n === 1 ? "" : "s"}</span>}
@@ -236,7 +239,7 @@ export function RainView() {
     setData(null);
     getRain(days, siteId || undefined)
       .then((r) => live && setData(r))
-      .catch((e) => live && setError(String(e)));
+      .catch((e) => live && setError(errorText(e)));
     return () => {
       live = false;
     };

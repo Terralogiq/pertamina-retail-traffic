@@ -162,7 +162,7 @@ export default function Overview() {
     >
       {error && (
         <p className="overview-error" role="alert">
-          Some data could not load: {error}
+          Some data couldn't load. {error}
         </p>
       )}
       <div className="overview">

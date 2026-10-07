@@ -1,3 +1,4 @@
+import { errorText } from "../api";
 import { useEffect, useMemo, useState } from "react";
 import { LatestLeg, Site, getLatestTraffic, getSites } from "./api";
 import { WeatherLatest, getWeatherLatest } from "../weather/api";
@@ -16,11 +17,11 @@ export function useTrafficData() {
     let cancelled = false;
     getSites()
       .then((s) => !cancelled && setSites(s))
-      .catch((e) => !cancelled && setError(String(e)));
+      .catch((e) => !cancelled && setError(errorText(e)));
     const loadLatest = () =>
       getLatestTraffic()
         .then((r) => !cancelled && setRows(r))
-        .catch((e) => !cancelled && setError(String(e)));
+        .catch((e) => !cancelled && setError(errorText(e)));
     const loadWeather = () =>
       getWeatherLatest()
         .then((w) => !cancelled && setWeather(w))

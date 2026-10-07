@@ -3,6 +3,7 @@
 Run locally: uvicorn dashboard.api.main:app --port 8080   (from the repo root)
 Env: DASHBOARD_PASSWORD, MAPS_BROWSER_KEY (both Secret Manager secrets on Cloud Run).
 """
+import mimetypes
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -12,6 +13,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import auth
 from .routers import places, sites, traffic, weather
+
+# Python's mimetypes table lacks woff2 on some platforms (it served as application/octet-stream).
+mimetypes.add_type("font/woff2", ".woff2")
 
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 

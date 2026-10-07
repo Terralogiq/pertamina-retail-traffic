@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import type { LatestLeg, Site } from "../map/api";
 import { BASELINE_FULL, baselineProgress, legBand } from "../map/bands";
 import { SiteMap } from "../map";
+import { baselineDaysLeft } from "../map/severity";
 import { PlacesPanel } from "../places";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
@@ -26,12 +27,12 @@ export function siteContext(site: Site): string {
   return [`SPBU ${site.site_id}`, site.city, site.road_name, tzLabel(site.timezone)].filter(Boolean).join(" · ");
 }
 
-/** "Congestion is provisional: baseline 27 of 302 samples" while any leg's baseline is building, else null. */
+/** Same wording as the overview's BaselineNotice, while any leg's baseline is building; else null. */
 export function baselineNotice(legs: LatestLeg[]): string | null {
   const n = baselineProgress(legs);
-  return n !== null && n < BASELINE_FULL
-    ? `Baseline building: ${n} of ${BASELINE_FULL} samples. Leg status uses speed until the baseline is full; the congestion index is provisional.`
-    : null;
+  if (n === null || n >= BASELINE_FULL) return null;
+  const days = baselineDaysLeft(n);
+  return `Baseline building (${n} of ${BASELINE_FULL} readings per leg). Leg status uses speed until the usual travel time is known, in about ${days} ${days === 1 ? "day" : "days"}; the congestion index is provisional.`;
 }
 
 /** Status line under the heading: each leg's latest delay and band, the weather now and the rating (F4). */
@@ -118,7 +119,7 @@ export function SiteDetail() {
 
   if (site === null) {
     return (
-      <Page title="Unknown site" context={`No SPBU with code ${siteId}`}>
+      <Page title="Unknown site" context={`No SPBU has the code “${siteId}”.`}>
         <Link to="/">Back to the overview</Link>
       </Page>
     );
@@ -132,7 +133,7 @@ export function SiteDetail() {
       context={
         <div className="site-context">
           {isReady(site) && <p>{siteContext(site)}</p>}
-          {site instanceof Error && <p role="alert">Couldn't load the site: {site.message}</p>}
+          {site instanceof Error && <p role="alert">Couldn't load the site. {site.message}</p>}
           <StatusStrip legs={legs} weather={weather} places={places} />
         </div>
       }

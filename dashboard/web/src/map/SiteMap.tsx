@@ -10,7 +10,7 @@ export default function SiteMap({ siteId }: { siteId: string }) {
     <div className="site-map">
       {error && (
         <p className="overview-error" role="alert">
-          The map data could not load: {error}
+          The map data couldn't load. {error}
         </p>
       )}
       {sites && !site && (

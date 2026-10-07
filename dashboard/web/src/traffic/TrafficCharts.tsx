@@ -1,3 +1,4 @@
+import { errorText } from "../api";
 import { useEffect, useMemo, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
 import { CHART_INK, SEQUENTIAL, SERIES } from "../theme/palette";
@@ -179,11 +180,11 @@ export default function TrafficCharts({
     setRainError("");
     getTrafficSeries(siteId, from)
       .then((rows) => live && setPoints(rows))
-      .catch((e) => live && setError(String(e)));
+      .catch((e) => live && setError(errorText(e)));
     // The rain strip is optional: a failed weather fetch shows an error in its block, the traffic charts still render.
     getWeatherSeries(siteId, from)
       .then((rows) => live && setWeather(rows))
-      .catch((e) => live && setRainError(String(e)));
+      .catch((e) => live && setRainError(errorText(e)));
     return () => {
       live = false;
     };
@@ -214,7 +215,7 @@ export default function TrafficCharts({
       actions={<RangeControl value={range} onChange={setRange} />}
     >
       {baselineNote && <p className="traffic-provisional">{baselineNote}</p>}
-      {error && <Notice tone="error">Couldn't load traffic: {error}</Notice>}
+      {error && <Notice tone="error">Couldn't load traffic. {error}</Notice>}
       {!error && points === null && (
         <div className="traffic-stack" aria-busy="true">
           {METRICS.map((m) => (
@@ -234,7 +235,7 @@ export default function TrafficCharts({
           ))}
           <Block title="Rain (mm)" aside="measured, per half hour">
             {rainError ? (
-              <Notice tone="error">Couldn't load rain: {rainError}</Notice>
+              <Notice tone="error">Couldn't load rain. {rainError}</Notice>
             ) : weather === null ? (
               <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
             ) : rainChart ? (
@@ -260,7 +261,7 @@ export function TrafficPattern({ siteId, timezone }: { siteId: string; timezone:
     setError("");
     getTrafficPattern(siteId)
       .then((cells) => live && setPattern(cells))
-      .catch((e) => live && setError(String(e)));
+      .catch((e) => live && setError(errorText(e)));
     return () => {
       live = false;
     };
@@ -277,7 +278,7 @@ export function TrafficPattern({ siteId, timezone }: { siteId: string; timezone:
       note={`Mean congestion index by day and hour, last 28 days, ${tz}`}
       actions={<HeatmapLegend />}
     >
-      {error && <Notice tone="error">Couldn't load the pattern: {error}</Notice>}
+      {error && <Notice tone="error">Couldn't load the pattern. {error}</Notice>}
       {!error && pattern === null && <Skeleton height={HEATMAP_HEIGHT} label="Loading weekly pattern" />}
       {pattern !== null && legs.length === 0 && <Notice>No readings in the last 28 days.</Notice>}
       {legs.length > 0 && (

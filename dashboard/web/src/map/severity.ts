@@ -109,6 +109,8 @@ export interface Cluster {
 
 /** Screen footprint of a marker pill (largest label, "+3.4 min" / "N sites"), used to keep markers from overlapping. */
 export const MARKER_BOX = { width: 96, height: 32 };
+/** Phone footprint: the pill shows only the band shape (or a group count), see MapMarker `compact`. */
+export const MARKER_BOX_COMPACT = { width: 36, height: 30 };
 
 /**
  * Groups points whose markers would overlap on screen at `zoom`. Starts with one group per point (pass them

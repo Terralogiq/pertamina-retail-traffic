@@ -207,6 +207,9 @@ textarea {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    /* An infinite loop at 0.01ms flickers (the skeleton sweep): run once and stop. */
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
 }
 

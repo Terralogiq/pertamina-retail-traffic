@@ -38,6 +38,8 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         <Wordmark />
         <h1 className="login-title">Sign in</h1>
         <p className="login-lede">Traffic, weather and site profiles for 10 SPBU, updated every 30 minutes.</p>
+        {/* Password managers expect a username next to a password; the dashboard has one shared login. */}
+        <input type="text" name="username" autoComplete="username" value="dashboard" readOnly hidden />
         <label className="login-label" htmlFor="login-password">
           Password
         </label>

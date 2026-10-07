@@ -24,6 +24,7 @@ class StaticTest(unittest.TestCase):
         (dist / "index.html").write_text("<html>shell</html>")
         (dist / "favicon.ico").write_bytes(b"ico")
         (dist / "brand" / "pertamina-retail-logo.png").write_bytes(b"png")
+        (dist / "brand" / "epilogue.woff2").write_bytes(b"woff2")
         patcher = mock.patch.object(main, "DIST", dist)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -34,6 +35,11 @@ class StaticTest(unittest.TestCase):
         self.assertEqual((res.status_code, res.content), (200, b"ico"))
         res = self.client.get("/brand/pertamina-retail-logo.png")
         self.assertEqual((res.status_code, res.content), (200, b"png"))
+
+    def test_woff2_has_font_mime_type(self):
+        res = self.client.get("/brand/epilogue.woff2")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers["content-type"], "font/woff2")
 
     def test_unknown_path_gets_spa_shell(self):
         res = self.client.get("/site/24.351.97")

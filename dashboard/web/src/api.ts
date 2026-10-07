@@ -11,13 +11,34 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
 }
 
+/** A failed /api call. `message` is written for the reader (problem + recovery); `path` and `status` are for debugging. */
+export class ApiError extends Error {
+  constructor(readonly path: string, readonly status: number | null) {
+    super(
+      status === null
+        ? "No connection to the dashboard server. Check your connection and reload the page."
+        : status >= 500
+          ? `The server had a problem (HTTP ${status}). Try again in a minute.`
+          : `The request failed (HTTP ${status}). Reload the page.`,
+    );
+  }
+}
+
+/** Reader-facing text for any caught error: the message alone, without "Error:" or a request URL. */
+export const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
 export async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin" });
+  let res: Response;
+  try {
+    res = await fetch(path, { credentials: "same-origin" });
+  } catch {
+    throw new ApiError(path, null);
+  }
   if (res.status === 401) {
     onUnauthorized();
     throw new UnauthorizedError();
   }
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  if (!res.ok) throw new ApiError(path, res.status);
   return (await res.json()) as T;
 }
 

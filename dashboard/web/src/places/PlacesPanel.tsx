@@ -221,7 +221,7 @@ export function PlacesPanel({ data }: { data: Load<PlacesResponse> }) {
   return (
     <Section id="places" title="Places" note={note}>
       {data === undefined && <Skeleton height={PLACES_HEIGHT} label="Loading Places" />}
-      {data instanceof Error && <Notice tone="error">Couldn't load Places: {data.message}</Notice>}
+      {data instanceof Error && <Notice tone="error">Couldn't load Places. {data.message}</Notice>}
       {(data === null || (data && !(data instanceof Error) && !data.details)) && (
         <Notice>No Places run stored for this site yet. The profiler runs every Monday at 02:00 WIB.</Notice>
       )}

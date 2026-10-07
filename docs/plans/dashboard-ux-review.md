@@ -85,3 +85,52 @@ Detector:
 
 - Not covered: dark mode (no decision yet), screen-reader walkthrough beyond landmark and heading checks, and keyboard operation of map markers (10 markers are focusable; the tab order wasn't walked).
 - Local review setup: uvicorn has to bind `::` (`--host ::`) for the vite proxy, because Node resolves `localhost` to IPv6. The Secure session cookie worked on `http://localhost` in Chromium.
+
+## Status after redesign (2026-10-07)
+
+Re-audit for bead `.9.7` on the local build of branch `redesign-polish` against real BigQuery data, at 1440 and 390 px. Screenshots: `out/ux-review/after-9.7/`. Checks:
+- **Overflow:** none on any screen at 390 px.
+- **Small text:** no text below 12.5 px outside the Google map chrome.
+- **Keyboard:** every control is reachable by keyboard with a 2 px focus ring.
+- **Console:** no errors apart from expected 401s before login and the deliberate 404 probes.
+
+| # | Status | Evidence |
+|---|---|---|
+| F1 | partly | Markers show the band shape and delay, overlapping sites group, legs appear from zoom 14, and the legend is a map control. The busy basemap stays until a muted Map ID exists (`.9.10`) |
+| F2 | fixed | Summary line ("8 of 10 sites slowed", worst site and leg), list worst first, sort and filter controls |
+| F3 | fixed | 390 px: the map stacks over the list, the legend fits in two rows, and pills shrink to the band shape. Fractional-zoom fit keeps 5 markers inside the map (`12-overview-390-after.png`) |
+| F4 | fixed | Header shows the SPBU name, code, city, road and time zone, plus a status strip (legs, weather, rating) |
+| F5 | fixed | Two columns at 1200 px and above, with section links (`09-site-wib-1440-viewport.png`) |
+| F6 | fixed | One dot row per site and leg, n on every row, "Only N rain slots" flag (`04-rain-1440.png`) |
+| F7 | fixed | One baseline notice per page, worded the same on the overview and site pages; one demo note under the list |
+| F8 | fixed | Band icon and label on markers, list rows, status strip, map cards and legend |
+| F9 | partly | Fixed-height skeletons with parallel fetches. Live cold-start latency is `.9.8` |
+| F10 | fixed | Each colour has one meaning across charts (approach, departure, rain, dry, temperature) |
+| F11 | fixed | Heatmap legend sits outside the plot with "1.0 free flow … 2.0+", and empty cells are drawn as "no data yet" |
+| F12 | fixed | Rain strip under the traffic charts on the same time axis; no dual axis |
+| F13 | fixed | POI table scrolls in its own container with a sticky first column; no page overflow at 390 px |
+| F14 | fixed | Branded login with a label, an announced error and a hidden username field for password managers (`01-login-focus-1440.png`) |
+| F15 | partly | `header`/`nav`/`main`/`h1`/`footer` and consistent nav are done; the site picker is `.9.9` |
+| F16 | fixed | "Measured rain (> 0.1 mm)" vs "Google weather condition" (demo-only); no field names in the UI |
+| F17 | fixed | POI types have readable labels and groups; identical opening hours collapse to "Open 24 hours, every day" |
+| F18 | fixed | Segmented controls with `aria-pressed` and a selected style |
+| F19 | fixed | Favicon and apple-touch icon; tab titles "<page> · Pertamina Retail SPBU traffic" |
+| F20 | fixed | Type scale minimum is 13 px with tabular numbers; the scan found nothing below 12.5 px |
+| F21 | fixed | Reviews clamp to 3 lines with "Show more" and relative dates |
+
+Totals: 18 fixed, 3 partly (F1 → `.9.10`, F9 → `.9.8`, F15 → `.9.9`), 0 open.
+
+Also fixed in `.9.7`:
+- **Error copy:** API errors now read as problem and recovery ("The server had a problem (HTTP 503). Try again in a minute.") instead of a raw request URL.
+- **Reduced motion:** the skeleton sweep runs once instead of flickering, and scroll motion is off.
+- **Font MIME type:** woff2 is served as `font/woff2`.
+- **Site map legend:** moved to the top-left, so it no longer covers legs that end in the bottom corner.
+- **Rain rows:** "rain n/a" is dropped when the row already says "no rain slots".
+
+New findings:
+
+| # | Sev | Finding | Next |
+|---|---|---|---|
+| N1 | P3 | An unknown site code (`/site/nope`) still fires the traffic, weather and Places requests (404s) before the "Unknown site" page shows | new bead needed: Skip panel requests for an unknown site code |
+| N2 | P3 | Review star ratings use Unicode ★☆ glyphs, not drawn icons | new bead needed: SVG star icons for Places review ratings |
+| N3 | P3 | At national zoom on a phone, the 6 West Java and Lampung sites remain one group. That follows from the geography; tapping the group zooms in | none |
