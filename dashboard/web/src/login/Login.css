@@ -16,6 +16,10 @@
   box-shadow: var(--shadow-2);
 }
 
+.login-card .wordmark {
+  --logo-height: 2.5rem;
+}
+
 .login-title {
   margin-top: var(--space-6);
 }

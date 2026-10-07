@@ -1,4 +1,5 @@
 import "./theme/tokens.css";
+import "@fontsource-variable/epilogue";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";

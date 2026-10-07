@@ -1,6 +1,6 @@
 /* Design tokens. Chrome and type only; data colours (--band-*, --series-*, --seq-*) are set from
-   palette.ts at startup. Brand values are provisional neutrals until the Pertamina Retail
-   guideline lands (bead .9.2 swaps --brand-* and adds the logo and font; nothing else changes).
+   palette.ts at startup. Brand values are sampled from pertaminaretail.com and signed off
+   (docs/plans/brand-inputs.md). Accent green is graphic-only (2.8:1 on white): text uses --brand-accent-text.
 
    Breakpoints (media queries can't read custom properties, so they are written as literals):
    compact < 768px, medium 768-1199px, wide >= 1200px. */
@@ -8,10 +8,11 @@
 :root {
   color-scheme: light;
 
-  --brand-primary: #1f3b63;
-  --brand-primary-hover: #17304f;
-  --brand-secondary: #3a6ea5;
-  --brand-accent: #5b6b7f;
+  --brand-primary: #005cab;
+  --brand-primary-hover: #004a8c;
+  --brand-secondary: #32599c;
+  --brand-accent: #63ae1d;
+  --brand-accent-text: #3f7d0f;
   --brand-on-primary: #ffffff;
 
   --surface-page: #f4f5f7;
@@ -35,7 +36,7 @@
   --focus-ring: var(--brand-primary);
   --selection: color-mix(in srgb, var(--brand-primary) 16%, white);
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Epilogue Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 0.9375rem;
@@ -69,6 +70,8 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   --shell-header-height: 3.5rem;
+  --shell-footer-height: 2.25rem;
+  --logo-height: 2rem;
   --page-max-width: 90rem;
   --page-gutter: var(--space-5);
 }

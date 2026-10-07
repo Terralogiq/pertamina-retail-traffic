@@ -38,11 +38,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <main className="shell-main">{children}</main>
+      <footer className="shell-footer">by Terralogiq</footer>
     </div>
   );
 }
 
-/** Sets the tab title: "<page> · Pertamina Retail traffic". */
+/** Sets the tab title: "<page> · Pertamina Retail SPBU traffic". */
 export function usePageTitle(page: string) {
   useEffect(() => {
     document.title = `${page} · ${PRODUCT_NAME}`;

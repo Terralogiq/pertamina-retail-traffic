@@ -54,7 +54,7 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 - `src/theme/tokens.css`: brand palette, neutrals, the data palette (bands and series) and the type scale. The data palette passes the dataviz validator (contrast in light and dark, colour-blind distinguishable).
 - Logo in `dashboard/web/public/` and favicon.
 - ECharts theme from the tokens.
-- Acceptance: a token sheet page (dev only) shows every token; the user signs off colours and logo use.
+- Acceptance: the user signs off colours and logo use. Done 2026-10-07 through `docs/plans/brand-inputs.md` (Decision) instead of a dev-only token sheet page.
 
 ### Phase 3: redesign (`.9.3` app shell + login, `.9.4` map + overview, `.9.5` site detail + charts + Places, `.9.6` traffic vs rain)
 
@@ -77,7 +77,7 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 |---|---|---|
 | `docs/plans/dashboard-ux-review.md`, `out/ux-review/` | `.9.1` ✓ | |
 | `src/theme/`, `src/shell/`, `src/weather/DemoBadge.{tsx,css}` (incl. `Widget`), `src/App.tsx`, `src/main.tsx`, `index.html` | `.9.3` | Frozen during the `.9.4`–`.9.6` fan-out. `.9.3` also made small wiring edits in `traffic/Chart.tsx`, `weather/EChart.tsx`, `weather/RainView.tsx`, `weather/WeatherPanel.tsx`, `map/bands.ts`, `map/Overview.tsx` before the fan-out |
-| `src/theme/` brand values, `src/theme/Wordmark.tsx`, `dashboard/web/public/` (logo, favicon) | `.9.2` | Swaps `--brand-*` and the wordmark only |
+| `src/theme/` brand values, `src/theme/Wordmark.tsx`, `dashboard/web/public/` (logo, favicon), `index.html` (favicon, title), `main.tsx` (font import), `src/shell/AppShell.*` (footer credit, logo sizing), `src/login/Login.css`, `tests/test_dashboard_static.py` | `.9.2` | Brand values, wordmark, favicon, Epilogue font and the "by Terralogiq" footer, per the brand-inputs Decision |
 | `src/map/` | `.9.4` | Map ID through `/api/config`: one line in `dashboard/api/routers/sites.py` and a step in `scripts/deploy_dashboard.sh`. Adds `legBand()` in `map/bands.ts` for `.9.5` |
 | `src/site/`, `src/traffic/`, `src/weather/{WeatherPanel,EChart,SiteWeather}.tsx`, `src/places/` | `.9.5` | |
 | `src/weather/RainView.tsx` | `.9.6` | |
@@ -100,7 +100,7 @@ Order (re-sequenced 2026-10-07: layout starts before the brand inputs arrive; re
 1. `.9.1` ✓.
 2. `.9.3`: app shell, navigation and login, plus provisional `src/theme/tokens.css` (neutral chrome, spacing, type scale), the validated data palette (congestion bands, chart series) and the `DemoBadge` design. The data palette is independent of brand colours, so F1, F7, F8 and F10 don't wait for `.9.2`.
 3. `.9.4` ∥ `.9.5` ∥ `.9.6`, in worktrees, using the `.9.3` tokens.
-4. `.9.2`, once the logo and colours are in: it swaps the brand token values and adds the logo, favicon and font. No component changes.
+4. `.9.2`, once the logo and colours are in: it swaps the brand token values and adds the logo, favicon, font and the footer credit. The only component change is the shell footer.
 5. `.9.7`. `.9.8` (F9, slow cold loads) is backend work and runs independently.
 
 ## Open questions for the user

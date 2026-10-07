@@ -47,6 +47,19 @@ describe("AppShell nav", () => {
   });
 });
 
+describe("AppShell brand", () => {
+  it("shows the logo image and product line in the home link, so the name is the product name", () => {
+    const html = renderAt("/");
+    expect(html).toMatch(/<a [^>]*class="shell-home"[^>]*><span class="wordmark"><img [^>]*alt="Pertamina Retail"/);
+    expect(html).toMatch(/<img [^>]*width="770" height="202"/);
+    expect(html).toMatch(/<span class="wordmark-product">SPBU traffic<\/span>/);
+  });
+
+  it("ends with a footer credit", () => {
+    expect(renderAt("/")).toContain('<footer class="shell-footer">by Terralogiq</footer>');
+  });
+});
+
 describe("Page", () => {
   it("renders the single h1 on each screen", () => {
     for (const path of ["/", "/rain", "/site/x"]) expect(count(renderAt(path), "<h1"), path).toBe(1);
