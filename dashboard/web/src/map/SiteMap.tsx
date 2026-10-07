@@ -1,17 +1,28 @@
 import Legend from "./Legend";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
+import "./Overview.css";
 
 /** Map zoomed to one site's legs, coloured like the overview. */
 export default function SiteMap({ siteId }: { siteId: string }) {
   const { sites, latest, error } = useTrafficData();
-  const known = sites?.some((s) => s.site_id === siteId);
+  const site = sites?.find((s) => s.site_id === siteId);
   return (
-    <div>
-      {error && <div role="alert">{error}</div>}
-      {sites && !known && <div role="alert">Unknown site {siteId}</div>}
-      <div style={{ height: 360 }}>{sites && known && <TrafficMap sites={sites} latest={latest} siteId={siteId} />}</div>
-      {sites && known && <Legend sites={sites.filter((s) => s.site_id === siteId)} latest={latest} />}
+    <div className="site-map">
+      {error && (
+        <p className="overview-error" role="alert">
+          The map data could not load: {error}
+        </p>
+      )}
+      {sites && !site && (
+        <p className="overview-error" role="alert">
+          Unknown site {siteId}.
+        </p>
+      )}
+      <div className="map-frame site-map-frame">
+        {sites && site ? <TrafficMap sites={sites} latest={latest} siteId={siteId} /> : <div className="map-canvas map-placeholder" />}
+        {site && <Legend sites={[site]} latest={latest} />}
+      </div>
     </div>
   );
 }

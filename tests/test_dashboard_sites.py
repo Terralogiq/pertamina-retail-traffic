@@ -73,7 +73,11 @@ class SitesTest(unittest.TestCase):
         q.assert_not_called()
 
     def test_config_serves_browser_key(self):
-        self.assertEqual(self.client.get("/api/config").json(), {"maps_browser_key": "browser-key"})
+        self.assertEqual(self.client.get("/api/config").json(), {"maps_browser_key": "browser-key", "maps_map_id": None})
+
+    def test_config_serves_map_id_when_set(self):
+        with mock.patch.dict(os.environ, {"MAPS_MAP_ID": "abc123"}):
+            self.assertEqual(self.client.get("/api/config").json()["maps_map_id"], "abc123")
 
 
 if __name__ == "__main__":

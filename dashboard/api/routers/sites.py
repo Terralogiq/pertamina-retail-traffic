@@ -48,4 +48,4 @@ def get_sites():
 @router.get("/config")
 def get_config():
     # A browser key restricted to the Maps JavaScript API and our referrers; served only after login.
-    return {"maps_browser_key": os.environ.get("MAPS_BROWSER_KEY", "")}
+    return {"maps_browser_key": os.environ.get("MAPS_BROWSER_KEY", ""), "maps_map_id": os.environ.get("MAPS_MAP_ID") or None}

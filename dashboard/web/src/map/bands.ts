@@ -1,47 +1,57 @@
 // Pure helpers for the map: colour bands, GeoJSON conversion, bounds, formatting. No Google Maps types at runtime.
 import type { LatestLeg, Site } from "./api";
-import { BANDS } from "../theme/palette";
+import { BANDS, BandId } from "../theme/palette";
 
 /** The baseline counts as full at 90% of 7 days x 48 half-hour slots (336), so one missed slot does not hold a leg in fallback. */
 export const BASELINE_FULL = 302;
 
 export const GREY = BANDS.none.color;
-const GREEN = BANDS.free.color;
-const AMBER = BANDS.moderate.color;
-const ORANGE = BANDS.heavy.color;
-const RED = BANDS.jam.color;
 
 export type Basis = "congestion" | "speed" | "none";
 
-/** Congestion index (duration / baseline): <1.2 green, 1.2-1.6 amber, 1.6-2.2 orange, >=2.2 red. */
-export const CONGESTION_BANDS = [
-  { max: 1.2, color: GREEN, label: "< 1.2" },
-  { max: 1.6, color: AMBER, label: "1.2 - 1.6" },
-  { max: 2.2, color: ORANGE, label: "1.6 - 2.2" },
-  { max: Infinity, color: RED, label: ">= 2.2" },
+/** Congestion index (duration / baseline): <1.2 free, 1.2-1.6 moderate, 1.6-2.2 heavy, >=2.2 jammed. */
+export const CONGESTION_BANDS: { max: number; band: BandId; label: string }[] = [
+  { max: 1.2, band: "free", label: "under 1.2" },
+  { max: 1.6, band: "moderate", label: "1.2 to 1.6" },
+  { max: 2.2, band: "heavy", label: "1.6 to 2.2" },
+  { max: Infinity, band: "jam", label: "2.2 and over" },
 ];
 
-/** Speed fallback while the baseline is pending (urban roads, km/h): >=35 green, 25-35 amber, 15-25 orange, <15 red. */
-export const SPEED_BANDS = [
-  { max: 15, color: RED, label: "< 15 km/h" },
-  { max: 25, color: ORANGE, label: "15 - 25 km/h" },
-  { max: 35, color: AMBER, label: "25 - 35 km/h" },
-  { max: Infinity, color: GREEN, label: ">= 35 km/h" },
+/** Speed fallback while the baseline is pending (urban roads, km/h): >=35 free, 25-35 moderate, 15-25 heavy, <15 jammed. */
+export const SPEED_BANDS: { max: number; band: BandId; label: string }[] = [
+  { max: 15, band: "jam", label: "under 15 km/h" },
+  { max: 25, band: "heavy", label: "15 to 25 km/h" },
+  { max: 35, band: "moderate", label: "25 to 35 km/h" },
+  { max: Infinity, band: "free", label: "35 km/h and over" },
 ];
 
-export const congestionColor = (index: number): string => CONGESTION_BANDS.find((b) => index < b.max)!.color;
-export const speedColor = (kmh: number): string => SPEED_BANDS.find((b) => kmh < b.max)!.color;
+export const congestionBand = (index: number): BandId => CONGESTION_BANDS.find((b) => index < b.max)!.band;
+export const speedBand = (kmh: number): BandId => SPEED_BANDS.find((b) => kmh < b.max)!.band;
+export const congestionColor = (index: number): string => BANDS[congestionBand(index)].color;
+export const speedColor = (kmh: number): string => BANDS[speedBand(kmh)].color;
 
-/** Colour of a leg and what it is based on. Congestion only with a full baseline; else speed; else grey. */
-export function legColor(latest: LatestLeg | undefined): { color: string; basis: Basis } {
+/** Band of a leg and what it is based on. Congestion only with a full baseline; else speed; else no data. */
+export function legBand(latest: LatestLeg | undefined): { band: BandId; basis: Basis } {
   if (latest) {
     if (latest.congestion_index != null && (latest.baseline_samples ?? 0) >= BASELINE_FULL) {
-      return { color: congestionColor(latest.congestion_index), basis: "congestion" };
+      return { band: congestionBand(latest.congestion_index), basis: "congestion" };
     }
-    if (latest.speed_kmh != null) return { color: speedColor(latest.speed_kmh), basis: "speed" };
+    if (latest.speed_kmh != null) return { band: speedBand(latest.speed_kmh), basis: "speed" };
   }
-  return { color: GREY, basis: "none" };
+  return { band: "none", basis: "none" };
 }
+
+/** Colour of a leg and its basis (the map's polylines). */
+export function legColor(latest: LatestLeg | undefined): { color: string; basis: Basis } {
+  const { band, basis } = legBand(latest);
+  return { color: BANDS[band].color, basis };
+}
+
+/** Severity order, worst last: no data sorts below free flow so a silent site never hides a slow one. */
+export const BAND_RANK: Record<BandId, number> = { none: 0, free: 1, moderate: 2, heavy: 3, jam: 4 };
+
+/** Bands that count as "slowed" in the overview summary. */
+export const isSlowed = (band: BandId): boolean => BAND_RANK[band] >= BAND_RANK.moderate;
 
 /** Latest row per selected_route_id (keeps the newest slot_time if a leg appears twice). */
 export function indexLatest(rows: LatestLeg[]): Map<string, LatestLeg> {

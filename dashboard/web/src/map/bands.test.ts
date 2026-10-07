@@ -10,6 +10,7 @@ import {
   formatDelay,
   formatSlot,
   indexLatest,
+  legBand,
   legColor,
   lineToPath,
   siteLatest,
@@ -95,6 +96,17 @@ describe("legColor", () => {
     expect(legColor(undefined)).toEqual({ color: GREY, basis: "none" });
     expect(legColor(row({ congestion_index: null, speed_kmh: null }))).toEqual({ color: GREY, basis: "none" });
     expect(legColor(row({ baseline_samples: 5, speed_kmh: null }))).toEqual({ color: GREY, basis: "none" });
+  });
+});
+
+describe("legBand", () => {
+  it("names the band and its basis", () => {
+    expect(legBand(row({ congestion_index: 1.0 }))).toEqual({ band: "free", basis: "congestion" });
+    expect(legBand(row({ congestion_index: 1.3 }))).toEqual({ band: "moderate", basis: "congestion" });
+    expect(legBand(row({ congestion_index: 2.2 }))).toEqual({ band: "jam", basis: "congestion" });
+    expect(legBand(row({ baseline_samples: 10, speed_kmh: 20 }))).toEqual({ band: "heavy", basis: "speed" });
+    expect(legBand(row({ baseline_samples: 10, speed_kmh: 40 }))).toEqual({ band: "free", basis: "speed" });
+    expect(legBand(undefined)).toEqual({ band: "none", basis: "none" });
   });
 });
 

@@ -38,7 +38,7 @@ class AuthTest(unittest.TestCase):
         header = res.headers["set-cookie"].lower()
         for attr in ("httponly", "secure", "samesite=lax", f"max-age={7 * 24 * 3600}"):
             self.assertIn(attr, header)
-        self.assertEqual(self.client.get("/api/config").json(), {"maps_browser_key": "k"})
+        self.assertEqual(self.client.get("/api/config").json()["maps_browser_key"], "k")
 
     def test_wrong_password_is_401_without_cookie(self):
         res = self.login("nope")

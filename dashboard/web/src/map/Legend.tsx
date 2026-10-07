@@ -1,27 +1,46 @@
+import { BandIndicator } from "../theme/BandIndicator";
 import { LatestLeg, Site } from "./api";
-import { Basis, CONGESTION_BANDS, GREY, SPEED_BANDS, legColor } from "./bands";
+import { BAND_RANK, Basis, CONGESTION_BANDS, SPEED_BANDS, legBand } from "./bands";
 
-function Bands({ title, bands }: { title: string; bands: { color: string; label: string }[] }) {
+/** Worst first, so the legend reads in the same order as the site list. */
+function Scale({ title, bands }: { title: string; bands: typeof CONGESTION_BANDS }) {
+  const ordered = [...bands].sort((a, b) => BAND_RANK[b.band] - BAND_RANK[a.band]);
   return (
-    <span style={{ marginRight: 16 }}>
-      <strong>{title}</strong>{" "}
-      {bands.map((b) => (
-        <span key={b.label} style={{ marginRight: 8 }}>
-          <span style={{ display: "inline-block", width: 12, height: 12, background: b.color, verticalAlign: "middle" }} /> {b.label}
-        </span>
-      ))}
-    </span>
+    <div className="map-legend-scale">
+      <p className="map-legend-title">{title}</p>
+      <ul className="map-legend-rows">
+        {ordered.map((b) => (
+          <li key={b.band}>
+            <BandIndicator band={b.band} />
+            <span className="map-legend-range">{b.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-/** Shows the bands in use: congestion index where the baseline is full, speed where it is still building, grey for no data. */
+/**
+ * Map key for the bands in use: congestion index where the baseline is full, speed where it is still
+ * building. Overlaid on the map's corner.
+ */
 export default function Legend({ sites, latest }: { sites: Site[]; latest: Map<string, LatestLeg> }) {
-  const bases = new Set<Basis>(sites.flatMap((s) => s.legs.map((l) => legColor(latest.get(l.selected_route_id)).basis)));
+  const bases = new Set<Basis>(sites.flatMap((s) => s.legs.map((l) => legBand(latest.get(l.selected_route_id)).basis)));
   return (
-    <div style={{ padding: "6px 16px", fontSize: 13 }}>
-      {bases.has("congestion") && <Bands title="Congestion index" bands={CONGESTION_BANDS} />}
-      {bases.has("speed") && <Bands title="Speed (baseline building)" bands={SPEED_BANDS} />}
-      {bases.has("none") && <Bands title="No data" bands={[{ color: GREY, label: "grey" }]} />}
-    </div>
+    <aside className="map-legend" aria-label="Map key">
+      {bases.has("congestion") && <Scale title="Congestion index (duration ÷ usual)" bands={CONGESTION_BANDS} />}
+      {bases.has("speed") && <Scale title="Speed, while the baseline builds" bands={SPEED_BANDS} />}
+      {bases.size === 0 || (bases.size === 1 && bases.has("none")) ? (
+        <p className="map-legend-title">
+          <BandIndicator band="none" /> No readings yet
+        </p>
+      ) : (
+        bases.has("none") && (
+          <p className="map-legend-note">
+            <BandIndicator band="none" /> No reading
+          </p>
+        )
+      )}
+    </aside>
   );
 }
