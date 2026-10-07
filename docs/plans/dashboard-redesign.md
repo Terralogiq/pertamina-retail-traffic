@@ -76,19 +76,21 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 | Path | Owner bead | Notes |
 |---|---|---|
 | `docs/plans/dashboard-ux-review.md`, `out/ux-review/` | `.9.1` | Read-only on code |
-| `dashboard/web/src/theme/`, `dashboard/web/public/`, `dashboard/web/index.html`, `src/main.tsx` (stylesheet import) | `.9.2` | |
+| `dashboard/web/src/theme/`, `dashboard/web/index.html`, `src/main.tsx` (stylesheet import) | `.9.3` creates; `.9.2` swaps brand values | |
+| `dashboard/web/public/` (logo, favicon) | `.9.2` | |
 | `src/App.tsx`, `src/login/`, `src/shell/` (new) | `.9.3` | |
 | `src/map/` | `.9.4` | Map ID: new secret or config value through `/api/config` (one line in `dashboard/api/routers/sites.py`, and a step in `scripts/deploy_dashboard.sh`) |
 | `src/traffic/`, `src/weather/WeatherPanel.tsx`, `src/weather/EChart.tsx`, `src/places/` | `.9.5` | |
-| `src/weather/RainView.tsx`, `src/weather/DemoBadge.tsx` | `.9.6` | `DemoBadge` is used by `.9.5` too: `.9.6` owns it, so do it first or agree the design in `.9.2` |
+| `src/weather/RainView.tsx` | `.9.6` | |
+| `src/weather/DemoBadge.tsx` | `.9.3` | Used by `.9.4`–`.9.6`; designed once in `.9.3` |
 | `README.md`, `docs/plans/*.md` (other than the review doc) | orchestrator | |
 
-Order:
-1. `.9.1`, which can start now.
-2. `.9.2`, once the logo and colours are in.
-3. `.9.3`.
-4. `.9.4` ∥ `.9.5` ∥ `.9.6`, in worktrees; `DemoBadge` is designed in `.9.2`.
-5. `.9.7`.
+Order (re-sequenced 2026-10-07: layout starts before the brand inputs arrive; review findings in `docs/plans/dashboard-ux-review.md`, all 21 in scope):
+1. `.9.1` ✓.
+2. `.9.3`: app shell, navigation and login, plus provisional `src/theme/tokens.css` (neutral chrome, spacing, type scale), the validated data palette (congestion bands, chart series) and the `DemoBadge` design. The data palette is independent of brand colours, so F1, F7, F8 and F10 don't wait for `.9.2`.
+3. `.9.4` ∥ `.9.5` ∥ `.9.6`, in worktrees, using the `.9.3` tokens.
+4. `.9.2`, once the logo and colours are in: it swaps the brand token values and adds the logo, favicon and font. No component changes.
+5. `.9.7`. `.9.8` (F9, slow cold loads) is backend work and runs independently.
 
 ## Open questions for the user
 
