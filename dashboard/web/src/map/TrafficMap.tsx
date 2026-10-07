@@ -110,7 +110,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
           isFractionalZoomEnabled: true,
         });
         // `idle`, not `zoom_changed`: one update when the zoom (or fit) settles, not one per animation step.
-        m.addListener("idle", () => setZoom(Math.round((m.getZoom() ?? START.zoom) * 4) / 4));
+        m.addListener("idle", () => setZoom(Math.floor((m.getZoom() ?? START.zoom) * 4) / 4));
         // The legend is a map control so it stacks above Google's logo and Terms instead of covering them.
         const legend = document.createElement("div");
         // On the site map the fit leaves room at the top, where the compact legend cannot cover the legs.

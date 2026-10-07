@@ -102,7 +102,7 @@ Re-audit for bead `.9.7` on the local build of branch `redesign-polish` against 
 | F4 | fixed | Header shows the SPBU name, code, city, road and time zone, plus a status strip (legs, weather, rating) |
 | F5 | fixed | Two columns at 1200 px and above, with section links (`09-site-wib-1440-viewport.png`) |
 | F6 | fixed | One dot row per site and leg, n on every row, "Only N rain slots" flag (`04-rain-1440.png`) |
-| F7 | fixed | One baseline notice per page, worded the same on the overview and site pages; one demo note under the list |
+| F7 | fixed | One baseline notice per page, with the same facts and maths (302 readings per leg, days left) on the overview and site pages; one demo note under the list |
 | F8 | fixed | Band icon and label on markers, list rows, status strip, map cards and legend |
 | F9 | partly | Fixed-height skeletons with parallel fetches. Live cold-start latency is `.9.8` |
 | F10 | fixed | Each colour has one meaning across charts (approach, departure, rain, dry, temperature) |
@@ -131,6 +131,6 @@ New findings:
 
 | # | Sev | Finding | Next |
 |---|---|---|---|
-| N1 | P3 | An unknown site code (`/site/nope`) still fires the traffic, weather and Places requests (404s) before the "Unknown site" page shows | new bead needed: Skip panel requests for an unknown site code |
-| N2 | P3 | Review star ratings use Unicode ★☆ glyphs, not drawn icons | new bead needed: SVG star icons for Places review ratings |
+| N1 | P3 | An unknown site code (`/site/nope`) still fires the traffic, weather and Places requests (404s) before the "Unknown site" page shows | `.9.12` |
+| N2 | P3 | Review star ratings use Unicode ★☆ glyphs, not drawn icons | `.9.13` |
 | N3 | P3 | At national zoom on a phone, the 6 West Java and Lampung sites remain one group. That follows from the geography; tapping the group zooms in | none |

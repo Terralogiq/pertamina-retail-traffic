@@ -112,7 +112,7 @@
 .map-marker[data-band="jam"] { --band-color: var(--band-jam); }
 .map-marker[data-band="none"] { --band-color: var(--band-none); }
 
-/* A Google map control (LEFT_BOTTOM): the map stacks it above its logo and Terms. */
+/* A Google map control: LEFT_BOTTOM on the overview (stacked above the logo and Terms), TOP_LEFT on the site map. */
 .map-legend {
   display: grid;
   gap: var(--space-3);

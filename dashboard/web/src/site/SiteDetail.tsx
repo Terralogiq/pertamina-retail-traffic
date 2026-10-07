@@ -27,7 +27,7 @@ export function siteContext(site: Site): string {
   return [`SPBU ${site.site_id}`, site.city, site.road_name, tzLabel(site.timezone)].filter(Boolean).join(" · ");
 }
 
-/** Same wording as the overview's BaselineNotice, while any leg's baseline is building; else null. */
+/** Same facts and maths as the overview's BaselineNotice (302 readings per leg, days left), while any leg's baseline is building; else null. */
 export function baselineNotice(legs: LatestLeg[]): string | null {
   const n = baselineProgress(legs);
   if (n === null || n >= BASELINE_FULL) return null;

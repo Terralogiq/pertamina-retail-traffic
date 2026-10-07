@@ -82,6 +82,7 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 | `src/site/`, `src/traffic/`, `src/weather/{WeatherPanel,EChart,SiteWeather}.tsx`, `src/places/` | `.9.5` | |
 | `src/weather/RainView.tsx` | `.9.6` | |
 | `src/shell/` site picker | `.9.9` | After the fan-out |
+| Cross-cutting polish: `src/api.ts`, `src/theme/tokens.css` (reduced motion), `src/map/*`, `src/site/SiteDetail.tsx`, `src/weather/{RainView,WeatherPanel}.tsx`, `src/places/PlacesPanel.tsx`, `src/login/Login.tsx`, `dashboard/api/main.py` (font MIME), `tests/test_dashboard_static.py` | `.9.7` | After `.9.2`–`.9.6`; nothing runs in parallel with it |
 | `README.md`, `docs/plans/*.md` (other than the review doc) | orchestrator | |
 
 ## Contract for `.9.4`–`.9.6` (from the `.9.3` review)

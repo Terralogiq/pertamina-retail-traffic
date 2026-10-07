@@ -192,6 +192,7 @@ export function RainScatter({ points, names }: { points: ScatterPoint[]; names: 
   const wet = points.filter((p) => p.precipitation_mm > 0);
   const legs = ["approach", "departure"] as const;
   const option: EChartsOption = {
+    animation: false,
     tooltip: {
       trigger: "item",
       formatter: (p) => {
