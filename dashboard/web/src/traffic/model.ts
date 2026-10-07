@@ -10,9 +10,9 @@ const RANGE_HOURS: Record<Range, number> = { "24h": 24, "7d": 168 };
 const SLOT_MS = 30 * 60 * 1000;
 
 export const METRICS = [
-  { field: "congestion_index", title: "Congestion index", unit: "" },
-  { field: "delay_s", title: "Delay", unit: "s" },
-  { field: "speed_kmh", title: "Speed", unit: "km/h" },
+  { field: "congestion_index", title: "Congestion index", unit: "", hint: "1.0 = free flow" },
+  { field: "delay_s", title: "Delay", unit: "s", hint: "versus free flow" },
+  { field: "speed_kmh", title: "Speed", unit: "km/h", hint: "over the leg" },
 ] as const;
 export type MetricField = (typeof METRICS)[number]["field"];
 
@@ -99,4 +99,29 @@ export function heatmapData(cells: PatternCell[], leg: string): [number, number,
 
 export function patternLegs(cells: PatternCell[]): string[] {
   return [...new Set(cells.map((c) => c.leg))].sort();
+}
+
+/** One fixed heatmap scale for every leg and site: 1.0 = free flow, 2.0 = twice the free-flow time (and beyond). */
+export const HEATMAP_SCALE = { min: 1, max: 2 } as const;
+
+/** Day x hour cells with no sample for `leg`, as [hour, dow - 1]: drawn as "no data", never as a low value. */
+export function emptyCells(cells: PatternCell[], leg: string): [number, number][] {
+  const filled = new Set(heatmapData(cells, leg).map(([h, d]) => `${h}:${d}`));
+  const out: [number, number][] = [];
+  for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) if (!filled.has(`${h}:${d}`)) out.push([h, d]);
+  return out;
+}
+
+/** True when any slot in the window had measurable rain; a window of zeros gets a note, not an empty axis. */
+export const hadRain = (rain: [number, number][]) => rain.some(([, mm]) => mm > 0);
+
+export const legLabel = (leg: string) => leg.charAt(0).toUpperCase() + leg.slice(1);
+
+/** "+16 s", "+1 min 05 s", "−4 s"; "n/a" when missing. */
+export function formatDelay(s: number | null | undefined): string {
+  if (s == null) return "n/a";
+  const sign = s < 0 ? "−" : "+";
+  const abs = Math.round(Math.abs(s));
+  if (abs < 60) return `${sign}${abs} s`;
+  return `${sign}${Math.floor(abs / 60)} min ${String(abs % 60).padStart(2, "0")} s`;
 }

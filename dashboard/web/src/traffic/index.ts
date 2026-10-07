@@ -1,1 +1,1 @@
-export { default as TrafficCharts } from "./TrafficCharts";
+export { default as TrafficCharts, TrafficPattern } from "./TrafficCharts";

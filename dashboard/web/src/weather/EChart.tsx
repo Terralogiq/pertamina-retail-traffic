@@ -1,32 +1,7 @@
-import * as echarts from "echarts/core";
-import { BarChart, LineChart, ScatterChart } from "echarts/charts";
-import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
-import { CHART_THEME } from "../theme/echarts";
-import { useEffect, useRef } from "react";
+import type { EChartsCoreOption } from "echarts/core";
+import Chart from "../traffic/Chart";
 
-echarts.use([LineChart, BarChart, ScatterChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
-
-/** Minimal ECharts host: init once, setOption on change, resize with the window, dispose on unmount. */
-export function EChart({ option, height = 260 }: { option: echarts.EChartsCoreOption; height?: number }) {
-  const el = useRef<HTMLDivElement>(null);
-  const chart = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    const c = echarts.init(el.current!, CHART_THEME);
-    chart.current = c;
-    const onResize = () => c.resize();
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      c.dispose();
-      chart.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chart.current?.setOption(option, true);
-  }, [option]);
-
-  return <div ref={el} style={{ width: "100%", height }} />;
+/** Weather and rain charts use the same host as the traffic charts (one registration, one resize behaviour). */
+export function EChart({ option, height = 260 }: { option: EChartsCoreOption; height?: number }) {
+  return <Chart option={option} height={height} />;
 }

@@ -1,70 +1,104 @@
-import { useEffect, useState } from "react";
-import { Widget } from "../weather/DemoBadge";
-import { PlaceDetails, PlacesResponse, getPlaces } from "./api";
+import { useState } from "react";
+import { Block, Notice, Section, Skeleton } from "../site/Section";
+import type { Load } from "../site/useSiteData";
+import { PlaceDetails, PlaceReview, PlacesResponse } from "./api";
 import {
   COMPETITOR_RADII,
   POI_RADII,
+  collapsedHours,
   competitorRows,
   formatDate,
+  groupedPoiRows,
+  humanStatus,
   latestReviews,
+  longDate,
   poiRows,
   radiusLabel,
+  relativeDate,
   stars,
   totalLabel,
 } from "./model";
+import "./PlacesPanel.css";
 
-const cell = { textAlign: "right" as const, padding: "2px 10px" };
-const head = { ...cell, fontWeight: 600 };
-const left = { textAlign: "left" as const, padding: "2px 10px" };
+/** One review, clamped to 3 lines until expanded (F21). */
+function Review({ review }: { review: PlaceReview }) {
+  const [open, setOpen] = useState(false);
+  const long = (review.text ?? "").length > 180;
+  return (
+    <li className="review">
+      <p className="review-meta">
+        <span className="review-author">{review.author_name ?? "Anonymous"}</span>
+        <span className="review-stars" aria-label={review.rating == null ? "No rating" : `${review.rating} of 5 stars`}>
+          {stars(review.rating)}
+        </span>
+        {review.publish_time && (
+          <time dateTime={review.publish_time} title={formatDate(review.publish_time)}>
+            {relativeDate(review.publish_time)}
+          </time>
+        )}
+      </p>
+      {review.text && <p className={open || !long ? "review-text" : "review-text review-text-clamped"}>{review.text}</p>}
+      {long && (
+        <button type="button" className="review-more" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Show more"}
+        </button>
+      )}
+    </li>
+  );
+}
 
 /** Rating, review count, status and the 5 latest reviews. Places data: no badge. */
 export function PlaceSummary({ details }: { details: PlaceDetails }) {
   const reviews = latestReviews(details.reviews);
+  const status = [humanStatus(details.business_status), details.open_now == null ? "" : details.open_now ? "Open now" : "Closed now"]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <Widget title="Rating and reviews">
-      <div>
-        <strong>{details.rating == null ? "n/a" : details.rating.toFixed(1)}</strong> {stars(details.rating)}
-        {" · "}
-        {details.user_rating_count == null ? "n/a" : details.user_rating_count.toLocaleString("en-US")} ratings
-      </div>
-      <div>
-        <small>
-          {details.display_name}
-          {details.business_status ? ` · ${details.business_status}` : ""}
-          {details.open_now == null ? "" : details.open_now ? " · open now" : " · closed now"}
-        </small>
-      </div>
+    <Block title="Rating and reviews" aside={status}>
+      <p className="rating">
+        <span className="rating-value num">{details.rating == null ? "n/a" : details.rating.toFixed(1)}</span>
+        <span className="review-stars" aria-hidden="true">
+          {stars(details.rating)}
+        </span>
+        <span className="rating-count">
+          {details.user_rating_count == null ? "n/a" : details.user_rating_count.toLocaleString("en-US")} ratings
+        </span>
+      </p>
       {reviews.length === 0 ? (
-        <p>No reviews stored.</p>
+        <Notice>No reviews stored.</Notice>
       ) : (
-        <ul style={{ paddingLeft: 18, margin: "8px 0 0" }}>
+        <ul className="reviews">
           {reviews.map((r, i) => (
-            <li key={i} style={{ marginBottom: 6 }}>
-              <strong>{r.author_name ?? "Anonymous"}</strong> {stars(r.rating)}
-              {r.publish_time && <small> · {formatDate(r.publish_time)}</small>}
-              {r.text && <div>{r.text}</div>}
-            </li>
+            <Review key={i} review={r} />
           ))}
         </ul>
       )}
-    </Widget>
+    </Block>
   );
 }
 
-/** Regular opening hours, one line per weekday as Places returns them. */
+/** Opening hours: one line when every day matches, the per-day list behind a disclosure (F17). */
 export function OpeningHours({ details }: { details: PlaceDetails }) {
+  const lines = details.weekday_descriptions;
+  const collapsed = collapsedHours(lines);
   return (
-    <Widget title="Opening hours">
-      {details.weekday_descriptions.length === 0 ? (
-        <p style={{ margin: 0 }}>No opening hours stored.</p>
+    <Block title="Opening hours">
+      {lines.length === 0 ? (
+        <Notice>No opening hours stored.</Notice>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {details.weekday_descriptions.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
+        <>
+          {collapsed && <p className="hours-summary">{collapsed}</p>}
+          <details className="hours" open={!collapsed}>
+            {collapsed && <summary>Daily hours as listed on Google</summary>}
+            <ul>
+              {lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </details>
+        </>
       )}
-    </Widget>
+    </Block>
   );
 }
 
@@ -72,121 +106,121 @@ export function OpeningHours({ details }: { details: PlaceDetails }) {
 export function Competitors({ data }: { data: PlacesResponse }) {
   const rows = competitorRows(data.competitors);
   return (
-    <Widget title="Gas stations nearby, by brand">
+    <Block title="Gas stations nearby" aside="by brand, excluding this station">
       {rows.length === 0 ? (
-        <p style={{ margin: 0 }}>No nearby search stored.</p>
+        <Notice>No nearby search stored.</Notice>
       ) : (
-        <table style={{ borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ ...left, fontWeight: 600 }}>Brand</th>
-              {COMPETITOR_RADII.map((r) => (
-                <th key={r} style={head}>
-                  {radiusLabel(r)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.brand}>
-                <td style={left}>{row.brand}</td>
-                {row.counts.map((n, i) => (
-                  <td key={i} style={cell}>
-                    {n ?? "–"}
-                  </td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Brand</th>
+                {COMPETITOR_RADII.map((r) => (
+                  <th key={r} scope="col" className="num-col">
+                    {radiusLabel(r)}
+                  </th>
                 ))}
               </tr>
-            ))}
-            <tr style={{ borderTop: "1px solid #ddd" }}>
-              <td style={{ ...left, fontWeight: 600 }}>Total</td>
-              {COMPETITOR_RADII.map((r) => {
-                const t = data.competitor_totals.find((x) => x.radius_m === r);
-                return (
-                  <td key={r} style={head}>
-                    {t ? totalLabel(t) : "–"}
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.brand}>
+                  <th scope="row">{row.brand}</th>
+                  {row.counts.map((n, i) => (
+                    <td key={i} className="num-col">
+                      {n ?? "–"}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Total</th>
+                {COMPETITOR_RADII.map((r) => {
+                  const t = data.competitor_totals.find((x) => x.radius_m === r);
+                  return (
+                    <td key={r} className="num-col">
+                      {t ? totalLabel(t) : "–"}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       )}
-      <small>Excludes this station. * = the search returned its maximum of 20 places, so the count is a lower bound.</small>
-    </Widget>
+      <p className="table-note">* The search returns at most 20 places, so a starred total is a lower bound.</p>
+    </Block>
   );
 }
 
-/** Operational places per type within 500 m / 1 km / 3 km (Places Aggregate). */
+/** Operational places per type within 500 m / 1 km / 3 km (Places Aggregate), grouped and labelled. */
 export function PoiTable({ data }: { data: PlacesResponse }) {
-  const rows = poiRows(data.poi);
+  const groups = groupedPoiRows(poiRows(data.poi));
   return (
-    <Widget title="Points of interest around the site">
-      {rows.length === 0 ? (
-        <p style={{ margin: 0 }}>No POI counts stored.</p>
+    <Block title="Places around the site" aside="operational, by distance">
+      {groups.length === 0 ? (
+        <Notice>No counts stored.</Notice>
       ) : (
-        <table style={{ borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ ...left, fontWeight: 600 }}>Type</th>
-              {POI_RADII.map((r) => (
-                <th key={r} style={head}>
-                  {radiusLabel(r)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.place_type}>
-                <td style={left}>{row.place_type}</td>
-                {row.counts.map((n, i) => (
-                  <td key={i} style={cell}>
-                    {n ?? "–"}
-                  </td>
+        <div className="table-scroll">
+          <table className="data-table data-table-sticky">
+            <thead>
+              <tr>
+                <th scope="col">Type</th>
+                {POI_RADII.map((r) => (
+                  <th key={r} scope="col" className="num-col">
+                    {radiusLabel(r)}
+                  </th>
                 ))}
               </tr>
+            </thead>
+            {groups.map((g) => (
+              <tbody key={g.group}>
+                <tr className="group-row">
+                  <th scope="rowgroup" colSpan={POI_RADII.length + 1}>
+                    {g.group}
+                  </th>
+                </tr>
+                {g.rows.map((row) => (
+                  <tr key={row.place_type}>
+                    <th scope="row" title={row.place_type}>
+                      {row.label}
+                    </th>
+                    {row.counts.map((n, i) => (
+                      <td key={i} className="num-col">
+                        {n ?? "–"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             ))}
-          </tbody>
-        </table>
+          </table>
+        </div>
       )}
-    </Widget>
+    </Block>
   );
 }
 
-/** Places block of the site detail page, from the latest stored run. */
-export function PlacesPanel({ siteId }: { siteId: string }) {
-  const [data, setData] = useState<PlacesResponse | undefined>(undefined); // undefined = loading
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let live = true;
-    setError("");
-    setData(undefined);
-    getPlaces(siteId)
-      .then((d) => live && setData(d))
-      .catch((e) => live && setError(String(e)));
-    return () => {
-      live = false;
-    };
-  }, [siteId]);
-
-  if (error) return <div role="alert">{error}</div>;
-  if (data === undefined) return <div>Loading Places…</div>;
+/** Places section of the site page, from the latest stored run (fetched once by the page). */
+export function PlacesPanel({ data }: { data: Load<PlacesResponse> }) {
+  const note = data && !(data instanceof Error) && data.fetched_at ? `Google Places, refreshed weekly · last run ${longDate(data.fetched_at)}` : undefined;
   return (
-    <div>
-      <h2>Places</h2>
-      {data.details ? (
+    <Section id="places" title="Places" note={note}>
+      {data === undefined && <Skeleton height={320} label="Loading Places" />}
+      {data instanceof Error && <Notice tone="error">Couldn't load Places: {data.message}</Notice>}
+      {(data === null || (data && !(data instanceof Error) && !data.details)) && (
+        <Notice>No Places run stored for this site yet. The profiler runs every Monday at 02:00 WIB.</Notice>
+      )}
+      {data && !(data instanceof Error) && data.details && (
         <>
           <PlaceSummary details={data.details} />
           <OpeningHours details={data.details} />
           <Competitors data={data} />
           <PoiTable data={data} />
-          <small>Places data fetched {formatDate(data.fetched_at)}</small>
         </>
-      ) : (
-        <p>No Places run stored for this site yet.</p>
       )}
-    </div>
+    </Section>
   );
 }

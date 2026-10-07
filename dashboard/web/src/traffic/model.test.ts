@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getTrafficPattern, getTrafficSeries, TrafficPoint, PatternCell } from "./api";
 import type { WeatherSeriesPoint } from "../weather/api";
-import { baselineBuilding, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes, windowStart } from "./model";
+import {
+  baselineBuilding, emptyCells, formatDelay, hadRain, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes,
+  windowStart,
+} from "./model";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -102,6 +105,29 @@ describe("heatmapData", () => {
     expect(heatmapData([cell("approach", 1.5), cell("departure", 2), cell("approach", null)], "approach")).toEqual([
       [8, 6, 1.5],
     ]);
+  });
+});
+
+describe("heatmap and rain helpers", () => {
+  it("lists every day x hour without a sample as an empty cell", () => {
+    const cells: PatternCell[] = [{ dow: 1, hour: 0, leg: "approach", mean_congestion: 1.2, mean_speed_kmh: null, n: 1 }];
+    const empty = emptyCells(cells, "approach");
+    expect(empty).toHaveLength(7 * 24 - 1);
+    expect(empty).not.toContainEqual([0, 0]);
+    expect(emptyCells([], "approach")).toHaveLength(168);
+  });
+
+  it("hadRain is false for a window of zeros", () => {
+    expect(hadRain([[1, 0], [2, 0]])).toBe(false);
+    expect(hadRain([[1, 0], [2, 0.4]])).toBe(true);
+    expect(hadRain([])).toBe(false);
+  });
+
+  it("formats delay with sign and minutes", () => {
+    expect(formatDelay(16.4)).toBe("+16 s");
+    expect(formatDelay(75)).toBe("+1 min 15 s");
+    expect(formatDelay(-4)).toBe("\u22124 s");
+    expect(formatDelay(null)).toBe("n/a");
   });
 });
 
