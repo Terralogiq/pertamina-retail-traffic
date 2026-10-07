@@ -47,7 +47,8 @@ CREATE TABLE traffic.sites (
   place_id     STRING NOT NULL,   -- Places place_id: the anchor (storable indefinitely)
   location     GEOGRAPHY,         -- from Place Details
   road_name    STRING,
-  city         STRING
+  city         STRING,
+  timezone     STRING             -- IANA zone: Asia/Jakarta (WIB) or Asia/Makassar (WITA)
 );
 ```
 

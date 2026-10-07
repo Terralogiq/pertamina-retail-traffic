@@ -19,3 +19,6 @@ node_modules/
 *.gate.lock*
 out/
 .playwright-mcp/
+
+# Dashboard web build
+dashboard/web/dist/

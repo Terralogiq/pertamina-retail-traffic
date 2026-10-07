@@ -33,7 +33,7 @@ DETAILS_MASK = "id,displayName,location"
 
 SIDE_LABEL = {"spbu_side": "SPBU side", "opposite": "Opposite side"}
 
-SITES_SCHEMA = "site_id:STRING,name:STRING,place_id:STRING,location_wkt:STRING,road_name:STRING,city:STRING"
+SITES_SCHEMA = "site_id:STRING,name:STRING,place_id:STRING,location_wkt:STRING,road_name:STRING,city:STRING,timezone:STRING"
 ROUTES_SCHEMA = (
     "selected_route_id:STRING,display_name:STRING,origin_wkt:STRING,destination_wkt:STRING,"
     "mid_wkt:STRING,site_id:STRING,side:STRING,leg:STRING,call_id:STRING,leg_index:INTEGER,"
@@ -47,9 +47,9 @@ USING (SELECT * EXCEPT (location_wkt), ST_GEOGFROMTEXT(location_wkt) AS location
 ON t.site_id = s.site_id
 WHEN MATCHED THEN UPDATE SET
   name = s.name, place_id = s.place_id, location = s.location,
-  road_name = s.road_name, city = s.city
-WHEN NOT MATCHED THEN INSERT (site_id, name, place_id, location, road_name, city)
-  VALUES (s.site_id, s.name, s.place_id, s.location, s.road_name, s.city)
+  road_name = s.road_name, city = s.city, timezone = s.timezone
+WHEN NOT MATCHED THEN INSERT (site_id, name, place_id, location, road_name, city, timezone)
+  VALUES (s.site_id, s.name, s.place_id, s.location, s.road_name, s.city, s.timezone)
 """
 
 MERGE_ROUTES = """
@@ -114,6 +114,7 @@ def site_row(site, details):
         "location_wkt": point_wkt(loc["latitude"], loc["longitude"]) if has_loc else None,
         "road_name": site["road"],
         "city": site["city"],
+        "timezone": site["timezone"],
     }
 
 

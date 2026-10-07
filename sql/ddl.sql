@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS traffic.sites (
   place_id     STRING NOT NULL,   -- Places place_id: the anchor (storable indefinitely)
   location     GEOGRAPHY,         -- from Place Details
   road_name    STRING,
-  city         STRING
+  city         STRING,
+  timezone     STRING             -- IANA zone: Asia/Jakarta (WIB) or Asia/Makassar (WITA)
 );
 
 CREATE TABLE IF NOT EXISTS traffic.routes (
@@ -94,6 +95,7 @@ CLUSTER BY site_id;
 
 -- CREATE ... IF NOT EXISTS leaves old tables as they were: bring them up to date.
 ALTER TABLE traffic.weather_slots ADD COLUMN IF NOT EXISTS demo_rain_flag BOOL;
+ALTER TABLE traffic.sites ADD COLUMN IF NOT EXISTS timezone STRING;
 
 -- Free-flow time per leg: 10th-percentile duration over the trailing 7 days of slots.
 -- Needs about 7 days of data before it is meaningful. Core columns only.

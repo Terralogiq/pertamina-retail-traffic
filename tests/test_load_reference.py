@@ -12,7 +12,7 @@ _spec.loader.exec_module(lr)
 POLY = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
 
 SITE = {"spbu_code": "34.121.03", "road": "Jl. TB Simatupang", "city": "Jakarta Selatan",
-        "place_id": "ChIJabc"}
+        "place_id": "ChIJabc", "timezone": "Asia/Jakarta"}
 ROUTE = {
     "selected_route_id": "spbu-3412103-spbuside-approach", "site_id": "34.121.03",
     "side": "spbu_side", "leg": "approach", "call_id": "spbu-3412103-spbuside", "leg_index": "0",
@@ -84,7 +84,20 @@ class RowsTest(unittest.TestCase):
         r = lr.site_row(SITE, details)
         self.assertEqual(r, {"site_id": "34.121.03", "name": "SPBU X", "place_id": "ChIJabc",
                              "location_wkt": "POINT(106.8100000 -6.2900000)",
-                             "road_name": "Jl. TB Simatupang", "city": "Jakarta Selatan"})
+                             "road_name": "Jl. TB Simatupang", "city": "Jakarta Selatan",
+                             "timezone": "Asia/Jakarta"})
+
+    def test_site_row_carries_timezone(self):
+        r = lr.site_row(dict(SITE, timezone="Asia/Makassar"), {})
+        self.assertEqual(r["timezone"], "Asia/Makassar")
+
+    def test_sites_csv_timezones(self):
+        zones = {s["city"]: s["timezone"] for s in lr.read_csv(lr.SITES_CSV)}
+        self.assertEqual({c for c, z in zones.items() if z == "Asia/Makassar"},
+                         {"Balikpapan", "Makassar", "Denpasar"})
+        self.assertEqual(set(zones.values()), {"Asia/Jakarta", "Asia/Makassar"})
+        self.assertIn("timezone", lr.SITES_SCHEMA)
+        self.assertIn("timezone", lr.MERGE_SITES)
 
     def test_site_row_without_details(self):
         r = lr.site_row(SITE, {})
