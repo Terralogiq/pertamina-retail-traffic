@@ -75,15 +75,26 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 
 | Path | Owner bead | Notes |
 |---|---|---|
-| `docs/plans/dashboard-ux-review.md`, `out/ux-review/` | `.9.1` | Read-only on code |
-| `dashboard/web/src/theme/`, `dashboard/web/index.html`, `src/main.tsx` (stylesheet import) | `.9.3` creates; `.9.2` swaps brand values | |
-| `dashboard/web/public/` (logo, favicon) | `.9.2` | |
-| `src/App.tsx`, `src/login/`, `src/shell/` (new) | `.9.3` | |
-| `src/map/` | `.9.4` | Map ID: new secret or config value through `/api/config` (one line in `dashboard/api/routers/sites.py`, and a step in `scripts/deploy_dashboard.sh`) |
-| `src/traffic/`, `src/weather/WeatherPanel.tsx`, `src/weather/EChart.tsx`, `src/places/` | `.9.5` | |
+| `docs/plans/dashboard-ux-review.md`, `out/ux-review/` | `.9.1` ✓ | |
+| `src/theme/`, `src/shell/`, `src/weather/DemoBadge.{tsx,css}` (incl. `Widget`), `src/App.tsx`, `src/main.tsx`, `index.html` | `.9.3` | Frozen during the `.9.4`–`.9.6` fan-out. `.9.3` also made small wiring edits in `traffic/Chart.tsx`, `weather/EChart.tsx`, `weather/RainView.tsx`, `weather/WeatherPanel.tsx`, `map/bands.ts`, `map/Overview.tsx` before the fan-out |
+| `src/theme/` brand values, `src/theme/Wordmark.tsx`, `dashboard/web/public/` (logo, favicon) | `.9.2` | Swaps `--brand-*` and the wordmark only |
+| `src/map/` | `.9.4` | Map ID through `/api/config`: one line in `dashboard/api/routers/sites.py` and a step in `scripts/deploy_dashboard.sh`. Adds `legBand()` in `map/bands.ts` for `.9.5` |
+| `src/site/`, `src/traffic/`, `src/weather/{WeatherPanel,EChart,SiteWeather}.tsx`, `src/places/` | `.9.5` | |
 | `src/weather/RainView.tsx` | `.9.6` | |
-| `src/weather/DemoBadge.tsx` | `.9.3` | Used by `.9.4`–`.9.6`; designed once in `.9.3` |
+| `src/shell/` site picker | `.9.9` | After the fan-out |
 | `README.md`, `docs/plans/*.md` (other than the review doc) | orchestrator | |
+
+## Contract for `.9.4`–`.9.6` (from the `.9.3` review)
+
+1. Frozen: `src/theme/*`, `src/shell/*`, `src/weather/DemoBadge.*`, `main.tsx`, `index.html`, `App.tsx`. A missing token, shared class or card change goes to the orchestrator, not into a local copy.
+2. `App.tsx` maps routes only. Each screen renders its own `<Page title context actions>`: page notices (baseline building) go in `context`, controls in `actions`.
+3. Colours: bands via `BANDS`, `BandIndicator` or `var(--band-*)`; every chart series sets its colour from `SERIES`; heatmaps use `SEQUENTIAL` / `--seq-*`; no hex or size literals in screen files.
+4. `.9.4` adds `legBand(latest) → { band, basis }` in `src/map/bands.ts`; `.9.5` imports it.
+5. Demo labelling per section: one `<DemoNote>` plus a `<DemoMarker>` on each demo value, or `<Widget demo>` per card, not both. A `DemoMarker` never stands alone.
+6. `import "./theme/tokens.css"` stays first in `main.tsx`.
+7. `--ink-3` text only on `--surface-1` (on `--surface-page` it is below AA at 13 px).
+8. Shared grid: `.page-grid`, `.span-{4,6,8,12}`; screen layout goes in the screen's own CSS file.
+9. No dual-axis charts (`dataviz` rule): `.9.5` moves the rain bars from `.4.9` into a small chart under the traffic series, on the same time axis.
 
 Order (re-sequenced 2026-10-07: layout starts before the brand inputs arrive; review findings in `docs/plans/dashboard-ux-review.md`, all 21 in scope):
 1. `.9.1` ✓.

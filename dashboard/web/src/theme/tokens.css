@@ -28,9 +28,12 @@
 
   --state-error: #b3261e;
   --state-error-surface: #fbeceb;
-  --state-info-surface: #eaf1f9;
-  --focus-ring: #1f3b63;
-  --selection: #d6e2f1;
+  --state-warning: #8a5a00;
+  --state-warning-surface: #fff3cd;
+  --state-warning-border: #e0c36a;
+  --state-info-surface: color-mix(in srgb, var(--brand-primary) 7%, white);
+  --focus-ring: var(--brand-primary);
+  --selection: color-mix(in srgb, var(--brand-primary) 16%, white);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --text-xs: 0.8125rem;

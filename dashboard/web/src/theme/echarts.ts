@@ -1,5 +1,5 @@
 import * as echarts from "echarts/core";
-import { CHART_INK, SERIES } from "./palette";
+import { CHART_INK } from "./palette";
 
 /** Name every chart host passes to echarts.init. Registered once, on import. */
 export const CHART_THEME = "dashboard";
@@ -13,7 +13,6 @@ const axis = {
 };
 
 echarts.registerTheme(CHART_THEME, {
-  color: [SERIES.approach, SERIES.departure, SERIES.rain, SERIES.dry],
   backgroundColor: "transparent",
   textStyle: { fontFamily: getComputedFontFamily(), color: CHART_INK.text },
   title: { textStyle: { color: CHART_INK.text, fontSize: 14, fontWeight: 600 } },

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
 import { PatternCell, TrafficPoint, getSiteTimezones, getTrafficPattern, getTrafficSeries } from "./api";
 import Chart from "./Chart";
@@ -23,6 +24,7 @@ function lineOption(
 ) {
   const lines = legSeries(points, field, offsetMin).map(({ leg, data }) => ({
     name: leg, type: "line", showSymbol: false, connectNulls: false, data,
+    color: SERIES[leg as keyof typeof SERIES],
   }));
   return {
     useUTC: true, // timestamps are pre-shifted to site-local time (see legSeries)

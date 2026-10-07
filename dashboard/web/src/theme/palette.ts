@@ -20,20 +20,26 @@ export const SERIES = {
   approach: "#4a3aa7",
   departure: "#d0499a",
   rain: "#2a78d6",
+  temperature: "#8a5a00",
   dry: "#a8a69f",
 } as const;
 
 /** Magnitude ramp (light to dark, one hue) for heatmaps such as congestion by day and hour. */
 export const SEQUENTIAL = ["#eea47c", "#e5824f", "#d4612f", "#b0441d", "#842c11"] as const;
 
-/** Chart chrome, matching the tokens.css neutrals. */
+/** Chart chrome, read from the tokens.css neutrals so a theme change reaches the charts too. */
 export const CHART_INK = {
-  text: "#4a5564",
-  muted: "#6b7684",
-  axis: "#c4cad2",
-  grid: "#e6e9ed",
-  surface: "#ffffff",
+  text: cssVar("--ink-2", "#4a5564"),
+  muted: cssVar("--ink-3", "#6b7684"),
+  axis: cssVar("--border-strong", "#c4cad2"),
+  grid: cssVar("--surface-sunken", "#e6e9ed"),
+  surface: cssVar("--surface-1", "#ffffff"),
 } as const;
+
+function cssVar(name: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
 
 /** Mirrors the data palette into CSS custom properties, so CSS and TS read one source. */
 export function applyDataPalette(root: HTMLElement): void {

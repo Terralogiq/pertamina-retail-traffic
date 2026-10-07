@@ -8,7 +8,8 @@ import { SiteWeather } from "./SiteWeather";
 import { WeatherLatest, WeatherSeriesPoint, getRain, getWeatherSeries, RainSplit } from "./api";
 import { localTime, zoneLabel } from "./time";
 
-const BADGE = "demo-only";
+// The visible badge element, not any "demo-only" text (DemoMarker keeps that text for screen readers only).
+const BADGE = 'class="demo-badge"';
 
 const now: WeatherLatest = {
   site_id: "34.121.03",

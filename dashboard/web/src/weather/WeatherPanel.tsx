@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import { useEffect, useState } from "react";
+import { SERIES } from "../theme/palette";
 import { Widget } from "./DemoBadge";
 import { EChart } from "./EChart";
 import { WeatherLatest, WeatherSeriesPoint, getSites, getWeatherLatest, getWeatherSeries } from "./api";
@@ -63,8 +64,14 @@ export function WeatherChart({ series, tz }: { series: WeatherSeriesPoint[]; tz?
       { type: "value", name: "mm", min: 0, splitLine: { show: false } },
     ],
     series: [
-      { name: "Temperature (°C)", type: "line", data: series.map((p) => p.temperature_c), showSymbol: false },
-      { name: "Precipitation (mm)", type: "bar", yAxisIndex: 1, data: series.map((p) => p.precipitation_mm) },
+      {
+        name: "Temperature (°C)",
+        type: "line",
+        data: series.map((p) => p.temperature_c),
+        showSymbol: false,
+        color: SERIES.temperature,
+      },
+      { name: "Precipitation (mm)", type: "bar", yAxisIndex: 1, itemStyle: { color: SERIES.rain }, data: series.map((p) => p.precipitation_mm) },
     ],
   };
   return (
@@ -80,7 +87,15 @@ export function PrecipProbabilityChart({ series, tz }: { series: WeatherSeriesPo
     tooltip: { trigger: "axis" },
     xAxis: { type: "category", data: timeAxis(series, tz), name: zoneLabel(tz) },
     yAxis: { type: "value", name: "%", min: 0, max: 100 },
-    series: [{ name: "Chance of rain (%)", type: "line", data: series.map((p) => p.demo_precip_probability), showSymbol: false }],
+    series: [
+      {
+        name: "Chance of rain (%)",
+        type: "line",
+        data: series.map((p) => p.demo_precip_probability),
+        showSymbol: false,
+        color: SERIES.rain,
+      },
+    ],
   };
   return (
     <Widget title="Last 24 h: chance of rain" demo>

@@ -1,5 +1,7 @@
 import type { EChartsOption } from "echarts";
 import { useEffect, useState } from "react";
+import { Page } from "../shell/AppShell";
+import { SERIES } from "../theme/palette";
 import { DemoBadge, Widget } from "./DemoBadge";
 import { EChart } from "./EChart";
 import { RainResponse, RainSplit, ScatterPoint, SiteInfo, getRain, getSites } from "./api";
@@ -40,8 +42,8 @@ export function RainBars({ data, source, names }: { data: RainSplit[]; source: R
     xAxis: { type: "category", data: data.map(label), axisLabel: { rotate: 40 } },
     yAxis: { type: "value", name: "mean delay (s)" },
     series: [
-      { name: "Rain", type: "bar", data: data.map((r) => r.rain.mean_delay_s) },
-      { name: "Dry", type: "bar", data: data.map((r) => r.dry.mean_delay_s) },
+      { name: "Rain", type: "bar", itemStyle: { color: SERIES.rain }, data: data.map((r) => r.rain.mean_delay_s) },
+      { name: "Dry", type: "bar", itemStyle: { color: SERIES.dry }, data: data.map((r) => r.dry.mean_delay_s) },
     ],
   };
   return (
@@ -56,7 +58,7 @@ export function RainBars({ data, source, names }: { data: RainSplit[]; source: R
 
 /** precipitation_mm against congestion_index, both core: no badge. */
 export function RainScatter({ points, names }: { points: ScatterPoint[]; names: Names }) {
-  const legs = ["approach", "departure"];
+  const legs: ("approach" | "departure")[] = ["approach", "departure"];
   const option: EChartsOption = {
     tooltip: {
       trigger: "item",
@@ -71,6 +73,7 @@ export function RainScatter({ points, names }: { points: ScatterPoint[]; names: 
     series: legs.map((leg) => ({
       name: leg,
       type: "scatter" as const,
+      itemStyle: { color: SERIES[leg] },
       large: true,
       symbolSize: 6,
       data: points.filter((p) => p.leg === leg).map((p) => [p.precipitation_mm, p.congestion_index, p.site_id]),
@@ -111,7 +114,7 @@ export function RainView() {
   const names: Names = Object.fromEntries(sites.map((s) => [s.site_id, s.name]));
 
   return (
-    <div>
+    <Page title="Traffic vs rain">
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
         <label>
           Site{" "}
@@ -144,6 +147,6 @@ export function RainView() {
           <RainScatter points={data.scatter} names={names} />
         </>
       )}
-    </div>
+    </Page>
   );
 }

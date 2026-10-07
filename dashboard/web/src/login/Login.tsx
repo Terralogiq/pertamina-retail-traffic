@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { login } from "../api";
-import { usePageTitle, Wordmark } from "../shell/AppShell";
+import { usePageTitle } from "../shell/AppShell";
+import { Wordmark } from "../theme/Wordmark";
 import "./Login.css";
 
 export default function Login({ onSuccess }: { onSuccess: () => void }) {
@@ -51,7 +52,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
           aria-describedby="login-error"
           onChange={(e) => setPassword(e.target.value)}
         />
-        <p id="login-error" className="login-error" role="alert" aria-live="polite">
+        <p id="login-error" className="login-error" role="alert">
           {error}
         </p>
         <button type="submit" className="button button-primary login-submit" aria-busy={busy} disabled={busy}>
