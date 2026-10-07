@@ -103,14 +103,6 @@
 .map-marker[data-band="jam"] { --band-color: var(--band-jam); }
 .map-marker[data-band="none"] { --band-color: var(--band-none); }
 
-.map-info {
-  display: grid;
-  gap: var(--space-1);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--ink-1);
-}
-
 /* A Google map control (LEFT_BOTTOM): the map stacks it above its logo and Terms. */
 .map-legend {
   display: grid;
@@ -154,6 +146,26 @@
 .map-legend-note {
   display: flex;
   gap: var(--space-2);
+}
+
+/* Site map: one wrapping row instead of the stacked key, so it stays out of the legs. */
+.map-legend-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-3);
+}
+
+.map-legend-row {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-legend-compact .map-legend-title {
+  margin: 0;
 }
 
 /* Page context: summary and baseline notice */
@@ -403,6 +415,11 @@
   /* Clear the fullscreen control on the right; ranges drop out so the key stays two short columns. */
   .map-legend {
     max-width: var(--map-legend-compact-width);
+  }
+
+  .map-legend-compact {
+    max-width: calc(100% - 2 * var(--space-2));
+    padding: var(--space-1) var(--space-2);
   }
 
   .map-legend-rows {

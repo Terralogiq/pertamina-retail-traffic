@@ -1,0 +1,161 @@
+/* Card over a hovered or tapped leg (LegPopup.tsx). Tokens only; the named dimensions are this card's own. */
+
+.leg-popup-anchor {
+  --leg-popup-max-width: 18rem;
+  --leg-popup-wide-max-width: 22rem;
+  --leg-popup-min-width: 12rem;
+  --leg-popup-close-size: 2rem;
+  --leg-popup-overline-tracking: 0.04em;
+
+  position: absolute;
+  width: 0;
+  height: 0;
+  /* Hover cards must not steal the pointer from the leg below them, or they would flicker. */
+  pointer-events: none;
+}
+
+.leg-popup {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  gap: var(--space-1);
+  width: max-content;
+  min-width: var(--leg-popup-min-width);
+  max-width: var(--leg-popup-max-width);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  line-height: var(--leading-tight);
+}
+
+.leg-popup[data-pinned] {
+  pointer-events: auto;
+}
+
+.leg-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.leg-popup-overline {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--leg-popup-overline-tracking);
+  text-transform: uppercase;
+}
+
+/* Only with a close button: pulled into the card's padding so the row stays as tall as the overline. */
+.leg-popup-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--leg-popup-close-size);
+  height: var(--leg-popup-close-size);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-3)) calc(-1 * var(--space-2)) 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.leg-popup-close:hover {
+  background: var(--surface-2);
+  color: var(--ink-1);
+}
+
+.leg-popup-close svg {
+  width: var(--space-3);
+  height: var(--space-3);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.leg-popup-title {
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leg-popup-reading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+}
+
+.leg-popup-delay {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
+}
+
+.leg-popup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.leg-popup-basis {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+/* Site and group cards: one row per leg or site, name left, band and delay right. */
+.leg-popup-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.leg-popup-rows li {
+  display: contents;
+}
+
+.leg-popup-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Group rows: site names are long and share a prefix, so they wrap to two lines instead of truncating. */
+.leg-popup-wide {
+  max-width: var(--leg-popup-wide-max-width);
+}
+
+.leg-popup-rows-group .leg-popup-row-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+}
+
+.leg-popup-row-delay {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

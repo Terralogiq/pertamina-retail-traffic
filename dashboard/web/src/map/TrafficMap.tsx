@@ -3,10 +3,12 @@ import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { BANDS, CHART_INK } from "../theme/palette";
 import { LatestLeg, Site } from "./api";
-import { boundsOf, formatDelay, formatSpeed, legColor, legLabel, lineToPath, sitePoints } from "./bands";
+import { boundsOf, formatDelay, legColor, lineToPath, sitePoints } from "./bands";
 import Legend from "./Legend";
+import { GroupPopup, LegPopup, SitePopup, buildGroupPopup, buildLegPopup, buildSitePopup } from "./LegPopup";
 import { loadMaps } from "./maps";
 import { MapMarker } from "./MapMarker";
+import { useMapPopup } from "./useMapPopup";
 import { clusterPoints, rankSites } from "./severity";
 
 type Libs = Awaited<ReturnType<typeof loadMaps>>;
@@ -18,26 +20,13 @@ const LEGS_MIN_ZOOM = 14;
 /** Marker pills sit above their point, so fits leave extra room at the top to keep the topmost pill inside the map. */
 const FIT_PADDING = { top: 88, right: 56, bottom: 48, left: 56 };
 
-function infoContent(title: string, lines: string[]): HTMLElement {
-  const root = document.createElement("div");
-  root.className = "map-info";
-  const strong = document.createElement("strong");
-  strong.textContent = title;
-  root.append(strong);
-  for (const line of lines) {
-    const div = document.createElement("div");
-    div.textContent = line;
-    root.append(div);
-  }
-  return root;
-}
+/** A marker pill sits above its point; a hover card is raised by about its height (pill, tail and hover lift) to clear it. */
+const MARKER_CARD_LIFT_PX = 48;
 
-function legLines(site: Site, latest: Map<string, LatestLeg>): string[] {
-  return site.legs.map((leg) => {
-    const row = latest.get(leg.selected_route_id);
-    return `${legLabel(leg.leg)}: delay ${formatDelay(row?.delay_s)}, speed ${formatSpeed(row?.speed_kmh)}`;
-  });
-}
+/** Pointer-enter handler for hover cards: a touch tap fires it too, but there a tap acts (navigate, zoom, pin) and has no hover. */
+const hoverOnly = (show: () => void) => (e: Event) => {
+  if ((e as PointerEvent).pointerType !== "touch") show();
+};
 
 /** A marker whose content is a small React tree; returns its cleanup. */
 function reactMarker(
@@ -46,12 +35,11 @@ function reactMarker(
   position: google.maps.LatLngLiteral,
   title: string,
   body: ReactElement,
-  clickable: boolean,
 ): { marker: google.maps.marker.AdvancedMarkerElement; remove: () => void } {
   const el = document.createElement("div");
   const root = createRoot(el);
   root.render(body);
-  const marker = new libs.marker.AdvancedMarkerElement({ map, position, title, content: el, gmpClickable: clickable });
+  const marker = new libs.marker.AdvancedMarkerElement({ map, position, title, content: el, gmpClickable: true });
   return {
     marker,
     remove: () => {
@@ -78,6 +66,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   const [zoom, setZoom] = useState(START.zoom);
   const [error, setError] = useState("");
 
+  const popup = useMapPopup(map, libs);
   const shown = useMemo(() => (siteId ? sites.filter((s) => s.site_id === siteId) : sites), [sites, siteId]);
   // Handlers read the callback through a ref so a new function identity does not redraw the overlays.
   const select = useRef(onSelectSite);
@@ -123,15 +112,17 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   }, [map, shown]);
 
   // Legs: a light casing under each coloured line so it holds against any basemap; redraw on new data.
+  // Hover shows the leg card. Where a click does not navigate (the site map), a click or tap pins it with a
+  // close button (Escape or a click on the map closes it; see useMapPopup).
   useEffect(() => {
     if (!map || !libs || !showLegs) return;
-    const info = new libs.maps.InfoWindow();
     const cleanups: (() => void)[] = [];
     for (const site of shown) {
       for (const leg of site.legs) {
         const path = lineToPath(leg.expected_polyline);
         if (path.length < 2) continue;
         const row = latest.get(leg.selected_route_id);
+        const model = buildLegPopup(site, leg, row);
         const { color } = legColor(row);
         const casing = new libs.maps.Polyline({ map, path, strokeColor: CHART_INK.surface, strokeOpacity: 0.95, strokeWeight: 10, clickable: false });
         const line = new libs.maps.Polyline({
@@ -152,18 +143,17 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         line.addListener("mouseover", (e: google.maps.PolyMouseEvent) => {
           line.setOptions({ strokeWeight: 9 });
           casing.setOptions({ strokeWeight: 13 });
-          info.setContent(
-            infoContent(`${site.name} · ${legLabel(leg.leg)}`, [`Delay: ${formatDelay(row?.delay_s)}`, `Speed: ${formatSpeed(row?.speed_kmh)}`]),
-          );
-          if (e.latLng) info.setPosition(e.latLng);
-          info.open({ map });
+          if (e.latLng) popup.hover(e.latLng.toJSON(), <LegPopup model={model} />);
         });
         line.addListener("mouseout", () => {
           line.setOptions({ strokeWeight: 6 });
           casing.setOptions({ strokeWeight: 10 });
-          info.close();
+          popup.hideSoon();
         });
-        if (clickable) line.addListener("click", () => select.current?.(site.site_id));
+        line.addListener("click", (e: google.maps.PolyMouseEvent) => {
+          if (clickable) return select.current?.(site.site_id);
+          if (e.latLng) popup.togglePin(line, e.latLng.toJSON(), (onClose) => <LegPopup model={model} onClose={onClose} />);
+        });
         cleanups.push(() => {
           line.setMap(null);
           casing.setMap(null);
@@ -171,16 +161,15 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       }
     }
     return () => {
-      info.close();
+      popup.hide();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, showLegs]);
+  }, [map, libs, shown, latest, clickable, showLegs, popup]);
 
   // Markers: one per site showing its worst band and delay; on the overview, sites that would overlap at
   // this zoom share one group marker (its worst member's band) that zooms in on click.
   useEffect(() => {
     if (!map || !libs) return;
-    const info = new libs.maps.InfoWindow();
     const ranked = rankSites(shown, latest);
     const byId = new Map(ranked.map((s) => [s.site.site_id, s]));
     const groups = siteId
@@ -194,13 +183,16 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       if (members.length === 1) {
         const { site, band, worstDelay } = lead;
         const text = worstDelay === null ? BANDS.none.label : formatDelay(worstDelay);
-        const { marker, remove } = reactMarker(libs, map, site.location, `${site.name}: ${BANDS[band].label}, ${text}`, <MapMarker band={band} text={text} />, clickable);
-        marker.addEventListener("pointerenter", () => {
-          info.setContent(infoContent(site.name, [site.city ?? "", ...legLines(site, latest)].filter(Boolean)));
-          info.open({ map, anchor: marker });
-        });
-        marker.addEventListener("pointerleave", () => info.close());
-        if (clickable) marker.addEventListener("gmp-click", () => select.current?.(site.site_id));
+        const { marker, remove } = reactMarker(libs, map, site.location, `${site.name}: ${BANDS[band].label}, ${text}`, <MapMarker band={band} text={text} />);
+        const model = buildSitePopup(site, latest);
+        marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(site.location, <SitePopup model={model} />, MARKER_CARD_LIFT_PX)));
+        marker.addEventListener("pointerleave", popup.hideSoon);
+        // Where a click does not navigate (the site map) a tap pins the card, as on the legs.
+        marker.addEventListener("gmp-click", () =>
+          clickable
+            ? select.current?.(site.site_id)
+            : popup.togglePin(marker, site.location, (onClose) => <SitePopup model={model} onClose={onClose} />, MARKER_CARD_LIFT_PX),
+        );
         cleanups.push(remove);
       } else {
         const names = members.map((m) => m.site.name);
@@ -211,13 +203,11 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
           { lat: group.lat, lng: group.lng },
           title,
           <MapMarker band={lead.band} text={`${members.length} sites`} group />,
-          true,
         );
-        marker.addEventListener("pointerenter", () => {
-          info.setContent(infoContent(`${members.length} sites`, members.map((m) => `${m.site.name}: ${m.worstDelay === null ? BANDS.none.label : formatDelay(m.worstDelay)}`)));
-          info.open({ map, anchor: marker });
-        });
-        marker.addEventListener("pointerleave", () => info.close());
+        const model = buildGroupPopup(members);
+        const at = { lat: group.lat, lng: group.lng };
+        marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(at, <GroupPopup model={model} />, MARKER_CARD_LIFT_PX)));
+        marker.addEventListener("pointerleave", popup.hideSoon);
         marker.addEventListener("gmp-click", () => {
           const bounds = boundsOf(sitePoints(members.map((m) => m.site)));
           if (bounds) map.fitBounds(bounds, FIT_PADDING);
@@ -226,10 +216,10 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       }
     }
     return () => {
-      info.close();
+      popup.hide();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, siteId, groupZoom]);
+  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup]);
 
   return (
     <>
@@ -239,7 +229,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         </div>
       )}
       <div ref={el} className="map-canvas" />
-      {legendEl && createPortal(<Legend sites={shown} latest={latest} />, legendEl)}
+      {legendEl && createPortal(<Legend sites={shown} latest={latest} compact={!!siteId} />, legendEl)}
     </>
   );
 }
