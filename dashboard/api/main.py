@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import auth
-from .routers import sites, traffic, weather
+from .routers import places, sites, traffic, weather
 
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -24,11 +24,12 @@ api = APIRouter(prefix="/api", dependencies=[Depends(auth.require_session)])
 api.include_router(sites.router)
 api.include_router(traffic.router)
 api.include_router(weather.router)
+api.include_router(places.router)
 app.include_router(api)
 
 
-@app.get("/healthz")
-def healthz():
+@app.get("/health")
+def health():
     return {"status": "ok"}
 
 

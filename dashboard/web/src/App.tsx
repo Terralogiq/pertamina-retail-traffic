@@ -3,10 +3,9 @@ import { Link, Route, Routes, useParams } from "react-router-dom";
 import { AppConfig, getConfig, setUnauthorizedHandler } from "./api";
 import { Login } from "./login";
 import { Overview, SiteMap } from "./map";
+import { PlacesPanel } from "./places";
 import { TrafficCharts } from "./traffic";
 import { RainView, WeatherPanel } from "./weather";
-
-// .4.5 (places) adds its panel in SiteDetail.
 
 function SiteDetail() {
   const { site_id } = useParams();
@@ -21,6 +20,7 @@ function SiteDetail() {
       </div>
       <TrafficCharts siteId={site_id} />
       <WeatherPanel siteId={site_id!} />
+      <PlacesPanel siteId={site_id!} />
     </div>
   );
 }

@@ -51,7 +51,7 @@ A web app that shows Pertamina, for each of the 10 SPBU, the traffic on the road
 
 ## API
 
-All endpoints are GET unless noted, return JSON, and require the session cookie except `/api/login` and `/healthz`.
+All endpoints are GET unless noted, return JSON, and require the session cookie except `/api/login` and `/health`.
 
 | Endpoint | Returns | Source |
 |---|---|---|
@@ -65,7 +65,7 @@ All endpoints are GET unless noted, return JSON, and require the session cookie 
 | `GET /api/weather/series?site_id&from&to` | per slot | `weather_slots` |
 | `GET /api/rain?site_id&days=28` | rain vs dry delay summary + scatter points | `v_traffic` ⨝ `weather_slots` |
 | `GET /api/places/{site_id}` | latest run: details (rating, review count, 5 reviews, hours), competitors by brand per radius, POI counts per type × radius, `fetched_at` | `places_*` |
-| `GET /healthz` | 200 | — |
+| `GET /health` | 200 | — |
 
 ## Phases
 

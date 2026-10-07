@@ -25,8 +25,8 @@ class AuthTest(unittest.TestCase):
     def login(self, password=PASSWORD):
         return self.client.post("/api/login", json={"password": password})
 
-    def test_healthz_is_open(self):
-        self.assertEqual(self.client.get("/healthz").status_code, 200)
+    def test_health_is_open(self):
+        self.assertEqual(self.client.get("/health").status_code, 200)
 
     def test_api_requires_session(self):
         self.assertEqual(self.client.get("/api/config").status_code, 401)
