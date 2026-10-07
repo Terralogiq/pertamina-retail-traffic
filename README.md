@@ -8,7 +8,10 @@ Terralogiq demo for Pertamina: monitors traffic on the road in front of 10 SPBU 
   - Places test fetch.
   - Collector plan (`docs/plans/collector.md`).
   - Road segments for all 10 sites, validated and user-checked (`data/routes.csv`).
-- Next: BigQuery tables, then the collector job.
+  - BigQuery dataset `gcp-coe-sandbox.traffic` (asia-southeast2) with reference data loaded (10 sites, 20 legs).
+  - Collector deployed 2026-10-07 00:40 WIB: Cloud Run job `traffic-collector`, Scheduler `traffic-collector-every-30min` (`*/30` Asia/Jakarta), failure alert by email. Every slot so far has 20 traffic + 10 weather rows, no gaps.
+- In progress: 24 h acceptance run (through ~2026-10-07 18:00 UTC).
+- Next: recheck rain flags after 24–48 h, then choose the dashboard stack.
 
 ## Data sources
 
@@ -39,7 +42,7 @@ Cloud Scheduler (*/30, Asia/Jakarta)
 
 ## Data model
 
-Full DDL: [`docs/plans/data-schema.md`](docs/plans/data-schema.md).
+Spec: [`docs/plans/data-schema.md`](docs/plans/data-schema.md). DDL: [`sql/ddl.sql`](sql/ddl.sql).
 
 | Table | Grain | Purpose |
 |---|---|---|
@@ -47,6 +50,8 @@ Full DDL: [`docs/plans/data-schema.md`](docs/plans/data-schema.md).
 | `routes` | SPBU × direction | Segment endpoints with headings, plus the expected polyline and distance. Later becomes the RMI route registration. |
 | `traffic_snapshots` | route × 30-min slot | Duration, static duration and derived metrics. Partitioned by date, clustered by `route_id`. |
 | `weather_slots` | SPBU × 30-min slot | Temperature, precipitation, humidity, wind and pressure. Partitioned by date, clustered by `site_id`. |
+
+Views: `v_leg_baseline` (each leg's 7-day p10 duration) and `v_traffic` (snapshots joined with the derived metrics below).
 
 Every table has three column groups:
 - **core:** compatible with RMI or WeatherNext. Production metrics build only on these.
@@ -98,23 +103,46 @@ Tracked in Beads (`bd ready`, epic `pertamina-retail-traffic-907`).
 2. ~~Places test fetch:~~ done: `docs/plans/places-test-fetch.md`.
 3. **Collector** (`docs/plans/collector.md`):
    - segments ✓
-   - BigQuery tables
-   - reference load
-   - collector job
-   - Scheduler deploy
-4. **Dashboard frontend.**
+   - BigQuery tables ✓
+   - reference load ✓
+   - collector job ✓
+   - Scheduler deploy ✓ (24 h acceptance pending)
+   - later: dedicated service accounts instead of the Compute Engine default SA; `demo_rerouted` check
+4. **Dashboard frontend:** stack not chosen yet.
 
 ## Repo layout
 
 ```
 .claude/           harness: settings, Stop hook, advisor-reviewer agent, rules
+collector/         Cloud Run job: Routes + Weather calls, staging table + guarded MERGE (idempotent)
 data/              sites.csv (place_id anchors), segment_links.csv (user links), routes.csv (validated legs)
 docs/plans/        plans and specs (collector, data-schema, sites, places-test-fetch)
 docs/handoffs/     session handoffs
-scripts/           build-and-test.sh, places_test_fetch.py, segments (segments_lib, propose_segments, preview_segments)
+scripts/           build-and-test.sh, bq_setup.sh, load_reference.py, deploy_collector.sh,
+                   places_test_fetch.py, segments (segments_lib, propose_segments, preview_segments)
+sql/               ddl.sql (BigQuery tables and views)
 tests/             unittest, no network
 out/               git-ignored outputs (raw API responses, preview map)
 ```
+
+## Operations
+
+Always pass `--project gcp-coe-sandbox --billing-project gcp-coe-sandbox`; the gcloud default quota project is a different one.
+
+```bash
+scripts/bq_setup.sh                       # dataset, tables, views
+python3 scripts/load_reference.py         # MERGE sites.csv + routes.csv into BigQuery
+scripts/deploy_collector.sh --default-sa  # job + Scheduler + alert; also --dry-run, --no-schedule
+
+# Health check: every execution should succeed
+gcloud run jobs executions list --job traffic-collector --region asia-southeast2 \
+  --project gcp-coe-sandbox --billing-project gcp-coe-sandbox --limit 100
+```
+
+In BigQuery, each `slot_time` should have 20 rows in `traffic_snapshots` (all with a duration) and 10 in `weather_slots`, with no missing :00/:30 slots.
+
+- The Maps key lives in Secret Manager (`MAPS_API_KEY`). Never print it.
+- The collector costs about $95/month while the Scheduler is enabled. Pause it with `gcloud scheduler jobs pause traffic-collector-every-30min --location asia-southeast2 --project gcp-coe-sandbox`.
 
 ## Workflow
 
