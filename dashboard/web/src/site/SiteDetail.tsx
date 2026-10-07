@@ -11,7 +11,7 @@ import { WeatherPanel } from "../weather";
 import type { WeatherLatest } from "../weather/api";
 import type { PlacesResponse } from "../places/api";
 import { Section } from "./Section";
-import { legBand } from "./legBand";
+import { legBand } from "../map/bands";
 import { Load, isReady, useSiteData } from "./useSiteData";
 import "./SiteDetail.css";
 

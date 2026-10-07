@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "../map/api";
 import { BASELINE_FULL } from "../map/bands";
 import { BANDS } from "../theme/palette";
-import { legBand } from "./legBand";
+import { legBand } from "../map/bands";
 import { StatusStrip, baselineNotice, siteContext } from "./SiteDetail";
 
 const site: Site = {
