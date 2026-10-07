@@ -3,6 +3,7 @@ import { Link, Route, Routes, useParams } from "react-router-dom";
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import { AppConfig, getConfig, setUnauthorizedHandler } from "./api";
 import { Login } from "./login";
+import { TrafficCharts } from "./traffic";
 
 // Placeholders: .4.2 (map), .4.3 (charts), .4.4 (weather), .4.5 (places) each add their routes here, one line each.
 
@@ -42,6 +43,7 @@ function SiteDetail() {
     <div style={{ padding: 16 }}>
       <Link to="/">Overview</Link>
       <h1>Site {site_id}</h1>
+      <TrafficCharts siteId={site_id} />
     </div>
   );
 }
