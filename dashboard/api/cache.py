@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 MAX_TTL = timedelta(minutes=30)
 BOUNDARY_MINUTES = (5, 35)
+MAX_ENTRIES = 500  # keys carry user-supplied params (site_id, from, to): bound the memory
 
 
 def utc_now():
@@ -44,7 +45,10 @@ class TtlCache:
         value = compute()  # outside the lock: a slow BigQuery job must not block other endpoints
         stored_at = self._clock()
         with self._lock:
+            self._entries = {k: e for k, e in self._entries.items() if e[0] > stored_at}
             self._entries[key] = (next_expiry(stored_at), value)
+            while len(self._entries) > MAX_ENTRIES:  # evict the entry that expires first
+                del self._entries[min(self._entries, key=lambda k: self._entries[k][0])]
         return value
 
     def clear(self):

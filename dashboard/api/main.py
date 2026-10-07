@@ -22,7 +22,7 @@ app.include_router(auth.router)  # POST /api/login: open
 # (`api.include_router(<module>.router)`) plus the import above. Router paths carry no /api prefix.
 api = APIRouter(prefix="/api", dependencies=[Depends(auth.require_session)])
 api.include_router(sites.router)
-api.include_router(traffic.router)  # `.4.7` stub returning []; `.4.3` replaces routers/traffic.py
+api.include_router(traffic.router)
 api.include_router(weather.router)
 app.include_router(api)
 

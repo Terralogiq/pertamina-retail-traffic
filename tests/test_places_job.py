@@ -280,11 +280,11 @@ class TestMergeSql(unittest.TestCase):
         self.assertNotIn("bigquery", vars(bq))
 
     def test_schema_nested_and_repeated(self):
-        try:
-            import google.cloud.bigquery  # noqa: F401
-        except ImportError:
-            self.skipTest("google-cloud-bigquery not installed")
         with mock.patch.dict(sys.modules):  # do not leave google.cloud.* behind for the collector's import test
+            try:
+                import google.cloud.bigquery  # noqa: F401
+            except ImportError:
+                self.skipTest("google-cloud-bigquery not installed")
             schema = {f.name: f for f in bq._schema(bq.DETAILS_STAGE)}
         self.assertEqual([f for f in schema], [s[0] for s in bq.DETAILS_STAGE])
         reviews = schema["reviews"]

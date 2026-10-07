@@ -5,8 +5,10 @@ import { baselineBadge, baselineProgress, formatDelay, formatSlot, legColor, leg
 import Legend from "./Legend";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
+import { WeatherLatest } from "../weather/api";
+import { SiteWeather } from "../weather/SiteWeather";
 
-function SiteListItem({ site, latest }: { site: Site; latest: Map<string, LatestLeg> }) {
+function SiteListItem({ site, latest, weather }: { site: Site; latest: Map<string, LatestLeg>; weather: WeatherLatest | undefined }) {
   const rows = siteLatest(site, latest);
   const badge = baselineBadge(baselineProgress(rows));
   return (
@@ -30,14 +32,14 @@ function SiteListItem({ site, latest }: { site: Site; latest: Map<string, Latest
             {badge}
           </span>
         )}
-        {/* Weather (icon + temperature) goes here: .4.4. */}
+        <SiteWeather now={weather} />
       </Link>
     </li>
   );
 }
 
 export default function Overview() {
-  const { sites, latest, error } = useTrafficData();
+  const { sites, latest, weatherBySite, error } = useTrafficData();
   const navigate = useNavigate();
   const select = useCallback((id: string) => navigate(`/site/${id}`), [navigate]);
 
@@ -45,6 +47,8 @@ export default function Overview() {
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <header style={{ padding: "8px 16px" }}>
         <strong>Pertamina SPBU traffic</strong> · overview
+        {" · "}
+        <Link to="/rain">Traffic vs rain</Link>
       </header>
       {error && <div role="alert">{error}</div>}
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
@@ -56,7 +60,7 @@ export default function Overview() {
         </div>
         <aside style={{ width: 300, overflowY: "auto", borderLeft: "1px solid #ddd" }}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {sites?.map((site) => <SiteListItem key={site.site_id} site={site} latest={latest} />)}
+            {sites?.map((site) => <SiteListItem key={site.site_id} site={site} latest={latest} weather={weatherBySite.get(site.site_id)} />)}
           </ul>
         </aside>
       </div>

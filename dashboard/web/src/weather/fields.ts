@@ -18,6 +18,7 @@ export const DEMO_ONLY_FIELDS = [
 // demo_icon_uri is not on the Labels list (it is demo_condition_* 's icon), so it is checked separately.
 export const WIDGET_DEMO_FIELDS = {
   DemoConditions: ["demo_condition_type", "demo_condition_text", "demo_icon_uri", "demo_rain_flag", "demo_precip_probability"],
+  SiteWeather: ["demo_icon_uri"],
   PrecipProbabilityChart: ["demo_precip_probability"],
   RainBars_demo: ["demo_rain_flag"],
   RainToggle: ["demo_rain_flag"],

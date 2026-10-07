@@ -28,6 +28,10 @@ class WeatherTest(unittest.TestCase):
         clock = mock.patch.object(weather, "utc_now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)
+        sites = mock.patch("dashboard.api.routers.traffic.get_sites",
+                           return_value=[{"site_id": "1"}, {"site_id": "34.121.03"}])
+        sites.start()
+        self.addCleanup(sites.stop)
         cache.default.clear()
         self.addCleanup(cache.default.clear)
         self.client = TestClient(app, base_url="https://testserver")
@@ -102,6 +106,7 @@ class WeatherTest(unittest.TestCase):
             self.assertIn("w.slot_time >= @start", sql)
             self.assertIn("w.site_id = r.site_id AND w.slot_time = v.slot_time", sql)
             self.assertNotIn("@site_id", sql)
+            self.assertIn("r.selected_route_id = v.selected_route_id AND r.active", sql)
             self.assertEqual(params, {"start": NOW - timedelta(days=28)})
 
     def test_rain_one_site_adds_a_parameterised_filter(self):
@@ -113,6 +118,13 @@ class WeatherTest(unittest.TestCase):
             self.assertIn("r.site_id = @site_id", sql)
             self.assertNotIn("34.121.03", sql)
             self.assertEqual(params, {"start": NOW - timedelta(days=7), "site_id": "34.121.03"})
+
+    def test_unknown_site_is_404_and_skips_bigquery(self):
+        for url in ("/api/weather/series?site_id=nope", "/api/rain?site_id=nope"):
+            with self.subTest(url=url):
+                res, q = self.get(url)
+                self.assertEqual(res.status_code, 404)
+                q.assert_not_called()
 
     def test_rain_bad_days_is_400(self):
         for days in ("0", "29", "-1", "x", "1.5"):

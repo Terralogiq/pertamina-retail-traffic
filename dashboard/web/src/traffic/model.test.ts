@@ -7,7 +7,7 @@ afterEach(() => vi.unstubAllGlobals());
 function pt(leg: string, slot: string, extra: Partial<TrafficPoint> = {}): TrafficPoint {
   return {
     selected_route_id: `r-${leg}`, site_id: "s", leg, slot_time: slot, duration_s: 100, delay_s: 10,
-    congestion_index: 1.1, speed_kmh: 30, baseline_samples: 336, ...extra,
+    congestion_index: 1.1, speed_kmh: 30, baseline_samples: 302, ...extra,
   };
 }
 
@@ -53,7 +53,7 @@ describe("legSeries", () => {
 });
 
 describe("baselineBuilding", () => {
-  it("returns the smallest sample count of the legs' latest slots while under 336", () => {
+  it("returns the smallest sample count of the legs' latest slots while under 302", () => {
     const points = [
       pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 10 }),
       pt("approach", "2026-10-07T00:30:00Z", { baseline_samples: 100 }),
@@ -64,7 +64,8 @@ describe("baselineBuilding", () => {
 
   it("counts a missing baseline as 0 and is null once the window is full or empty", () => {
     expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: null })])).toBe(0);
-    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 336 })])).toBeNull();
+    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 302 })])).toBeNull();
+    expect(baselineBuilding([pt("approach", "2026-10-07T00:00:00Z", { baseline_samples: 301 })])).toBe(301);
     expect(baselineBuilding([])).toBeNull();
   });
 });

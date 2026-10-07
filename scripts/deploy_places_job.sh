@@ -154,6 +154,15 @@ step "2c. Scheduler identity ($SA_SCHED_EMAIL)"
 if [ "$DEFAULT_SA" = 1 ]; then
   echo "  --default-sa: Editor already includes run.jobs.run; no grant needed"
 else
+  # Created by deploy_collector.sh, like the job identity in step 2a.
+  if gcloud iam service-accounts describe "$SA_SCHED_EMAIL" "${GC_PROJ[@]}" >/dev/null 2>&1; then
+    echo "  exists (created by deploy_collector.sh)"
+  elif [ "$DRY_RUN" = 1 ]; then
+    echo "  MISSING: $SA_SCHED_EMAIL; a real run stops here. Run scripts/deploy_collector.sh first, or use --default-sa"
+  else
+    echo "$SA_SCHED_EMAIL does not exist: run scripts/deploy_collector.sh first, or use --default-sa" >&2
+    exit 1
+  fi
   run gcloud run jobs add-iam-policy-binding "$JOB" \
     --member="serviceAccount:$SA_SCHED_EMAIL" --role=roles/run.invoker \
     --region "$REGION" --format=none "${GC_PROJ[@]}"
@@ -267,5 +276,5 @@ cat <<EOF
 $([ "$DRY_RUN" = 1 ] && echo "  DRY RUN          : nothing was changed")
 
 Trigger one manual run (calls the Places APIs; each run adds rows with a new run_id):
-  gcloud run jobs execute $JOB --region $REGION --project $PROJECT --wait
+  gcloud run jobs execute $JOB --region $REGION --project $PROJECT --wait --billing-project $PROJECT
 EOF

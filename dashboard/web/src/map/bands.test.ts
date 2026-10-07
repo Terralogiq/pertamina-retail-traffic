@@ -114,10 +114,10 @@ describe("baseline badge", () => {
   it("shows the lowest progress over the legs", () => {
     const p = baselineProgress([row({ baseline_samples: 120 }), row({ baseline_samples: 90 })]);
     expect(p).toBe(90);
-    expect(baselineBadge(p)).toBe("baseline building (90/336)");
+    expect(baselineBadge(p)).toBe("baseline building (90/302)");
   });
   it("counts a null as 0, caps at the full window and hides when full or without data", () => {
-    expect(baselineBadge(baselineProgress([row({ baseline_samples: null })]))).toBe("baseline building (0/336)");
+    expect(baselineBadge(baselineProgress([row({ baseline_samples: null })]))).toBe("baseline building (0/302)");
     expect(baselineBadge(baselineProgress([row({ baseline_samples: 400 })]))).toBeNull();
     expect(baselineBadge(baselineProgress([]))).toBeNull();
   });

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query
 
 from .. import bq, cache
+from .traffic import _require_site
 
 router = APIRouter()
 
@@ -37,7 +38,7 @@ ORDER BY slot_time
 # Traffic legs joined to the weather of their site in the same slot. Slots without a weather row drop out.
 _JOIN = f"""
 FROM {bq.table("v_traffic")} AS v
-JOIN {bq.table("routes")} AS r ON r.selected_route_id = v.selected_route_id
+JOIN {bq.table("routes")} AS r ON r.selected_route_id = v.selected_route_id AND r.active
 JOIN {bq.table("weather_slots")} AS w ON w.site_id = r.site_id AND w.slot_time = v.slot_time
 WHERE v.slot_time >= @start AND w.slot_time >= @start"""
 _SITE_FILTER = " AND r.site_id = @site_id"
@@ -116,6 +117,7 @@ def weather_latest():
 def weather_series(site_id: str = "", from_: str | None = Query(None, alias="from"), to: str | None = None):
     if not site_id:
         raise HTTPException(400, "site_id is required")
+    _require_site(site_id)
     series_range(from_, to, utc_now())  # validate before touching the cache
 
     def compute():
@@ -128,6 +130,8 @@ def weather_series(site_id: str = "", from_: str | None = Query(None, alias="fro
 @router.get("/rain")
 def rain(site_id: str | None = None, days: str = "28"):
     n_days = _days(days)
+    if site_id:
+        _require_site(site_id)
 
     def compute():
         params = {"start": utc_now() - timedelta(days=n_days)}

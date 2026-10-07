@@ -1,7 +1,8 @@
+import { BASELINE_FULL } from "../map/bands";
 import type { PatternCell, TrafficPoint } from "./api";
 
-/** 7 days x 48 half-hour slots: a full v_leg_baseline window. */
-export const BASELINE_FULL = 336;
+// One threshold for the map badge and the charts: 90% of a 7-day window (see map/bands.ts).
+export { BASELINE_FULL };
 
 export type Range = "24h" | "7d";
 const RANGE_HOURS: Record<Range, number> = { "24h": 24, "7d": 168 };

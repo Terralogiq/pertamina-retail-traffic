@@ -6,7 +6,7 @@ import { Overview, SiteMap } from "./map";
 import { TrafficCharts } from "./traffic";
 import { RainView, WeatherPanel } from "./weather";
 
-// Placeholders: .4.2 (map), .4.3 (charts), .4.4 (weather), .4.5 (places) each add their routes here, one line each.
+// .4.5 (places) adds its panel in SiteDetail.
 
 function SiteDetail() {
   const { site_id } = useParams();

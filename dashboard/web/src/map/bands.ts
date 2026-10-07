@@ -1,8 +1,8 @@
 // Pure helpers for the map: colour bands, GeoJSON conversion, bounds, formatting. No Google Maps types at runtime.
 import type { LatestLeg, Site } from "./api";
 
-/** 7 days x 48 half-hour slots: the baseline window is full at this many samples. */
-export const BASELINE_FULL = 336;
+/** The baseline counts as full at 90% of 7 days x 48 half-hour slots (336), so one missed slot does not hold a leg in fallback. */
+export const BASELINE_FULL = 302;
 
 export const GREY = "#9e9e9e";
 const GREEN = "#2e9e4f";

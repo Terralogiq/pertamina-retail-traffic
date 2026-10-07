@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -73,6 +74,23 @@ class TtlCacheTest(unittest.TestCase):
         self.assertEqual(self.get("a", {"days": 7, "site": "1"}), 1)  # param order is irrelevant
         self.assertEqual(self.get("a", {"site": "2", "days": 7}), 2)
         self.assertEqual(self.get("b", {"site": "1", "days": 7}), 3)
+
+    def test_expired_entries_are_dropped_on_store(self):
+        self.get("a")
+        self.get("b")
+        self.clock.now = at(12, 36)
+        self.get("c")  # stores under the lock and sweeps a and b, which expired at 12:35
+        self.assertEqual(list(self.cache._entries), [self.cache.key("c", None)])
+
+    def test_size_is_capped_and_the_earliest_expiry_goes_first(self):
+        self.get("old")  # stored 12:10, expires 12:35
+        self.clock.now = at(12, 36)  # the next entries expire 13:05
+        with mock.patch.object(cache, "MAX_ENTRIES", 3):
+            for i in range(5):
+                self.get("e", {"i": i})
+        self.assertEqual(len(self.cache._entries), 3)
+        self.assertNotIn(self.cache.key("old", None), self.cache._entries)
+        self.assertEqual(self.get("e", {"i": 4}), 6)  # still cached: no extra compute
 
     def test_clear(self):
         self.get()

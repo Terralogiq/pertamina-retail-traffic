@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ONLY_FIELDS, WIDGET_DEMO_FIELDS } from "./fields";
 import { CoreConditions, DemoConditions, PrecipProbabilityChart, WeatherChart } from "./WeatherPanel";
 import { RainBars, RainScatter, RainToggle } from "./RainView";
+import { SiteWeather } from "./SiteWeather";
 import { WeatherLatest, WeatherSeriesPoint, getRain, getWeatherSeries, RainSplit } from "./api";
 import { localTime, zoneLabel } from "./time";
 
@@ -32,6 +33,7 @@ const names = { "34.121.03": "SPBU Simatupang" };
 // One renderer per entry of WIDGET_DEMO_FIELDS.
 const demoWidgets: Record<keyof typeof WIDGET_DEMO_FIELDS, () => ReactElement> = {
   DemoConditions: () => <DemoConditions now={now} />,
+  SiteWeather: () => <SiteWeather now={now} />,
   PrecipProbabilityChart: () => <PrecipProbabilityChart series={series} />,
   RainBars_demo: () => <RainBars data={split} source="demo" names={names} />,
   RainToggle: () => <RainToggle value="core" onChange={() => {}} />,
@@ -40,6 +42,7 @@ const demoWidgets: Record<keyof typeof WIDGET_DEMO_FIELDS, () => ReactElement> =
 const coreWidgets: Record<string, () => ReactElement> = {
   CoreConditions: () => <CoreConditions now={now} tz="Asia/Jakarta" />,
   WeatherChart: () => <WeatherChart series={series} />,
+  SiteWeather_core: () => <SiteWeather now={{ ...now, demo_icon_uri: null }} />,
   RainBars_core: () => <RainBars data={split} source="core" names={names} />,
   RainScatter: () => <RainScatter points={[]} names={names} />,
 };
@@ -78,6 +81,13 @@ describe("demo-only badge", () => {
     expect(html).toContain("LIGHT_RAIN");
     expect(html).toContain("rain_light.svg");
     expect(html).toContain("60 %");
+  });
+});
+
+describe("site list weather", () => {
+  it("shows temperature_c, and nothing without a slot", () => {
+    expect(renderToStaticMarkup(<SiteWeather now={now} />)).toContain("29.1 °C");
+    expect(renderToStaticMarkup(<SiteWeather now={undefined} />)).toBe("");
   });
 });
 
