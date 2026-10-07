@@ -3,6 +3,7 @@ import { Link, Route, Routes, useParams } from "react-router-dom";
 import { AppConfig, getConfig, setUnauthorizedHandler } from "./api";
 import { Login } from "./login";
 import { Overview, SiteMap } from "./map";
+import { TrafficCharts } from "./traffic";
 
 // Placeholders: .4.2 (map), .4.3 (charts), .4.4 (weather), .4.5 (places) each add their routes here, one line each.
 
@@ -15,6 +16,7 @@ function SiteDetail() {
       <div>
         <SiteMap siteId={site_id!} />
       </div>
+      <TrafficCharts siteId={site_id} />
     </div>
   );
 }

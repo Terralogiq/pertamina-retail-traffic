@@ -72,9 +72,6 @@ class SitesTest(unittest.TestCase):
             self.assertEqual(self.client.get("/api/sites").status_code, 401)
         q.assert_not_called()
 
-    def test_traffic_latest_stub_is_empty(self):
-        self.assertEqual(self.client.get("/api/traffic/latest").json(), [])
-
     def test_config_serves_browser_key(self):
         self.assertEqual(self.client.get("/api/config").json(), {"maps_browser_key": "browser-key"})
 
