@@ -1,0 +1,302 @@
+/* Traffic vs rain (Screen 3). Tokens only; data colours come from --series-* (theme/palette.ts). */
+
+.rain-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .rain-grid {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+.rain-grid .widget {
+  margin-bottom: 0;
+}
+
+/* Controls */
+
+.rain-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.rain-segment {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.rain-segment:hover {
+  color: var(--ink-1);
+}
+
+.rain-segment.selected {
+  background: var(--surface-1);
+  color: var(--ink-1);
+  box-shadow: var(--shadow-1);
+}
+
+.rain-segment input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rain-segment:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.rain-select select {
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  font-size: var(--text-sm);
+}
+
+/* Captions, legend, states */
+
+.rain-caption {
+  max-width: 68ch;
+  margin: 0 0 var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.rain-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.rain-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rain-legend-scale {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.rain-empty {
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.rain-loading {
+  min-height: 12rem;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.rain-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--state-error-surface);
+  color: var(--state-error);
+}
+
+/* Dot pairs */
+
+.rain-sites,
+.rain-legs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rain-site {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.rain-site-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.rain-site-city {
+  color: var(--ink-1);
+  font-weight: var(--weight-semibold);
+}
+
+.rain-site-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rain-leg {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) 13rem;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-height: 2rem;
+}
+
+.rain-leg-name {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.rain-track {
+  position: relative;
+  height: 1.25rem;
+  margin: 0 var(--space-2);
+}
+
+.rain-track::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--surface-sunken);
+}
+
+.rain-span {
+  position: absolute;
+  top: calc(50% - 1px);
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.rain-dot {
+  position: absolute;
+  top: 50%;
+  width: var(--space-3);
+  height: var(--space-3);
+  border: 2px solid var(--surface-1);
+  border-radius: var(--radius-pill);
+  transform: translate(-50%, -50%);
+}
+
+.rain-dot.static {
+  position: static;
+  display: inline-block;
+  transform: none;
+}
+
+.rain-dot.dry {
+  background: var(--series-dry);
+}
+
+.rain-dot.rain {
+  background: var(--series-rain);
+}
+
+.rain-leg-values {
+  display: grid;
+  justify-items: end;
+  line-height: var(--leading-tight);
+}
+
+.rain-effect {
+  color: var(--ink-1);
+  font-weight: var(--weight-semibold);
+}
+
+.rain-leg-detail {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.rain-thin-flag {
+  grid-column: 2 / -1;
+  justify-self: start;
+  margin: 0 var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--state-warning-border);
+  border-radius: var(--radius-pill);
+  background: var(--state-warning-surface);
+  color: var(--state-warning);
+  font-size: var(--text-xs);
+}
+
+/* A thin rain sample stays readable but steps back: hollow rain dot, muted figures. */
+.rain-leg.thin .rain-dot.rain {
+  background: var(--surface-1);
+  border-color: var(--series-rain);
+}
+
+.rain-leg.thin .rain-effect {
+  color: var(--ink-2);
+  font-weight: var(--weight-regular);
+}
+
+@media (max-width: 767px) {
+  .page-actions .rain-segmented,
+  .page-actions .rain-select,
+  .page-actions .rain-select select {
+    width: 100%;
+  }
+
+  .rain-segment {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .rain-leg {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-1) 0;
+  }
+
+  .rain-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0 var(--space-2);
+  }
+
+  .rain-thin-flag {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .rain-legend-scale {
+    margin-left: 0;
+  }
+}
