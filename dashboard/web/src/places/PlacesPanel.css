@@ -17,8 +17,27 @@
 }
 
 .review-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--rating-star);
+}
+
+.review-stars-none {
   color: var(--ink-2);
-  letter-spacing: 0.05em;
+}
+
+.star {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.star-empty {
+  fill: none;
 }
 
 .reviews {

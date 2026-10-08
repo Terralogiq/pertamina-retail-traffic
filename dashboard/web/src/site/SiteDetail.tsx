@@ -11,9 +11,12 @@ import { formatDelay, legLabel, tzLabel } from "../traffic/model";
 import { WeatherPanel } from "../weather";
 import type { WeatherLatest } from "../weather/api";
 import type { PlacesResponse } from "../places/api";
-import { Section } from "./Section";
+import { Section, Skeleton } from "./Section";
 import { Load, isReady, useSiteData } from "./useSiteData";
 import "./SiteDetail.css";
+
+/** Height of the placeholder shown while /api/sites resolves, before any panel mounts. */
+const SITE_LOADING_HEIGHT = 480;
 
 const SECTIONS = [
   { id: "traffic", label: "Traffic" },
@@ -134,24 +137,28 @@ export function SiteDetail() {
         <div className="site-context">
           {isReady(site) && <p>{siteContext(site)}</p>}
           {site instanceof Error && <p role="alert">Couldn't load the site. {site.message}</p>}
-          <StatusStrip legs={legs} weather={weather} places={places} />
+          {!(site instanceof Error) && <StatusStrip legs={legs} weather={weather} places={places} />}
         </div>
       }
       actions={<SiteNav />}
     >
-      <div className="page-grid site-grid">
-        <div className="span-8 site-column">
-          <Section id="map" title="Road segments" note="Approach and departure legs on the SPBU side, coloured by current state">
-            <SiteMap siteId={siteId} />
-          </Section>
-          <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} />
-          <TrafficPattern siteId={siteId} timezone={timezone} />
+      {/* Panels mount only once the site exists, so an unknown or failed lookup fires no panel request. */}
+      {site === undefined && <Skeleton height={SITE_LOADING_HEIGHT} label="Loading site" />}
+      {isReady(site) && (
+        <div className="page-grid site-grid">
+          <div className="span-8 site-column">
+            <Section id="map" title="Road segments" note="Approach and departure legs on the SPBU side, coloured by current state">
+              <SiteMap siteId={siteId} />
+            </Section>
+            <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} />
+            <TrafficPattern siteId={siteId} timezone={timezone} />
+          </div>
+          <div className="span-4 site-column">
+            <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />
+            <PlacesPanel data={places} />
+          </div>
         </div>
-        <div className="span-4 site-column">
-          <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />
-          <PlacesPanel data={places} />
-        </div>
-      </div>
+      )}
     </Page>
   );
 }

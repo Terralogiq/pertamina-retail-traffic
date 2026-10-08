@@ -7,11 +7,10 @@ export const POI_RADII = [500, 1000, 3000];
 
 export const radiusLabel = (m: number) => (m % 1000 === 0 ? `${m / 1000} km` : `${m} m`);
 
-/** "★★★★☆" for a 1-5 rating; "n/a" when missing. */
-export function stars(rating: number | null | undefined): string {
-  if (rating == null) return "n/a";
-  const n = Math.max(0, Math.min(5, Math.round(rating)));
-  return "★".repeat(n) + "☆".repeat(5 - n);
+/** Filled stars (0-5) for a 1-5 rating, rounded to whole stars; null when missing. */
+export function starCount(rating: number | null | undefined): number | null {
+  if (rating == null) return null;
+  return Math.max(0, Math.min(5, Math.round(rating)));
 }
 
 /** "2026-09-20": the calendar day in UTC (locale-independent). Empty string when missing. */

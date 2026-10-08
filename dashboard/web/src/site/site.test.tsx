@@ -1,9 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { LatestLeg, Site } from "../map/api";
 import { BASELINE_FULL, legBand } from "../map/bands";
 import { BANDS } from "../theme/palette";
 import { StatusStrip, baselineNotice, siteContext } from "./SiteDetail";
+import { loadSiteData, siteApi } from "./useSiteData";
 
 const site: Site = {
   site_id: "74.902.22",
@@ -68,5 +69,46 @@ describe("legBand", () => {
       band: "free",
       basis: "congestion",
     });
+  });
+});
+
+describe("loadSiteData", () => {
+  const fakeApi = (sites: Site[] | Error) => ({
+    getSites: vi.fn(() => (sites instanceof Error ? Promise.reject(sites) : Promise.resolve(sites))),
+    getLatestTraffic: vi.fn(() => Promise.resolve([leg("approach")])),
+    getWeatherLatest: vi.fn(() => Promise.resolve([])),
+    getPlaces: vi.fn(() => Promise.resolve(null as never)),
+  }) satisfies typeof siteApi;
+  const run = async (siteId: string, api: ReturnType<typeof fakeApi>) => {
+    const got: Record<string, unknown> = {};
+    await loadSiteData(siteId, (key) => (v) => void (got[key] = v), api);
+    await new Promise((r) => setTimeout(r)); // let the panel requests settle
+    return got;
+  };
+
+  it("fires no traffic, weather or Places request for an unknown code", async () => {
+    const api = fakeApi([site]);
+    expect(await run("nope", api)).toEqual({ site: null });
+    expect(api.getSites).toHaveBeenCalledTimes(1);
+    expect(api.getLatestTraffic).not.toHaveBeenCalled();
+    expect(api.getWeatherLatest).not.toHaveBeenCalled();
+    expect(api.getPlaces).not.toHaveBeenCalled();
+  });
+
+  it("fires no panel request when /api/sites fails, and reports the error", async () => {
+    const api = fakeApi(new Error("down"));
+    const got = await run(site.site_id, api);
+    expect(got.site).toBeInstanceOf(Error);
+    expect(api.getLatestTraffic).not.toHaveBeenCalled();
+    expect(api.getPlaces).not.toHaveBeenCalled();
+  });
+
+  it("starts the panel requests once the site exists", async () => {
+    const api = fakeApi([site]);
+    const got = await run(site.site_id, api);
+    expect(got.site).toEqual(site);
+    expect(got.legs).toHaveLength(1);
+    expect(api.getWeatherLatest).toHaveBeenCalledTimes(1);
+    expect(api.getPlaces).toHaveBeenCalledWith(site.site_id);
   });
 });

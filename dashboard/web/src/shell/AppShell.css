@@ -1,6 +1,11 @@
+:root {
+  --shell-picker-width: 20rem;
+  --shell-picker-height: 2.5rem;
+}
+
 .shell {
   display: grid;
-  grid-template-rows: var(--shell-header-height) 1fr var(--shell-footer-height);
+  grid-template-rows: auto 1fr var(--shell-footer-height);
   min-height: 100dvh;
 }
 
@@ -11,6 +16,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-6);
+  height: var(--shell-header-height);
   padding: 0 var(--page-gutter);
   background: var(--surface-1);
   border-bottom: 1px solid var(--border);
@@ -69,6 +75,27 @@
 .shell-nav-link.active {
   color: var(--ink-1);
   border-bottom-color: var(--brand-primary);
+}
+
+/* Site picker: navigation only, pushed to the end of the header row. */
+.shell-picker {
+  margin-left: auto;
+  min-width: 0;
+}
+
+.shell-picker-select {
+  width: var(--shell-picker-width);
+  max-width: 100%;
+  min-height: var(--shell-picker-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  font-size: var(--text-sm);
+}
+
+.shell-picker-select:disabled {
+  color: var(--ink-2);
 }
 
 .shell-main {
@@ -164,8 +191,31 @@
 }
 
 @media (max-width: 767px) {
+  /* Logo and nav keep the first row; the picker takes a full-width row under them. */
   .shell-header {
-    gap: var(--space-4);
+    flex-wrap: wrap;
+    height: auto;
+    gap: 0 var(--space-4);
+  }
+
+  .shell-home,
+  .shell-nav {
+    min-height: var(--shell-header-height);
+  }
+
+  .shell-home {
+    display: flex;
+    align-items: center;
+  }
+
+  .shell-picker {
+    flex: 1 0 100%;
+    margin-left: 0;
+    padding-bottom: var(--space-3);
+  }
+
+  .shell-picker-select {
+    width: 100%;
   }
 
   .shell-header .wordmark-product {

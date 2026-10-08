@@ -34,5 +34,14 @@ export interface LatestLeg {
   baseline_samples: number | null;
 }
 
-export const getSites = () => getJson<Site[]>("/api/sites");
+let sitesRequest: Promise<Site[]> | null = null;
+
+/** The site list changes rarely: one request is shared by the nav picker, the overview and the site pages. A failure is not kept, so the next call retries. */
+export function getSites(): Promise<Site[]> {
+  sitesRequest ??= getJson<Site[]>("/api/sites").catch((e) => {
+    sitesRequest = null;
+    throw e;
+  });
+  return sitesRequest;
+}
 export const getLatestTraffic = () => getJson<LatestLeg[]>("/api/traffic/latest");

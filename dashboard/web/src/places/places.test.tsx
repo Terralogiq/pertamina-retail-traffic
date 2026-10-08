@@ -11,9 +11,10 @@ import {
   latestReviews,
   poiRows,
   radiusLabel,
-  stars,
+  starCount,
   totalLabel,
 } from "./model";
+import { Stars } from "./Stars";
 import { Competitors, OpeningHours, PlaceSummary, PoiTable } from "./PlacesPanel";
 
 const review = (day: number, author: string): PlaceReview => ({
@@ -56,10 +57,11 @@ const data: PlacesResponse = {
 };
 
 describe("helpers", () => {
-  it("stars", () => {
-    expect(stars(4)).toBe("★★★★☆");
-    expect(stars(4.6)).toBe("★★★★★");
-    expect(stars(null)).toBe("n/a");
+  it("star count rounds to whole stars within 0-5", () => {
+    expect(starCount(4)).toBe(4);
+    expect(starCount(4.6)).toBe(5);
+    expect(starCount(7)).toBe(5);
+    expect(starCount(null)).toBeNull();
   });
 
   it("formatDate is the UTC calendar day", () => {
@@ -132,8 +134,26 @@ describe("readable copy", () => {
 describe("panels", () => {
   it("summary shows rating, count, author, stars, date and text, and no demo badge", () => {
     const html = renderToStaticMarkup(<PlaceSummary details={data.details!} />);
-    for (const s of ["4.4", "1,655", "Sari", "2026-09-20", "text Sari", "★★★★☆"]) expect(html).toContain(s);
+    for (const s of ["4.4", "1,655", "Sari", "2026-09-20", "text Sari"]) expect(html).toContain(s);
     expect(html).not.toContain("demo-only");
+  });
+
+  it("review stars are SVGs with a text label; the aggregate's are hidden next to the number", () => {
+    const count = (html: string, needle: string) => html.split(needle).length - 1;
+    const one = renderToStaticMarkup(<Stars rating={4} />);
+    expect(one).toContain('role="img" aria-label="4 of 5 stars"');
+    expect(count(one, "<svg")).toBe(5);
+    expect(count(one, "star-filled")).toBe(4);
+    expect(count(one, "star-empty")).toBe(1);
+    expect(count(one, 'aria-hidden="true"')).toBe(5);
+    expect(one).not.toMatch(/[★☆]/);
+    const hidden = renderToStaticMarkup(<Stars rating={4.4} decorative />);
+    expect(hidden).toContain('<span class="review-stars" aria-hidden="true">');
+    expect(hidden).not.toContain("aria-label");
+    expect(renderToStaticMarkup(<Stars rating={null} />)).not.toContain("<svg");
+    const html = renderToStaticMarkup(<PlaceSummary details={data.details!} />);
+    expect(count(html, 'aria-label="4 of 5 stars"')).toBe(2); // the two reviews
+    expect(count(html, "<svg")).toBe(15); // two reviews + the aggregate
   });
 
   it("hours list every weekday line", () => {

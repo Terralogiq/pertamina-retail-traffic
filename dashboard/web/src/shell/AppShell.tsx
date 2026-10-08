@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { PRODUCT_NAME, Wordmark } from "../theme/Wordmark";
+import { SitePicker, siteIdFromPath, useSiteList } from "./SitePicker";
 import "./AppShell.css";
 
 /** Site pages sit under the overview: Overview stays highlighted there (aria-current="true", not "page"). */
@@ -15,6 +16,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const sites = useSiteList();
   return (
     <div className="shell">
       <header className="shell-header">
@@ -36,6 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <SitePicker sites={sites} currentId={siteIdFromPath(pathname)} />
       </header>
       <main className="shell-main">{children}</main>
       <footer className="shell-footer">by Terralogiq</footer>

@@ -2,7 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { SiteDetail } from "../site";
+import type { Site } from "../map/api";
 import { AppShell, Page } from "./AppShell";
+import { SitePicker, siteIdFromPath, siteOptionLabel, sortSites } from "./SitePicker";
 
 const count = (html: string, needle: string) => html.split(needle).length - 1;
 
@@ -67,5 +69,66 @@ describe("Page", () => {
 
   it("titles the site page from the route", () => {
     expect(renderAt("/site/x")).toContain("<h1>Site x</h1>");
+  });
+});
+
+const site = (site_id: string, name: string, city: string | null): Site => ({
+  site_id,
+  name,
+  place_id: "p",
+  road_name: null,
+  city,
+  timezone: "Asia/Jakarta",
+  location: { lat: 0, lng: 0 },
+  legs: [],
+});
+const SITES = [site("c", "SPBU B", "Medan"), site("a", "SPBU Z", "Bandar Lampung"), site("b", "SPBU A", "Medan"), site("d", "SPBU Q", null)];
+
+function renderPicker(sites: Site[] | null | undefined, currentId: string) {
+  return renderToStaticMarkup(
+    <MemoryRouter>
+      <SitePicker sites={sites} currentId={currentId} />
+    </MemoryRouter>,
+  );
+}
+
+describe("SitePicker", () => {
+  it("is in the shell header with a label, disabled while sites load", () => {
+    const html = renderAt("/");
+    expect(html).toMatch(/<label [^>]*for="site-picker"[^>]*>Site<\/label>/);
+    expect(html).toMatch(/<select [^>]*id="site-picker"[^>]*disabled/);
+    expect(html).toContain("Loading sites…");
+    expect(count(html, 'aria-current="page"')).toBe(1);
+  });
+
+  it("sorts by city then name, sites without a city last, and labels options name · city", () => {
+    expect(sortSites(SITES).map((s) => s.site_id)).toEqual(["a", "b", "c", "d"]);
+    expect(siteOptionLabel(SITES[0])).toBe("SPBU B · Medan");
+    expect(siteOptionLabel(SITES[3])).toBe("SPBU Q");
+  });
+
+  it("selects the current site on a site page", () => {
+    const html = renderPicker(sortSites(SITES), "b");
+    expect(html).toMatch(/<option value="b" selected="">SPBU A · Medan<\/option>/);
+    expect(html).not.toContain("disabled=\"\" selected");
+    expect(count(html, "<option")).toBe(5);
+  });
+
+  it("shows the placeholder elsewhere and for an unknown code", () => {
+    for (const id of ["", "nope"]) {
+      const html = renderPicker(sortSites(SITES), id);
+      expect(html).toMatch(/<option value="" disabled="" selected="">Go to site…<\/option>/);
+      expect(html).not.toMatch(/<select [^>]*disabled/);
+    }
+  });
+
+  it("renders nothing when /api/sites failed", () => {
+    expect(renderPicker(null, "")).toBe("");
+  });
+
+  it("reads the site code from the path", () => {
+    expect(siteIdFromPath("/site/74.902.22")).toBe("74.902.22");
+    expect(siteIdFromPath("/site/a%20b/")).toBe("a b");
+    expect(siteIdFromPath("/rain")).toBe("");
   });
 });

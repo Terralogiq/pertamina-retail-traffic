@@ -33,6 +33,7 @@
   --state-warning-surface: #fff3cd;
   --state-warning-border: #e0c36a;
   --state-info-surface: color-mix(in srgb, var(--brand-primary) 7%, white);
+  --rating-star: #b87300; /* graphic-only, 3.8:1 on white */
   --focus-ring: var(--brand-primary);
   --selection: color-mix(in srgb, var(--brand-primary) 16%, white);
 

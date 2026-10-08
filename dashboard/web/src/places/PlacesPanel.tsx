@@ -15,9 +15,9 @@ import {
   poiRows,
   radiusLabel,
   relativeDate,
-  stars,
   totalLabel,
 } from "./model";
+import { Stars } from "./Stars";
 import "./PlacesPanel.css";
 
 /** Height of the loaded Places section, so the skeleton matches what loads into it. */
@@ -31,9 +31,7 @@ function Review({ review }: { review: PlaceReview }) {
     <li className="review">
       <p className="review-meta">
         <span className="review-author">{review.author_name ?? "Anonymous"}</span>
-        <span className="review-stars" aria-label={review.rating == null ? "No rating" : `${review.rating} of 5 stars`}>
-          {stars(review.rating)}
-        </span>
+        <Stars rating={review.rating} />
         {review.publish_time && (
           <time dateTime={review.publish_time} title={formatDate(review.publish_time)}>
             {relativeDate(review.publish_time)}
@@ -60,9 +58,7 @@ export function PlaceSummary({ details }: { details: PlaceDetails }) {
     <Block title="Rating and reviews" aside={status}>
       <p className="rating">
         <span className="rating-value num">{details.rating == null ? "n/a" : details.rating.toFixed(1)}</span>
-        <span className="review-stars" aria-hidden="true">
-          {stars(details.rating)}
-        </span>
+        <Stars rating={details.rating} decorative />
         <span className="rating-count">
           {details.user_rating_count == null ? "n/a" : details.user_rating_count.toLocaleString("en-US")} ratings
         </span>
