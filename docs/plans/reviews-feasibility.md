@@ -20,6 +20,7 @@ Bead pertamina-retail-traffic-907.10.5. Research date 2026-10-08. Documentation 
 
 - Legacy still documents `reviews_sort` = `most_relevant` (default) or `newest`, up to 5 reviews ([legacy details](https://developers.google.com/maps/documentation/places/web-service/legacy/details)).
 - Status: "As of October 2026, Places API (Legacy) can no longer be enabled for new Google Cloud projects. Existing projects remain fully supported" ([choose-api](https://developers.google.com/maps/documentation/places/web-service/choose-api)). No discontinuation date found ([deprecations](https://developers.google.com/maps/deprecations) names none).
+- Legacy since 1 March 2025: "not available in new Cloud projects but remain fully supported for existing projects"; no shutdown date, at least 12 months' notice ([legacy](https://developers.google.com/maps/legacy)). `demogcp-terra2021` (created 2021) has `places-backend` ENABLED; `gcp-coe-sandbox` and `demogmp-terra2025` do not.
 - Our project: `gcloud services list --enabled` on `gcp-coe-sandbox` shows `places.googleapis.com` and `areainsights.googleapis.com`, not `places-backend.googleapis.com` (legacy). `--available` lists legacy as DISABLED, so it is listed, but whether enabling still succeeds after the October 2026 cutoff is unverified. Enabling is a mutating call and was not attempted. Treat the newest-sort poll as unavailable until the orchestrator decides to test enabling.
 - Billing assumption: use the New-API price ($40 per 1,000) as the upper bound. The legacy SKU list (Atmosphere Data $5 per 1,000) "only applies to customers that have a signed order form" ([legacy SKU pricing](https://developers.google.com/maps/billing-and-pricing/legacy-sku-pricing)), which we do not have.
 
@@ -53,7 +54,7 @@ Bead pertamina-retail-traffic-907.10.5. Research date 2026-10-08. Documentation 
 | Option | 12-month coverage | Cost | Access needed | Effort | Risk |
 |---|---|---|---|---|---|
 | Places New, today | No: 5 relevance-sorted per site, about 50 total, 2023 to 2026 | $40 per 1,000 calls; 10 calls inside free cap | None, already working | Done | Anecdotal only; keep as a sample |
-| Legacy Details `newest`, polled | Forward only; 5 per poll, overflows at big sites | About $0 to $8 per month | Legacy API enabled in project (DISABLED now; may be blocked after Oct 2026) | Low if enabling works | Platform in legacy status; unverified |
+| Legacy Details `newest`, polled | Forward only; 5 per poll, overflows at big sites | About $0 to $8 per month | Legacy API enabled: not in `gcp-coe-sandbox`; ENABLED in `demogcp-terra2021` (tested 2026-10-08) | Low if enabling works | Platform in legacy status; unverified |
 | GBP API `reviews.list` | Yes, full history, with replies | Free | Owner or manager on each listing; approved GBP project (60+ day verified profile, website); Pertamina or dealer grant | Medium: approval wait plus OAuth, small client | Ownership may sit with dealers; 30-day storage rule, store derived labels only |
 | Pertamina 135 export | Yes if they provide 12 months, by SPBU | Free | Pertamina data release | Low for us, unknown for them | Different population (direct complainants); personal data |
 | Third-party scraper APIs | Technically yes | Per-call fees | None | Low | Violates Maps ToS; litigation; excluded |
