@@ -87,3 +87,25 @@ Asks:
 - Can legacy Places still be enabled on `gcp-coe-sandbox`? Orchestrator decision; not tested.
 - Real monthly review rate per site (unmeasured; two-week poll or GBP `totalReviewCount` over time would settle it).
 - Will Pertamina release a 135 export, and at what granularity?
+
+## Test: legacy Place Details on `demogcp-terra2021` (2026-10-08)
+
+Six calls (secret `maps-api-key`), raw responses in `out/reviews_test/2026-10-08/` (git-ignored). `reviews_no_translations=true`.
+
+| Site | Variant | Reviews | New vs earlier variants | Dates | Stars |
+|---|---|---|---|---|---|
+| 24.351.34 (urban, 1,168 ratings) | `newest`, id | 5 | 5 | 2026-09-05 → 2026-10-06 | 1★×2, 2★, 3★, 4★ |
+| | `most_relevant`, id | 5 | 4 | 2026-04-17 → 2026-09-05 | 1★×4, 2★ |
+| | `most_relevant`, en | 5 | 5 | 2019-06-15 → 2026-01-16 | 4★×2, 5★×3 |
+| | **distinct** | **14** | | | 1★×6, 2★, 3★, 4★×3, 5★×3; 13 with text |
+| KM57A (toll rest area, 12,111 ratings) | `newest`, id | 5 | 5 | 2026-10-06 → 2026-10-08 | 5★×5 |
+| | `most_relevant`, id | 5 | 5 | 2023-01-22 → 2026-06-28 | 5★×5 |
+| | `most_relevant`, en | 5 | 5 | 2017-06-24 → 2026-07-26 | 3★, 5★×4 |
+| | **distinct** | **15** | | | 3★, 5★×14; 11 with text |
+
+Findings:
+- **The legacy API works from `demogcp-terra2021`.**
+- **`language` changes the set:** `en` returns English-written reviews, a different set from `id` (no overlap at either site). Each extra language is up to 5 more reviews.
+- **`newest` covers about a month at the urban site** (5 reviews in 31 days), so a daily or even weekly poll catches every new review there. **At KM57A, 5 newest span 2 days** (about 2.5 per day): a daily poll keeps up on an average day and misses some on busy days; twice a day is safer.
+- **Snapshot ceiling: about 15 distinct reviews per site today** (newest + relevant id + relevant en), roughly 150 for 10 SPBU. A 12-month backfill still needs the Business Profile API or the 135 export.
+- **Mix differs by window:** the urban site's `most_relevant` (id) window is mostly 1★ complaints, `newest` is mixed, and `en` is mostly positive. Sampling all windows avoids a biased picture.
