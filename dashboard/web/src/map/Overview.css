@@ -274,6 +274,7 @@
 }
 
 .site-rows {
+  position: relative; /* contains the visually hidden demo-marker text, which otherwise extends the page scroll */
   flex: 1;
   min-height: 0;
   margin: 0;

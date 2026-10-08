@@ -15,6 +15,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  min-width: 0; /* grid item: don't grow to the select's longest option */
   display: flex;
   align-items: center;
   gap: var(--space-6);
@@ -177,6 +178,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-grid {
