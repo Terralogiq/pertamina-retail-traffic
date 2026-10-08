@@ -1,6 +1,8 @@
 :root {
-  --shell-picker-width: 20rem;
+  --shell-picker-width: 24rem;
   --shell-picker-height: 2.5rem;
+  /* Below 768 px the picker takes its own row: logo/nav row + picker row + its bottom padding. */
+  --shell-header-height-mobile: calc(var(--shell-header-height) + var(--shell-picker-height) + var(--space-3));
 }
 
 .shell {
@@ -77,15 +79,30 @@
   border-bottom-color: var(--brand-primary);
 }
 
-/* Site picker: navigation only, pushed to the end of the header row. */
+/* Site picker: a small form (label, select, Go), pushed to the end of the header row. */
 .shell-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-left: auto;
   min-width: 0;
 }
 
+.shell-picker-label {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.shell-picker-go {
+  min-height: var(--shell-picker-height);
+  font-size: var(--text-sm);
+}
+
 .shell-picker-select {
-  width: var(--shell-picker-width);
-  max-width: 100%;
+  flex: 0 1 var(--shell-picker-width);
+  min-width: 0;
+  text-overflow: ellipsis;
   min-height: var(--shell-picker-height);
   padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
@@ -215,7 +232,7 @@
   }
 
   .shell-picker-select {
-    width: 100%;
+    flex: 1 1 auto;
   }
 
   .shell-header .wordmark-product {
@@ -240,6 +257,6 @@
 
   .page-fill {
     height: auto;
-    min-height: calc(100dvh - var(--shell-header-height) - var(--shell-footer-height));
+    min-height: calc(100dvh - var(--shell-header-height-mobile) - var(--shell-footer-height));
   }
 }

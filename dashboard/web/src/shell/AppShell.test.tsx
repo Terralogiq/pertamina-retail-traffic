@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { SiteDetail } from "../site";
 import type { Site } from "../map/api";
 import { AppShell, Page } from "./AppShell";
-import { SitePicker, siteIdFromPath, siteOptionLabel, sortSites } from "./SitePicker";
+import { SitePicker, shortSiteLabel, siteOptionLabel, sortSites } from "./SitePicker";
 
 const count = (html: string, needle: string) => html.split(needle).length - 1;
 
@@ -109,7 +109,7 @@ describe("SitePicker", () => {
 
   it("selects the current site on a site page", () => {
     const html = renderPicker(sortSites(SITES), "b");
-    expect(html).toMatch(/<option value="b" selected="">SPBU A · Medan<\/option>/);
+    expect(html).toMatch(/<option value="b" title="SPBU A · Medan" selected="">A · Medan<\/option>/);
     expect(html).not.toContain("disabled=\"\" selected");
     expect(count(html, "<option")).toBe(5);
   });
@@ -126,9 +126,37 @@ describe("SitePicker", () => {
     expect(renderPicker(null, "")).toBe("");
   });
 
-  it("reads the site code from the path", () => {
-    expect(siteIdFromPath("/site/74.902.22")).toBe("74.902.22");
-    expect(siteIdFromPath("/site/a%20b/")).toBe("a b");
-    expect(siteIdFromPath("/rain")).toBe("");
+  it("is a form: a visible Site label, a select that only changes local state, and a Go button", () => {
+    const html = renderPicker(sortSites(SITES), "");
+    expect(html).toMatch(/^<form class="shell-picker">/);
+    expect(html).toMatch(/<label [^>]*for="site-picker"[^>]*>Site<\/label>/);
+    expect(html).not.toMatch(/<label [^>]*visually-hidden/);
+    expect(html).toMatch(/<button type="submit"[^>]*>Go<\/button>/);
+  });
+
+  it("does not throw on a malformed site code in the path", () => {
+    expect(() => renderAt("/site/%E0")).not.toThrow();
+    expect(() => renderAt("/site/%")).not.toThrow();
+  });
+});
+
+describe("shortSiteLabel", () => {
+  const named = (name: string, city: string | null) => shortSiteLabel(site("x", name, city));
+
+  it("drops the SPBU Pertamina prefix and a trailing repeat of the city", () => {
+    expect(named("SPBU Pertamina 61.761.03 - MT Haryono Balikpapan", "Balikpapan")).toBe("61.761.03 - MT Haryono · Balikpapan");
+    expect(named("SPBU 34.121.03", "Jakarta Selatan")).toBe("34.121.03 · Jakarta Selatan");
+    expect(named("spbu pertamina KM57A, Karawang", "karawang")).toBe("KM57A · karawang");
+  });
+
+  it("keeps a name that holds no prefix or city, and omits a missing city", () => {
+    expect(named("Pertamina Tirtayasa", "Bandar Lampung")).toBe("Pertamina Tirtayasa · Bandar Lampung");
+    expect(named("SPBU Pertamina 24.351.97", null)).toBe("24.351.97");
+  });
+
+  it("never returns an empty name", () => {
+    expect(named("SPBU", "Medan")).toBe("SPBU · Medan");
+    expect(named("Medan", "Medan")).toBe("Medan · Medan");
+    expect(named("SPBUKU Medan", "Medan")).toBe("SPBUKU · Medan");
   });
 });

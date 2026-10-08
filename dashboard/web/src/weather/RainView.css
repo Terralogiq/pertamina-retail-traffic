@@ -77,6 +77,18 @@
   outline-offset: 1px;
 }
 
+.rain-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rain-select-label {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
 .rain-select select {
   min-height: var(--rain-select-height);
   max-width: 100%;
@@ -287,9 +299,13 @@
 
 @media (max-width: 767px) {
   .page-actions .rain-segmented,
-  .page-actions .rain-select,
-  .page-actions .rain-select select {
+  .page-actions .rain-select {
     width: 100%;
+  }
+
+  .page-actions .rain-select select {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .rain-segment {

@@ -261,7 +261,7 @@ export function RainView() {
       actions={
         <>
           <label className="rain-select">
-            <span className="visually-hidden">Site</span>
+            <span className="rain-select-label">Filter rows</span>
             <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
               <option value="">All sites</option>
               {sites.map((s) => (

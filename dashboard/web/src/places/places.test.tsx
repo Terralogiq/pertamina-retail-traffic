@@ -151,9 +151,18 @@ describe("panels", () => {
     expect(hidden).toContain('<span class="review-stars" aria-hidden="true">');
     expect(hidden).not.toContain("aria-label");
     expect(renderToStaticMarkup(<Stars rating={null} />)).not.toContain("<svg");
+    expect(renderToStaticMarkup(<Stars rating={null} decorative />)).toBe("");
     const html = renderToStaticMarkup(<PlaceSummary details={data.details!} />);
     expect(count(html, 'aria-label="4 of 5 stars"')).toBe(2); // the two reviews
     expect(count(html, "<svg")).toBe(15); // two reviews + the aggregate
+  });
+
+  it("a missing rating prints n/a once, and a present one is read out of 5", () => {
+    const count = (html: string, needle: string) => html.split(needle).length - 1;
+    const none = renderToStaticMarkup(<PlaceSummary details={{ ...data.details!, rating: null }} />);
+    expect(count(none, ">n/a<")).toBe(1);
+    expect(none).not.toContain("out of 5");
+    expect(renderToStaticMarkup(<PlaceSummary details={data.details!} />)).toContain('<span class="visually-hidden"> out of 5</span>');
   });
 
   it("hours list every weekday line", () => {

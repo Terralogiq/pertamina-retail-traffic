@@ -10,6 +10,12 @@
   scroll-margin-top: calc(var(--shell-header-height) + var(--space-4));
 }
 
+@media (max-width: 767px) {
+  .site-section {
+    scroll-margin-top: calc(var(--shell-header-height-mobile) + var(--space-4));
+  }
+}
+
 .site-section-head {
   display: flex;
   flex-wrap: wrap;

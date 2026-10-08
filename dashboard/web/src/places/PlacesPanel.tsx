@@ -58,6 +58,7 @@ export function PlaceSummary({ details }: { details: PlaceDetails }) {
     <Block title="Rating and reviews" aside={status}>
       <p className="rating">
         <span className="rating-value num">{details.rating == null ? "n/a" : details.rating.toFixed(1)}</span>
+        {details.rating != null && <span className="visually-hidden"> out of 5</span>}
         <Stars rating={details.rating} decorative />
         <span className="rating-count">
           {details.user_rating_count == null ? "n/a" : details.user_rating_count.toLocaleString("en-US")} ratings

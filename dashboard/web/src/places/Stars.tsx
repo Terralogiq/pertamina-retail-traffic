@@ -6,11 +6,11 @@ const STAR_PATH = "M12 2.5l2.94 6.1 6.56.9-4.8 4.6 1.2 6.6L12 17.5l-5.9 3.2 1.2-
 
 /**
  * A 1-5 rating as drawn stars: filled, then outline-only (the shape tells filled from empty, so colour is
- * not the only signal). Reads as "4 of 5 stars" to a screen reader; `decorative` hides it when the number is next to it.
+ * not the only signal). Reads as "4 of 5 stars" to a screen reader; `decorative` hides it when the number is next to it (and draws nothing for a missing rating: the number says "n/a").
  */
 export function Stars({ rating, decorative = false }: { rating: number | null | undefined; decorative?: boolean }) {
   const n = starCount(rating);
-  if (n === null) return <span className="review-stars review-stars-none">n/a</span>;
+  if (n === null) return decorative ? null : <span className="review-stars review-stars-none">n/a</span>;
   const a11y = decorative ? { "aria-hidden": true } : { role: "img", "aria-label": `${n} of ${STARS} stars` };
   return (
     <span className="review-stars" {...a11y}>

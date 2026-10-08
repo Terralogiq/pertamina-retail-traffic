@@ -110,7 +110,7 @@ Re-audit for bead `.9.7` on the local build of branch `redesign-polish` against 
 | F12 | fixed | Rain strip under the traffic charts on the same time axis; no dual axis |
 | F13 | fixed | POI table scrolls in its own container with a sticky first column; no page overflow at 390 px |
 | F14 | fixed | Branded login with a label, an announced error and a hidden username field for password managers (`01-login-focus-1440.png`) |
-| F15 | partly | `header`/`nav`/`main`/`h1`/`footer` and consistent nav are done; the site picker is `.9.9` |
+| F15 | fixed | `header`/`nav`/`main`/`h1`/`footer`, consistent nav, and a site picker with a Go button in the header (`.9.9`) |
 | F16 | fixed | "Measured rain (> 0.1 mm)" vs "Google weather condition" (demo-only); no field names in the UI |
 | F17 | fixed | POI types have readable labels and groups; identical opening hours collapse to "Open 24 hours, every day" |
 | F18 | fixed | Segmented controls with `aria-pressed` and a selected style |
@@ -118,7 +118,7 @@ Re-audit for bead `.9.7` on the local build of branch `redesign-polish` against 
 | F20 | fixed | Type scale minimum is 13 px with tabular numbers; the scan found nothing below 12.5 px |
 | F21 | fixed | Reviews clamp to 3 lines with "Show more" and relative dates |
 
-Totals: 18 fixed, 3 partly (F1 → `.9.10`, F9 → `.9.8`, F15 → `.9.9`), 0 open.
+Totals: 19 fixed, 2 partly (F1 → `.9.10`, F9 → `.9.8`), 0 open. (F15 closed by `.9.9`, 2026-10-08.)
 
 Also fixed in `.9.7`:
 - **Error copy:** API errors now read as problem and recovery ("The server had a problem (HTTP 503). Try again in a minute.") instead of a raw request URL.
@@ -131,6 +131,6 @@ New findings:
 
 | # | Sev | Finding | Next |
 |---|---|---|---|
-| N1 | P3 | An unknown site code (`/site/nope`) still fires the traffic, weather and Places requests (404s) before the "Unknown site" page shows | `.9.12` |
-| N2 | P3 | Review star ratings use Unicode ★☆ glyphs, not drawn icons | `.9.13` |
+| N1 | P3 | An unknown site code (`/site/nope`) still fires the traffic, weather and Places requests (404s) before the "Unknown site" page shows | `.9.12` ✓ fixed: no panel request until the site is known |
+| N2 | P3 | Review star ratings use Unicode ★☆ glyphs, not drawn icons | `.9.13` ✓ fixed: SVG stars, "N of 5 stars" |
 | N3 | P3 | At national zoom on a phone, the 6 West Java and Lampung sites remain one group. That follows from the geography; tapping the group zooms in | none |

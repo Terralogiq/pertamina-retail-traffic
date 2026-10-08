@@ -81,7 +81,9 @@ Make the dashboard look and read like a Pertamina Retail product, with the logo,
 | `src/map/` | `.9.4` | Map ID through `/api/config`: one line in `dashboard/api/routers/sites.py` and a step in `scripts/deploy_dashboard.sh`. Adds `legBand()` in `map/bands.ts` for `.9.5` |
 | `src/site/`, `src/traffic/`, `src/weather/{WeatherPanel,EChart,SiteWeather}.tsx`, `src/places/` | `.9.5` | |
 | `src/weather/RainView.tsx` | `.9.6` | |
-| `src/shell/` site picker | `.9.9` | After the fan-out |
+| `src/shell/` site picker (`SitePicker.tsx`, `AppShell.*`), `src/map/api.ts` (shared `getSites`), `src/weather/RainView.tsx` (filter label) | `.9.9` | After the fan-out |
+| `src/site/{useSiteData.ts,SiteDetail.tsx,site.test.tsx}` | `.9.12` | |
+| `src/places/*`, `src/theme/tokens.css` (`--rating-star`) | `.9.13` | |
 | Cross-cutting polish: `src/api.ts`, `src/theme/tokens.css` (reduced motion), `src/map/*`, `src/site/SiteDetail.tsx`, `src/weather/{RainView,WeatherPanel}.tsx`, `src/places/PlacesPanel.tsx`, `src/login/Login.tsx`, `dashboard/api/main.py` (font MIME), `tests/test_dashboard_static.py` | `.9.7` | After `.9.2`–`.9.6`; nothing runs in parallel with it |
 | `README.md`, `docs/plans/*.md` (other than the review doc) | orchestrator | |
 
