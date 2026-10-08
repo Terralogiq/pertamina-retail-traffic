@@ -219,3 +219,10 @@ Approach is slowest 07:00–09:00 and around 17:00 — usually 2–4 min slower 
 - Few, Information Dashboard Design: https://www.theinformationlab.co.uk/community/blog/information-dashboard-design-stephen
 - Knaflic, Storytelling with Data (action titles): https://www.think-cell.com/en/resources/content-hub/how-to-tell-a-better-data-story-one-slide-at-a-time
 - Gigerenzer, absolute vs relative framing and natural frequencies: https://www.thieme-connect.com/products/ejournals/html/10.1055/s-2005-918154
+
+## Decision (user sign-off, 2026-10-08)
+
+- **Bands:** 1.5 / 2.0 / 3.0 × the leg's free-flow time, with a delay gate (Heavy/Jammed only when also ≥ 20 s slower urban, ≥ 30 s toll). Provisional free-flow while the baseline builds: urban 45 km/h, toll 80 km/h.
+- **Colours:** Google-familiar `#1e8e3e` / `#f29900` / `#e8452c` / `#9a1a1a`; band shape and label stay mandatory, amber keeps a dark casing.
+- **Busy hours:** all 24 h; Indonesian public holidays count as weekend days.
+- **Language and data rules:** English now; rankings and the busy-hours list hidden until 7 days of data, the weekday × hour heatmap until 4 weeks, each with a "needs N more days" note.
