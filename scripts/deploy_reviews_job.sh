@@ -187,8 +187,9 @@ else
     echo "$SA_SCHED_EMAIL does not exist: run scripts/deploy_collector.sh first, or use --default-sa" >&2
     exit 1
   fi
+  # The Scheduler body overrides the container args, which needs run.jobs.runWithOverrides (not in run.invoker).
   run gcloud run jobs add-iam-policy-binding "$JOB" \
-    --member="serviceAccount:$SA_SCHED_EMAIL" --role=roles/run.invoker \
+    --member="serviceAccount:$SA_SCHED_EMAIL" --role=roles/run.jobsExecutorWithOverrides \
     --region "$REGION" --format=none "${GC_PROJ[@]}"
 fi
 

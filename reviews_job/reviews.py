@@ -31,7 +31,7 @@ def variant_name(sort, language):
 
 
 def fetch_details(key, place_id, sort, language):
-    """One legacy Place Details call. Returns (result_dict, None) or (None, error_text)."""
+    """One legacy Place Details call. Returns (whole_response_dict, None) or (None, error_text)."""
     query = urlencode({
         "place_id": place_id, "fields": FIELDS, "reviews_no_translations": "true",
         "reviews_sort": sort, "language": language, "key": key,
@@ -45,16 +45,20 @@ def fetch_details(key, place_id, sort, language):
     if status != "OK":
         msg = f"status {status}: {data.get('error_message', '')}".strip()
         return None, msg.replace(key, "***")
-    return data.get("result") or {}, None
+    return data, None
 
 
 def review_key(place_id, review):
-    """Stable id of one review: hash of place, author (profile URL, else name) and publish time.
+    """Stable id of one review: hash of place and author profile URL (one review per author per place).
 
-    Rating and text are left out on purpose: reviews are editable, and an edit must not create a new row.
+    Without a profile URL, falls back to place, author name and publish time. Rating, text and time are left
+    out of the URL form on purpose: reviews are editable, and an edit must not create a new row.
     """
-    author = review.get("author_url") or review.get("author_name") or ""
-    return hashlib.sha256(f"{place_id}|{author}|{review.get('time')}".encode()).hexdigest()
+    if review.get("author_url"):
+        basis = f"{place_id}|{review['author_url']}"
+    else:
+        basis = f"{place_id}|{review.get('author_name') or ''}|{review.get('time')}"
+    return hashlib.sha256(basis.encode()).hexdigest()
 
 
 def _iso_epoch(seconds):
@@ -81,12 +85,15 @@ def review_row(site, review, variant, fetched_iso):
     }
 
 
-def snapshot_row(site, mode, variant, result, run_id, fetched_iso):
+def snapshot_row(site, mode, variant, response, run_id, fetched_iso):
+    """One place_review_snapshots staging row from the whole API response (raw)."""
+    result = response.get("result") or {}
     reviews = result.get("reviews") or []
     return {
         "run_id": run_id, "site_id": site["site_id"], "mode": mode, "variant": variant,
         "fetched_at": fetched_iso, "user_ratings_total": result.get("user_ratings_total"),
         "rating": result.get("rating"), "n_reviews": len(reviews),
+        "raw": json.dumps(response, ensure_ascii=False),
     }
 
 
@@ -111,12 +118,12 @@ def poll_site(key, site, mode, run_id, fetched_iso):
     variants = MODES[mode]
     for sort, language in variants:
         variant = variant_name(sort, language)
-        result, err = fetch_details(key, site["place_id"], sort, language)
+        response, err = fetch_details(key, site["place_id"], sort, language)
         if err:
             errors.append(f"{site['site_id']} {variant}: {err}")
             continue
-        snaps.append(snapshot_row(site, mode, variant, result, run_id, fetched_iso))
-        for rv in result.get("reviews") or []:
+        snaps.append(snapshot_row(site, mode, variant, response, run_id, fetched_iso))
+        for rv in (response.get("result") or {}).get("reviews") or []:
             row = review_row(site, rv, variant, fetched_iso)
             if row:
                 reviews.append(row)

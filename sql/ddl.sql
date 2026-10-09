@@ -185,7 +185,7 @@ CLUSTER BY site_id;
 -- a year do not need one. raw holds the author fields; analysis reads v_place_reviews instead.
 CREATE TABLE IF NOT EXISTS traffic.place_reviews (
   -- core
-  review_key        STRING NOT NULL,        -- sha256 hex of place_id | author_url (else author_name) | time
+  review_key        STRING NOT NULL,        -- sha256 hex of place_id | author_url (without it: place_id | author_name | time)
   site_id           STRING NOT NULL,
   place_id          STRING NOT NULL,        -- sites.place_id at fetch time
   published_at      TIMESTAMP,              -- review `time` (epoch seconds, UTC)
@@ -211,10 +211,15 @@ CREATE TABLE IF NOT EXISTS traffic.place_review_snapshots (
   fetched_at         TIMESTAMP NOT NULL,
   user_ratings_total INT64,                 -- result.user_ratings_total (all-time count)
   rating             FLOAT64,               -- result.rating
-  n_reviews          INT64                  -- reviews returned by this call (max 5)
+  n_reviews          INT64,                 -- reviews returned by this call (max 5)
+  -- raw
+  raw                JSON                   -- the whole Place Details response of that call (key-free; reviews carry author fields)
 )
 PARTITION BY DATE(fetched_at)
 CLUSTER BY site_id;
+
+-- CREATE ... IF NOT EXISTS leaves an old table as it was: bring it up to date.
+ALTER TABLE traffic.place_review_snapshots ADD COLUMN IF NOT EXISTS raw JSON;
 
 -- Reviews for analysis without author name, profile URL or photo (raw is left out too: it holds them).
 CREATE OR REPLACE VIEW traffic.v_place_reviews AS

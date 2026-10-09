@@ -7,6 +7,7 @@ Fixtures: tests/fixtures/reviews_*.json are the 6 real legacy responses of 2026-
 distinct dummies). Urban site: 5+5+5 reviews, 14 distinct; toll site: 15 distinct.
 """
 import contextlib
+import hashlib
 import importlib
 import io
 import json
@@ -55,7 +56,7 @@ def fixture(prefix, variant):
 def fake_fetch(prefix_by_place):
     """A fetch_details stand-in answering from the fixtures, by place_id and (sort, language)."""
     def fetch(key, place_id, sort, language):
-        return fixture(prefix_by_place[place_id], reviews.variant_name(sort, language))["result"], None
+        return fixture(prefix_by_place[place_id], reviews.variant_name(sort, language)), None
     return fetch
 
 
@@ -74,16 +75,24 @@ class TestReviewKey(unittest.TestCase):
         self.assertEqual(reviews.review_key("p", self.R),
                          reviews.review_key("p", dict(self.R, rating=5, text="edited")))
 
-    def test_changes_with_place_author_or_time(self):
+    def test_changes_with_place_or_author_url(self):
         k = reviews.review_key("p", self.R)
         self.assertNotEqual(k, reviews.review_key("q", self.R))
         self.assertNotEqual(k, reviews.review_key("p", dict(self.R, author_url="https://example.test/contrib/2")))
-        self.assertNotEqual(k, reviews.review_key("p", dict(self.R, time=1788585565)))
 
-    def test_falls_back_to_author_name(self):
+    def test_url_form_is_sha256_of_place_and_author_url_only(self):
+        want = hashlib.sha256(b"p|https://example.test/contrib/1").hexdigest()
+        self.assertEqual(reviews.review_key("p", self.R), want)
+        # time and author_name do not matter when the profile URL is present
+        self.assertEqual(reviews.review_key("p", dict(self.R, time=1788585565, author_name="B")), want)
+
+    def test_falls_back_to_author_name_and_time_without_url(self):
         no_url = {"author_name": "A", "time": 5}
-        self.assertEqual(reviews.review_key("p", no_url), reviews.review_key("p", {"author_name": "A", "time": 5}))
+        want = hashlib.sha256(b"p|A|5").hexdigest()
+        self.assertEqual(reviews.review_key("p", no_url), want)
+        self.assertEqual(reviews.review_key("p", dict(no_url, author_url="")), want)
         self.assertNotEqual(reviews.review_key("p", no_url), reviews.review_key("p", {"author_name": "B", "time": 5}))
+        self.assertNotEqual(reviews.review_key("p", no_url), reviews.review_key("p", {"author_name": "A", "time": 6}))
 
 
 class TestRows(unittest.TestCase):
@@ -108,18 +117,22 @@ class TestRows(unittest.TestCase):
     def test_rows_have_exactly_the_stage_columns(self):
         rv = fixture("urban", "newest_id")["result"]["reviews"][1]
         self.assertEqual(list(reviews.review_row(URBAN, rv, "newest_id", FETCHED)), [s[0] for s in bq.REVIEWS_STAGE])
-        snap = reviews.snapshot_row(URBAN, "newest", "newest_id", fixture("urban", "newest_id")["result"], "run1", FETCHED)
+        snap = reviews.snapshot_row(URBAN, "newest", "newest_id", fixture("urban", "newest_id"), "run1", FETCHED)
         self.assertEqual(list(snap), [s[0] for s in bq.SNAPSHOTS_STAGE])
 
     def test_snapshot_row(self):
-        snap = reviews.snapshot_row(URBAN, "sample", "most_relevant_en",
-                                    fixture("urban", "most_relevant_en")["result"], "run1", FETCHED)
+        response = fixture("urban", "most_relevant_en")
+        snap = reviews.snapshot_row(URBAN, "sample", "most_relevant_en", response, "run1", FETCHED)
+        raw = snap.pop("raw")
         self.assertEqual(snap, {"run_id": "run1", "site_id": "24.351.34", "mode": "sample",
                                 "variant": "most_relevant_en", "fetched_at": FETCHED,
                                 "user_ratings_total": 1168, "rating": 4.4, "n_reviews": 5})
+        self.assertEqual(json.loads(raw), response)  # raw = the whole response, status included
+        self.assertEqual(json.loads(raw)["status"], "OK")
+        self.assertNotIn(KEY, raw)
 
     def test_snapshot_of_a_place_without_reviews(self):
-        snap = reviews.snapshot_row(URBAN, "newest", "newest_id", {"rating": 4.0}, "r", FETCHED)
+        snap = reviews.snapshot_row(URBAN, "newest", "newest_id", {"status": "OK", "result": {"rating": 4.0}}, "r", FETCHED)
         self.assertEqual((snap["n_reviews"], snap["user_ratings_total"]), (0, None))
 
 
@@ -182,7 +195,7 @@ class TestRequest(unittest.TestCase):
         self.assertEqual(q["place_id"], "ChIJurban")
         self.assertEqual(q["fields"], "reviews%2Cuser_ratings_total%2Crating")
         self.assertEqual((q["reviews_sort"], q["language"], q["reviews_no_translations"]), ("newest", "id", "true"))
-        self.assertEqual(out, ({}, None))
+        self.assertEqual(out, ({"status": "OK", "result": {}}, None))  # the whole response
 
     def test_key_in_url_only_and_passed_for_scrubbing(self):
         m, _ = self.call()
@@ -254,8 +267,15 @@ class TestSql(unittest.TestCase):
         for k in ("run_id", "site_id", "variant"):
             self.assertIn(f"T.{k} = S.{k}", on)
         self.assertIn("T.fetched_at >= TIMESTAMP_SUB(@fetched_at, INTERVAL 1 DAY)", on)
-        set_cols = re.findall(r"(\w+) = S", sql.split("UPDATE SET", 1)[1].split("\nWHEN NOT MATCHED")[0])
-        self.assertEqual(set_cols, ["mode", "fetched_at", "user_ratings_total", "rating", "n_reviews"])
+        matched = sql.split("UPDATE SET", 1)[1].split("\nWHEN NOT MATCHED")[0]
+        set_cols = re.findall(r"(\w+) = ", matched)
+        self.assertEqual(set_cols, ["mode", "fetched_at", "user_ratings_total", "rating", "n_reviews", "raw"])
+        self.assertIn("raw = PARSE_JSON(S.raw, wide_number_mode => 'round')", matched)
+        self.assertEqual(sql.count("PARSE_JSON"), 2)  # UPDATE and INSERT
+
+    def test_only_the_snapshots_merge_uses_fetched_at_parameter(self):
+        self.assertNotIn("@fetched_at", bq.reviews_merge_sql("p.d.t", "p.d.s"))
+        self.assertIn("@fetched_at", bq.snapshots_merge_sql("p.d.t", "p.d.s"))
 
     def test_ddl_partition_cluster_and_view(self):
         cols, sql = ddl_columns("place_reviews")
@@ -266,6 +286,8 @@ class TestSql(unittest.TestCase):
         snaps = reviews_ddl.split("CREATE TABLE IF NOT EXISTS traffic.place_review_snapshots")[1].split("CREATE OR REPLACE VIEW")[0]
         self.assertIn("PARTITION BY DATE(fetched_at)\nCLUSTER BY site_id;", snaps)
         self.assertNotIn("demo_", reviews_ddl)
+        self.assertIn("ALTER TABLE traffic.place_review_snapshots ADD COLUMN IF NOT EXISTS raw JSON;", snaps)
+        self.assertEqual(ddl_columns("place_review_snapshots")[0][-1], "raw")
 
     def test_view_has_no_author_fields(self):
         sql = ddl_columns("place_reviews")[1]
@@ -403,6 +425,9 @@ class TestDeployScript(unittest.TestCase):
         self.assertNotIn("6,18", sh)
         self.assertIn("SECRET_PROJECT=demogcp-terra2021", sh)
         self.assertIn('gcloud secrets add-iam-policy-binding "$SECRET"', sh)
+        # overrides in the Scheduler body need run.jobs.runWithOverrides, which run.invoker lacks
+        self.assertIn("--role=roles/run.jobsExecutorWithOverrides", sh)
+        self.assertNotIn("roles/run.invoker", sh)
 
 
 if __name__ == "__main__":

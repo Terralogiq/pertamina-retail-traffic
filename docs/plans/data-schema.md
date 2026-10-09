@@ -232,7 +232,7 @@ Written by the Cloud Run job `reviews-poller` (`reviews_job/`, bead `.10.14`). D
 ### place_reviews
 | Column | Type | Source |
 |---|---|---|
-| `review_key` | STRING | sha256 hex of `place_id` + `author_url` (`author_name` when absent) + `time`. Rating and text are not in the hash, so an edited review keeps its row |
+| `review_key` | STRING | sha256 hex of `place_id|author_url` (one review per author per place; only when `author_url` is missing: `place_id|author_name|time`). Rating, text and time are not in the URL form, so an edited review keeps its row |
 | `site_id`, `place_id` | STRING | `traffic.sites` |
 | `published_at` | TIMESTAMP | `time` (epoch seconds) |
 | `rating` | INT64 | `rating` |
@@ -258,5 +258,6 @@ One row per successful API call, to measure the review rate (growth of `user_rat
 | `user_ratings_total` | INT64 | `result.user_ratings_total` |
 | `rating` | FLOAT64 | `result.rating` |
 | `n_reviews` | INT64 | reviews in that response (at most 5) |
+| `raw` | JSON | the whole Place Details response of that call (`status`, `result`; no API key in it). Its reviews carry author name, profile URL and photo URL, like `place_reviews.raw`; analysis uses `v_place_reviews`, which has no `raw` |
 
-A failed call leaves no row. The job exits 1 when any call failed (after writing the successful ones) and Cloud Run retries once.
+Core + `raw`, like the other tables. A failed call leaves no row. The job exits 1 when any call failed (after writing the successful ones) and Cloud Run retries once.

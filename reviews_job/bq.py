@@ -31,6 +31,7 @@ SNAPSHOTS_STAGE = [
     ("run_id", "STRING"), ("site_id", "STRING"), ("mode", "STRING"), ("variant", "STRING"),
     ("fetched_at", "TIMESTAMP"), ("user_ratings_total", "INT64"), ("rating", "FLOAT64"),
     ("n_reviews", "INT64"),
+    ("raw", "STRING"),  # JSON text; JSON in the target
 ]
 SNAPSHOTS_KEYS = ("run_id", "site_id", "variant")
 
@@ -61,11 +62,12 @@ def snapshots_merge_sql(target, source):
     """MERGE `source` into place_review_snapshots on (run_id, site_id, variant); matched rows are overwritten."""
     cols = [s[0] for s in SNAPSHOTS_STAGE]
     non_key = [c for c in cols if c not in SNAPSHOTS_KEYS]
+    sel = lambda c: PARSE_RAW if c == "raw" else f"S.{c}"  # noqa: E731
     on = " AND ".join([f"T.{k} = S.{k}" for k in SNAPSHOTS_KEYS] + [WINDOW])
     return (
         f"MERGE `{target}` T\nUSING `{source}` S\nON {on}\n"
-        f"WHEN MATCHED THEN UPDATE SET {', '.join(f'{c} = S.{c}' for c in non_key)}\n"
-        f"WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join(f'S.{c}' for c in cols)})"
+        f"WHEN MATCHED THEN UPDATE SET {', '.join(f'{c} = {sel(c)}' for c in non_key)}\n"
+        f"WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join(sel(c) for c in cols)})"
     )
 
 
@@ -117,8 +119,8 @@ def _merge_table(client, project, dataset, table, stage, keys, rows, fetched_at,
             job_config=bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_APPEND"),
         ).result()
         sql = merge_sql(f"{project}.{dataset}.{table}", staging)
-        client.query(sql, job_config=bigquery.QueryJobConfig(query_parameters=[
-            bigquery.ScalarQueryParameter("fetched_at", "TIMESTAMP", fetched_at)])).result()
+        params = [bigquery.ScalarQueryParameter("fetched_at", "TIMESTAMP", fetched_at)] if "@fetched_at" in sql else []
+        client.query(sql, job_config=bigquery.QueryJobConfig(query_parameters=params)).result()
     finally:
         client.delete_table(staging, not_found_ok=True)
 
