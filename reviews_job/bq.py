@@ -51,9 +51,12 @@ def reviews_merge_sql(target, source):
     cols = [s[0] for s in REVIEWS_STAGE]
     vals = [PARSE_RAW if c == "raw" else f"S.{c}" for c in cols]
     return (
-        f"MERGE `{target}` T\nUSING `{source}` S\nON T.review_key = S.review_key\n"
+        # BigQuery rejects a correlated subquery in UPDATE SET, so the seen_in union is computed in the source.
+        f"MERGE `{target}` T\nUSING (\n  SELECT S.*, ARRAY(SELECT DISTINCT v FROM UNNEST(ARRAY_CONCAT(IFNULL(P.seen_in, []), "
+        f"S.seen_in)) AS v ORDER BY v) AS merged_seen_in\n  FROM `{source}` S LEFT JOIN `{target}` P USING (review_key)\n) S\n"
+        "ON T.review_key = S.review_key\n"
         "WHEN MATCHED THEN UPDATE SET last_seen_at = GREATEST(T.last_seen_at, S.last_seen_at), "
-        "seen_in = ARRAY(SELECT DISTINCT v FROM UNNEST(ARRAY_CONCAT(T.seen_in, S.seen_in)) AS v ORDER BY v)\n"
+        "seen_in = S.merged_seen_in\n"
         f"WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join(vals)})"
     )
 

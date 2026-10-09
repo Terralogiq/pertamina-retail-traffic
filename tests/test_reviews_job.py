@@ -248,13 +248,17 @@ class TestSql(unittest.TestCase):
 
     def test_reviews_merge_shape(self):
         sql = bq.reviews_merge_sql("p.d.place_reviews", "p.d._stg")
-        self.assertIn("MERGE `p.d.place_reviews` T\nUSING `p.d._stg` S\nON T.review_key = S.review_key\n", sql)
+        self.assertIn("MERGE `p.d.place_reviews` T\nUSING (\n", sql)
+        self.assertIn("FROM `p.d._stg` S LEFT JOIN `p.d.place_reviews` P USING (review_key)\n) S\nON T.review_key = S.review_key\n", sql)
+        source = sql.split("USING (", 1)[1].split("\n) S\n", 1)[0]
+        self.assertIn("UNNEST(ARRAY_CONCAT(IFNULL(P.seen_in, []), S.seen_in))", source)
+        self.assertIn("SELECT DISTINCT", source)
         matched = sql.split("\nWHEN MATCHED")[1].split("\nWHEN NOT MATCHED")[0]
         set_cols = re.findall(r"(\w+) = ", matched.split("UPDATE SET", 1)[1])
         self.assertEqual(set_cols, ["last_seen_at", "seen_in"])
         self.assertIn("GREATEST(T.last_seen_at, S.last_seen_at)", matched)
-        self.assertIn("UNNEST(ARRAY_CONCAT(T.seen_in, S.seen_in))", matched)
-        self.assertIn("SELECT DISTINCT", matched)
+        self.assertIn("seen_in = S.merged_seen_in", matched)
+        self.assertNotIn("SELECT", matched)  # BigQuery rejects a correlated subquery in UPDATE SET
         insert = sql.split("WHEN NOT MATCHED THEN INSERT")[1]
         cols = [s[0] for s in bq.REVIEWS_STAGE]
         self.assertIn(f"({', '.join(cols)})", insert)
