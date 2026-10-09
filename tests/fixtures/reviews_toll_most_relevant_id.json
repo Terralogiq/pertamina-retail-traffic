@@ -1,0 +1,70 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.5,
+  "reviews": [
+   {
+    "author_name": "Author 20",
+    "author_url": "https://example.test/contrib/20",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/20.jpg",
+    "rating": 5,
+    "relative_time_description": "3 bulan lalu",
+    "text": "SPBU yang areanya luas dan fasilitasnya sangat memadai. Nilai plusnya ada pada fasilitas toilet yang sangat bersih dan terawat. Sangat nyaman dan bisa diandalka",
+    "time": 1782607923,
+    "translated": false
+   },
+   {
+    "author_name": "Author 21",
+    "author_url": "https://example.test/contrib/21",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/21.jpg",
+    "rating": 5,
+    "relative_time_description": "6 bulan lalu",
+    "text": "Sangat luas tempat nya. Toilet bersih. Banyak pilihan menu,mau makan apa aja ada. Mau belanja jg ada masjid nya jg besar. Di jamin kenyang lah",
+    "time": 1774799860,
+    "translated": false
+   },
+   {
+    "author_name": "Author 22",
+    "author_url": "https://example.test/contrib/22",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/22.jpg",
+    "rating": 5,
+    "relative_time_description": "setahun yang lalu",
+    "text": "Salah satu rest area jalan tol paling terkenal di Indonesia karena banyak yang mampir kesini yang disebabkan oleh letaknya tepat setelah jalan layang mbz yang p",
+    "time": 1738852316,
+    "translated": false
+   },
+   {
+    "author_name": "Author 23",
+    "author_url": "https://example.test/contrib/23",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/23.jpg",
+    "rating": 5,
+    "relative_time_description": "6 bulan lalu",
+    "text": "Mampir ke rest area km 57A karena lelah setelah terjebak macet di tol MBZ 4 jam. Untuk parkiran lumayan luas namun harus cari lokasi yang kosong karena pas bare",
+    "time": 1774148503,
+    "translated": false
+   },
+   {
+    "author_name": "Author 24",
+    "author_url": "https://example.test/contrib/24",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/24.jpg",
+    "rating": 5,
+    "relative_time_description": "3 tahun lalu",
+    "text": "Rest area yg punya soundtrack dan msh terngiang2 di kepala sy😂🎶🎶. Sebenarnya ga terlalu luas,tapiii pilihan restonya komplitttt. Mulai dari Gultik sampe Subway ",
+    "time": 1674367028,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 12111
+ },
+ "status": "OK"
+}

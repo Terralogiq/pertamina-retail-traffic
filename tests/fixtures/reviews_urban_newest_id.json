@@ -1,0 +1,68 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.4,
+  "reviews": [
+   {
+    "author_name": "Author 11",
+    "author_url": "https://example.test/contrib/11",
+    "profile_photo_url": "https://example.test/photo/11.jpg",
+    "rating": 3,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "",
+    "time": 1791259766,
+    "translated": false
+   },
+   {
+    "author_name": "Author 12",
+    "author_url": "https://example.test/contrib/12",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/12.jpg",
+    "rating": 1,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "kacau ni pelayanan nya org beli bensin Pertamax di tumpah tumpahin trs pelayanan nya judes kalo GK niat kerja yah g osah kerja nama nya kerja yah cape kocak SOP",
+    "time": 1791081541,
+    "translated": false
+   },
+   {
+    "author_name": "Author 13",
+    "author_url": "https://example.test/contrib/13",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/13.jpg",
+    "rating": 4,
+    "relative_time_description": "2 minggu yang lalu",
+    "text": "Pelayanannya bagus, tp blm bisa bayar pake my pertamina atau qris",
+    "time": 1789951111,
+    "translated": false
+   },
+   {
+    "author_name": "Author 14",
+    "author_url": "https://example.test/contrib/14",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/14.jpg",
+    "rating": 1,
+    "relative_time_description": "2 minggu yang lalu",
+    "text": "operator yg jaga malem nyaa super duper lelet bangeetttttt, untuk owner dan manager nya operator jaga mlm nyaa di tambahin dongg.",
+    "time": 1789745646,
+    "translated": false
+   },
+   {
+    "author_name": "Author 8",
+    "author_url": "https://example.test/contrib/8",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/8.jpg",
+    "rating": 2,
+    "relative_time_description": "sebulan yang lalu",
+    "text": "Untuk mbak² nya yg jaga kemarin siang. Kalo capek istrhat kak. Jd gx sewot² sama pelanggan. Saya disitu beli cash bukan ngutang. Beberapa kali ngisi bbm disitu ",
+    "time": 1788585564,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 1168
+ },
+ "status": "OK"
+}

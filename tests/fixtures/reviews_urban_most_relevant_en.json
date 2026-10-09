@@ -1,0 +1,70 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.4,
+  "reviews": [
+   {
+    "author_name": "Author 1",
+    "author_url": "https://example.test/contrib/1",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/1.jpg",
+    "rating": 5,
+    "relative_time_description": "8 months ago",
+    "text": "Ok",
+    "time": 1768566644,
+    "translated": false
+   },
+   {
+    "author_name": "Author 2",
+    "author_url": "https://example.test/contrib/2",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/2.jpg",
+    "rating": 4,
+    "relative_time_description": "4 years ago",
+    "text": "👌",
+    "time": 1653595487,
+    "translated": false
+   },
+   {
+    "author_name": "Author 3",
+    "author_url": "https://example.test/contrib/3",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/3.jpg",
+    "rating": 4,
+    "relative_time_description": "7 years ago",
+    "text": "Ada outlet Holland Bakery",
+    "time": 1560596737,
+    "translated": false
+   },
+   {
+    "author_name": "Author 4",
+    "author_url": "https://example.test/contrib/4",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/4.jpg",
+    "rating": 5,
+    "relative_time_description": "4 years ago",
+    "text": "👍",
+    "time": 1645425563,
+    "translated": false
+   },
+   {
+    "author_name": "Author 5",
+    "author_url": "https://example.test/contrib/5",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/5.jpg",
+    "rating": 5,
+    "relative_time_description": "4 years ago",
+    "text": "Godjob 👌",
+    "time": 1655117639,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 1168
+ },
+ "status": "OK"
+}

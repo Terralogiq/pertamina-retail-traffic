@@ -218,3 +218,45 @@ Places Aggregate `computeInsights`, `INSIGHT_COUNT`, circle around `places/<plac
 | `run_id`, `site_id`, `place_type`, `radius_m`, `fetched_at` | | |
 | `count` | INT64 | `count`; the API omits it for zero, stored as 0 |
 | `raw` | JSON | the response |
+
+## Reviews tables
+Written by the Cloud Run job `reviews-poller` (`reviews_job/`, bead `.10.14`). DDL: the review section at the end of `sql/ddl.sql`. Source: the **legacy** Place Details endpoint (`maps.googleapis.com/maps/api/place/details/json`, `fields=reviews,user_ratings_total,rating`, `reviews_no_translations=true`), because only it takes `reviews_sort=newest`; Places API (New) returns 5 reviews in Google's order with no sort. Legacy Places is enabled only in `demogcp-terra2021`, so the job runs in `gcp-coe-sandbox`, writes to `traffic`, and reads the API key from Secret Manager in `demogcp-terra2021` (`maps-api-key`). Why newest-first and what each variant returns: `docs/plans/reviews-feasibility.md`, section "Test". Places storage limits are waived for the demo; core + `raw`, no `demo_*` column.
+
+**Schedule and volume.** `--mode newest` runs once a day (`0 6 * * *` Asia/Jakarta): 1 call per site (`newest`, `id`). `--mode sample` runs weekly (`0 3 * * 1`): 3 calls per site (`newest_id`, `most_relevant_id`, `most_relevant_en`). About 10 x 30 + 130 = 430 calls a month, inside the 1,000 free calls a month cap. At KM57A (about 2.5 reviews a day) a daily newest-5 poll can miss reviews on a busy day; the snapshot table shows how often a poll returns 5 new ones.
+
+| Table | Grain (MERGE key) | Rows |
+|---|---|---|
+| `place_reviews` | `review_key` | one per distinct review; about 15 per site after the first sample, then the new reviews |
+| `place_review_snapshots` | `run_id`, `site_id`, `variant` | 10 (newest) or 30 (sample) per run |
+
+### place_reviews
+| Column | Type | Source |
+|---|---|---|
+| `review_key` | STRING | sha256 hex of `place_id` + `author_url` (`author_name` when absent) + `time`. Rating and text are not in the hash, so an edited review keeps its row |
+| `site_id`, `place_id` | STRING | `traffic.sites` |
+| `published_at` | TIMESTAMP | `time` (epoch seconds) |
+| `rating` | INT64 | `rating` |
+| `text` | STRING | `text`; NULL when empty (a rating-only review) |
+| `language`, `original_language` | STRING | same names; absent on rating-only reviews |
+| `first_seen_at`, `last_seen_at` | TIMESTAMP | `fetched_at` of the first and the latest poll that returned the review |
+| `seen_in` | ARRAY<STRING> | variants that returned it, e.g. `["newest_id", "most_relevant_id"]` |
+| `raw` | JSON | the review object, author name, profile URL and photo URL included |
+
+**Merge.** One MERGE per run on `review_key`: new reviews are inserted; a review seen again gets `last_seen_at = GREATEST(...)` and `seen_in` as the union of the old and new variants. `rating`, `text` and `raw` keep what was first seen (edits are not tracked). Re-running a poll, or a Cloud Run retry, only moves `last_seen_at`, so no run id is needed on this table. The same review comes back from several variants (in the test, one review came back from both `newest_id` and `most_relevant_id` at the urban site: 15 returned, 14 distinct); the job dedupes within a run before the MERGE.
+
+**Partitioning.** `place_reviews` is clustered by `site_id` and **not partitioned**. `DATE(published_at)` would spread a few hundred rows over thousands of partitions (reviews date back to 2017), `DATE(first_seen_at)` has no use for a table this size (a few thousand rows a year), and the MERGE finds a row by `review_key`, so no partition filter can prune it either way. Partition if it ever grows past a few GB.
+
+**View `v_place_reviews`.** All columns except `raw`: no author name, profile URL or photo. Use it for analysis (the feasibility plan's analysis input drops author fields).
+
+### place_review_snapshots
+One row per successful API call, to measure the review rate (growth of `user_ratings_total`) and the rating over time. Partitioned by `DATE(fetched_at)`, clustered by `site_id`; MERGE key `run_id`, `site_id`, `variant`, with the one-day `fetched_at` window of the places tables, so a Cloud Run retry overwrites its own rows.
+
+| Column | Type | Source |
+|---|---|---|
+| `run_id`, `site_id`, `fetched_at` | STRING, STRING, TIMESTAMP | run; `traffic.sites` |
+| `mode`, `variant` | STRING | `newest` or `sample`; `<reviews_sort>_<language>` |
+| `user_ratings_total` | INT64 | `result.user_ratings_total` |
+| `rating` | FLOAT64 | `result.rating` |
+| `n_reviews` | INT64 | reviews in that response (at most 5) |
+
+A failed call leaves no row. The job exits 1 when any call failed (after writing the successful ones) and Cloud Run retries once.

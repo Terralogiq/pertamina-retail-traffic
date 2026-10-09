@@ -1,0 +1,70 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.4,
+  "reviews": [
+   {
+    "author_name": "Author 6",
+    "author_url": "https://example.test/contrib/6",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/6.jpg",
+    "rating": 1,
+    "relative_time_description": "2 bulan lalu",
+    "text": "Teruntuk kakak' yang jaga malem ini tadi ceritanya saya  mau beli pertalite 350rb trs barcodenya gak bisa kata masnya gangguan tp kok yg depan bisa trs kata mas",
+    "time": 1786208646,
+    "translated": false
+   },
+   {
+    "author_name": "Author 7",
+    "author_url": "https://example.test/contrib/7",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/7.jpg",
+    "rating": 1,
+    "relative_time_description": "5 bulan lalu",
+    "text": "spbu kasus semuanya, beli bensin non subsidi aja berasa isi bensin subsidi wkwkw, udah mah ada yang beli di jerigen 35 liter isinya",
+    "time": 1776444302,
+    "translated": false
+   },
+   {
+    "author_name": "Author 8",
+    "author_url": "https://example.test/contrib/8",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/8.jpg",
+    "rating": 2,
+    "relative_time_description": "sebulan yang lalu",
+    "text": "Untuk mbak² nya yg jaga kemarin siang. Kalo capek istrhat kak. Jd gx sewot² sama pelanggan. Saya disitu beli cash bukan ngutang. Beberapa kali ngisi bbm disitu ",
+    "time": 1788585564,
+    "translated": false
+   },
+   {
+    "author_name": "Author 9",
+    "author_url": "https://example.test/contrib/9",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/9.jpg",
+    "rating": 1,
+    "relative_time_description": "2 bulan lalu",
+    "text": "Saya ngisi Pertamax sekitar jam 9 kurang sudah saya pisahin uang nya pass, pass sudah saya kasih uang nya kok kurang, sampai saya ngomong coba di itung lagi ka ",
+    "time": 1785033820,
+    "translated": false
+   },
+   {
+    "author_name": "Author 10",
+    "author_url": "https://example.test/contrib/10",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/10.jpg",
+    "rating": 1,
+    "relative_time_description": "4 bulan lalu",
+    "text": "Membeli BBM menggunakan jerigen di SPBU Pertamina tidak akan menghilangkan kewajiban mengantre. Anda tetap harus mengikuti antrean normal atau prosedur khusus y",
+    "time": 1779472659,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 1168
+ },
+ "status": "OK"
+}

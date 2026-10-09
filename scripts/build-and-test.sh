@@ -9,7 +9,7 @@ if [ ! -x .venv/bin/python ] || [ ! -d dashboard/web/node_modules ]; then
 fi
 PY=.venv/bin/python
 $PY -m py_compile scripts/*.py
-$PY -m py_compile collector/*.py places_job/*.py
+$PY -m py_compile collector/*.py places_job/*.py reviews_job/*.py
 $PY -m py_compile dashboard/api/*.py dashboard/api/routers/*.py
 $PY -m unittest discover -s tests -v
 cd dashboard/web

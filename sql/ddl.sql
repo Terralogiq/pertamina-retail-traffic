@@ -178,3 +178,47 @@ CREATE TABLE IF NOT EXISTS traffic.places_aggregate (
 )
 PARTITION BY DATE(fetched_at)
 CLUSTER BY site_id;
+
+-- Review tables (bead .10.14, job reviews-poller, legacy Place Details; see data-schema.md "Reviews tables").
+-- place_reviews: one row per distinct review, MERGEd on review_key. Not partitioned: published_at spans years
+-- (2017 onward) and the MERGE looks a row up by review_key, so no partition could be pruned; a few thousand rows
+-- a year do not need one. raw holds the author fields; analysis reads v_place_reviews instead.
+CREATE TABLE IF NOT EXISTS traffic.place_reviews (
+  -- core
+  review_key        STRING NOT NULL,        -- sha256 hex of place_id | author_url (else author_name) | time
+  site_id           STRING NOT NULL,
+  place_id          STRING NOT NULL,        -- sites.place_id at fetch time
+  published_at      TIMESTAMP,              -- review `time` (epoch seconds, UTC)
+  rating            INT64,                  -- 1..5
+  text              STRING,                 -- review text in its original language; NULL when the review has none
+  language          STRING,                 -- review `language` (absent for rating-only reviews)
+  original_language STRING,
+  first_seen_at     TIMESTAMP NOT NULL,     -- fetched_at of the first poll that returned it
+  last_seen_at      TIMESTAMP NOT NULL,     -- fetched_at of the latest poll that returned it
+  seen_in           ARRAY<STRING>,          -- variants that returned it: newest_id | most_relevant_id | most_relevant_en
+  -- raw
+  raw               JSON                    -- the review object as returned, author fields included
+)
+CLUSTER BY site_id;
+
+-- One row per API call: rating and review count over time, to measure the real review rate per site.
+CREATE TABLE IF NOT EXISTS traffic.place_review_snapshots (
+  -- core
+  run_id             STRING NOT NULL,       -- CLOUD_RUN_EXECUTION (uuid when run locally)
+  site_id            STRING NOT NULL,
+  mode               STRING NOT NULL,       -- newest | sample
+  variant            STRING NOT NULL,       -- <reviews_sort>_<language>, e.g. newest_id
+  fetched_at         TIMESTAMP NOT NULL,
+  user_ratings_total INT64,                 -- result.user_ratings_total (all-time count)
+  rating             FLOAT64,               -- result.rating
+  n_reviews          INT64                  -- reviews returned by this call (max 5)
+)
+PARTITION BY DATE(fetched_at)
+CLUSTER BY site_id;
+
+-- Reviews for analysis without author name, profile URL or photo (raw is left out too: it holds them).
+CREATE OR REPLACE VIEW traffic.v_place_reviews AS
+SELECT
+  review_key, site_id, place_id, published_at, rating, text, language, original_language,
+  first_seen_at, last_seen_at, seen_in
+FROM traffic.place_reviews;

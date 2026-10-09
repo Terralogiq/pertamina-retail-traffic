@@ -267,7 +267,7 @@ class TestMergeSql(unittest.TestCase):
 
     def test_ddl_partition_and_cluster(self):
         sql = ddl_columns("places_details")[1]
-        places_ddl = sql[sql.index("CREATE TABLE IF NOT EXISTS traffic.places_details"):]
+        places_ddl = sql[sql.index("CREATE TABLE IF NOT EXISTS traffic.places_details"):sql.index("-- Review tables")]
         self.assertEqual(places_ddl.count("PARTITION BY DATE(fetched_at)\nCLUSTER BY site_id;"), 3)
         self.assertNotIn("demo_", places_ddl)
 

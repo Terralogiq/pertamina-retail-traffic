@@ -1,0 +1,62 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.5,
+  "reviews": [
+   {
+    "author_name": "Author 25",
+    "author_url": "https://example.test/contrib/25",
+    "profile_photo_url": "https://example.test/photo/25.jpg",
+    "rating": 5,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "",
+    "time": 1791438581,
+    "translated": false
+   },
+   {
+    "author_name": "Author 26",
+    "author_url": "https://example.test/contrib/26",
+    "language": "id",
+    "original_language": "id",
+    "profile_photo_url": "https://example.test/photo/26.jpg",
+    "rating": 5,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "Rest area terbaik menurut saya",
+    "time": 1791427321,
+    "translated": false
+   },
+   {
+    "author_name": "Author 27",
+    "author_url": "https://example.test/contrib/27",
+    "profile_photo_url": "https://example.test/photo/27.jpg",
+    "rating": 5,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "",
+    "time": 1791350262,
+    "translated": false
+   },
+   {
+    "author_name": "Author 28",
+    "author_url": "https://example.test/contrib/28",
+    "profile_photo_url": "https://example.test/photo/28.jpg",
+    "rating": 5,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "",
+    "time": 1791325151,
+    "translated": false
+   },
+   {
+    "author_name": "Author 29",
+    "author_url": "https://example.test/contrib/29",
+    "profile_photo_url": "https://example.test/photo/29.jpg",
+    "rating": 5,
+    "relative_time_description": "dalam minggu terakhir",
+    "text": "",
+    "time": 1791250440,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 12111
+ },
+ "status": "OK"
+}

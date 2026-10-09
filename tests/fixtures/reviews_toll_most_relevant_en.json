@@ -1,0 +1,70 @@
+{
+ "html_attributions": [],
+ "result": {
+  "rating": 4.5,
+  "reviews": [
+   {
+    "author_name": "Author 15",
+    "author_url": "https://example.test/contrib/15",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/15.jpg",
+    "rating": 5,
+    "relative_time_description": "3 months ago",
+    "text": "SPBU Rest Area KM 57 A sets the gold standard for highway gas stations with its incredible efficiency and high-capacity service. Situated within one of the busi",
+    "time": 1783487250,
+    "translated": false
+   },
+   {
+    "author_name": "Author 16",
+    "author_url": "https://example.test/contrib/16",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/16.jpg",
+    "rating": 5,
+    "relative_time_description": "2 months ago",
+    "text": "SPBU Rest Area KM 57 A is one of the most convenient places to stop during a trip on the Jakarta–Cikampek Toll Road. The area is spacious, well organized, and o",
+    "time": 1785081773,
+    "translated": false
+   },
+   {
+    "author_name": "Author 17",
+    "author_url": "https://example.test/contrib/17",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/17.jpg",
+    "rating": 3,
+    "relative_time_description": "9 years ago",
+    "text": "This place has a good toilet room but when i went inside, i think the toilet needs a cleaning service. But that is not too bad. You may have chance to see food ",
+    "time": 1498273627,
+    "translated": false
+   },
+   {
+    "author_name": "Author 18",
+    "author_url": "https://example.test/contrib/18",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/18.jpg",
+    "rating": 5,
+    "relative_time_description": "6 years ago",
+    "text": "Gas station as well as rest area located in Jakarta-Cikampek (Japek) toll road. This gas station has separate station for small cars and big vehicles such as bu",
+    "time": 1596213647,
+    "translated": false
+   },
+   {
+    "author_name": "Author 19",
+    "author_url": "https://example.test/contrib/19",
+    "language": "en",
+    "original_language": "en",
+    "profile_photo_url": "https://example.test/photo/19.jpg",
+    "rating": 5,
+    "relative_time_description": "7 years ago",
+    "text": "This rest area often become a venue for many events when \"Mudik\" season come in Indonesia. Provide its customer with its wide area, this rest area become one of",
+    "time": 1540957605,
+    "translated": false
+   }
+  ],
+  "user_ratings_total": 12111
+ },
+ "status": "OK"
+}
