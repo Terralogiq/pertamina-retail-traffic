@@ -227,3 +227,20 @@ SELECT
   review_key, site_id, place_id, published_at, rating, text, language, original_language,
   first_seen_at, last_seen_at, seen_in
 FROM traffic.place_reviews;
+
+-- place_review_labels (bead .10.5.1): derived labels per review and method (manual | gemini), MERGEd on
+-- (review_key, method) so a new taxonomy or model version replaces that method's row. Holds labels and a
+-- masked English gist, never review text or author fields. Not partitioned, same reasoning as place_reviews.
+CREATE TABLE IF NOT EXISTS traffic.place_review_labels (
+  -- core
+  review_key    STRING NOT NULL,            -- key into place_reviews
+  site_id       STRING NOT NULL,            -- from v_place_reviews at label time
+  labels        ARRAY<STRING>,              -- taxonomy values (docs/plans/complaints-analysis.md)
+  sentiment     STRING,                     -- neg | mixed | pos
+  praise_only   BOOL,                       -- true when sentiment is pos
+  gist          STRING,                     -- one-line English gist, masked; no text, no author
+  method        STRING NOT NULL,            -- manual | gemini
+  model_version STRING,                     -- taxonomy_v1 (manual) | gemini-<ver>/<prompt version>
+  labeled_at    TIMESTAMP NOT NULL
+)
+CLUSTER BY site_id;

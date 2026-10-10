@@ -295,7 +295,7 @@ class TestSql(unittest.TestCase):
 
     def test_view_has_no_author_fields(self):
         sql = ddl_columns("place_reviews")[1]
-        view = sql[sql.index("CREATE OR REPLACE VIEW traffic.v_place_reviews"):]
+        view = sql[sql.index("CREATE OR REPLACE VIEW traffic.v_place_reviews"):].split(";")[0]
         self.assertNotRegex(view, r"author|photo|raw|\*")
         cols = ddl_columns("place_reviews")[0]
         for c in cols:

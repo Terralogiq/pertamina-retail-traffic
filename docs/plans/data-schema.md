@@ -228,6 +228,7 @@ Written by the Cloud Run job `reviews-poller` (`reviews_job/`, bead `.10.14`). D
 |---|---|---|
 | `place_reviews` | `review_key` | one per distinct review; about 15 per site after the first sample, then the new reviews |
 | `place_review_snapshots` | `run_id`, `site_id`, `variant` | 10 (newest) or 30 (sample) per run |
+| `place_review_labels` | `review_key`, `method` | one per review per labelling method; 127 `manual` rows from the first pass |
 
 ### place_reviews
 | Column | Type | Source |
@@ -261,3 +262,20 @@ One row per successful API call, to measure the review rate (growth of `user_rat
 | `raw` | JSON | the whole Place Details response of that call (`status`, `result`; no API key in it). Its reviews carry author name, profile URL and photo URL, like `place_reviews.raw`; analysis uses `v_place_reviews`, which has no `raw` |
 
 Core + `raw`, like the other tables. A failed call leaves no row. The job exits 1 when any call failed (after writing the successful ones) and Cloud Run retries once.
+
+### place_review_labels
+Derived table (bead `.10.5.1`): labels per review for the complaints analysis and the Review themes panel, written by `scripts/load_review_labels.py` (manual pass) and later by `reviews_job --mode label` (Gemini). Core columns only, no `raw`: it holds labels and a masked English gist, never review text or author fields. Clustered by `site_id`, not partitioned (same reasoning as `place_reviews`). Taxonomy and sentiment rules: `docs/plans/complaints-analysis.md`.
+
+| Column | Type | Source |
+|---|---|---|
+| `review_key` | STRING | `place_reviews.review_key`; MERGE key with `method` |
+| `site_id` | STRING | `v_place_reviews.site_id` for that `review_key`; cluster column |
+| `labels` | ARRAY<STRING> | taxonomy values, e.g. `["antrian", "pelayanan_petugas"]` |
+| `sentiment` | STRING | `neg`, `mixed` or `pos` |
+| `praise_only` | BOOL | true when `sentiment` is `pos` |
+| `gist` | STRING | one-line English gist, masked |
+| `method` | STRING | `manual` or `gemini`; MERGE key with `review_key` |
+| `model_version` | STRING | `taxonomy_v1` for `manual`; pinned Gemini model id plus prompt version for `gemini` |
+| `labeled_at` | TIMESTAMP | when the row was written |
+
+**Merge.** One MERGE on `(review_key, method)` per load: a rerun, or a new taxonomy or model version, overwrites that method's row and leaves the other method's row alone. The loader fails on a `review_key` that is not in `v_place_reviews` rather than writing a label with no site.
