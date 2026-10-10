@@ -13,27 +13,25 @@ Usage: .venv/bin/python scripts/load_review_labels.py <labels.json> [--project g
   --dry-run  validate and map the rows (reads v_place_reviews); no BigQuery writes
 """
 import argparse
+import importlib.util
 import json
+import os
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 
-TABLE = "place_review_labels"
+# Taxonomy, row validation and the MERGE live in reviews_job/review_labels.py (the job image cannot import
+# scripts/). Loaded by path under its own name, so reviews_job/ stays off sys.path.
+_spec = importlib.util.spec_from_file_location(
+    "review_labels", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "reviews_job", "review_labels.py"))
+review_labels = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(review_labels)
+TABLE, KEYS, SENTIMENTS, TAXONOMY, STAGE = (
+    review_labels.TABLE, review_labels.KEYS, review_labels.SENTIMENTS, review_labels.TAXONOMY, review_labels.STAGE)
+check_unique, check_label, merge_sql = review_labels.check_unique, review_labels.check_label, review_labels.merge_sql
+
 METHOD = "manual"
 MODEL_VERSION = "taxonomy_v1"
-KEYS = ("review_key", "method")
-SENTIMENTS = ("neg", "mixed", "pos")
-TAXONOMY = (
-    "antrian", "pelayanan_petugas", "bbm_kosong", "kualitas_bbm", "takaran", "pembayaran",
-    "harga", "kebersihan", "toilet", "fasilitas", "keamanan_lalu_lintas", "lainnya",
-)
-
-# (column, type). "X[]" = REPEATED. Staging columns and target columns share names and order.
-STAGE = [
-    ("review_key", "STRING"), ("site_id", "STRING"), ("labels", "STRING[]"), ("sentiment", "STRING"),
-    ("praise_only", "BOOL"), ("gist", "STRING"), ("method", "STRING"), ("model_version", "STRING"),
-    ("labeled_at", "TIMESTAMP"),
-]
 
 SITES_SQL = """
 SELECT review_key, site_id
@@ -43,36 +41,6 @@ WHERE review_key IN UNNEST(@keys)
 
 
 # --- pure helpers (no network, no BigQuery) -------------------------------------
-
-def check_unique(rows, keys):
-    seen = set()
-    for r in rows:
-        k = tuple(r[c] for c in keys)
-        if k in seen:
-            raise ValueError(f"duplicate key {k}: a MERGE source must have one row per key")
-        seen.add(k)
-
-
-def check_label(item):
-    """Raise ValueError when a labels.json entry is not usable; the message never includes the gist."""
-    key = item.get("review_key")
-    if not isinstance(key, str) or not key:
-        raise ValueError("entry without review_key")
-    labels = item.get("labels")
-    if not isinstance(labels, list) or not all(isinstance(x, str) for x in labels):
-        raise ValueError(f"{key}: labels must be a list of strings")
-    bad = [x for x in labels if x not in TAXONOMY]
-    if bad:
-        raise ValueError(f"{key}: labels outside the taxonomy: {bad}")
-    if item.get("sentiment") not in SENTIMENTS:
-        raise ValueError(f"{key}: sentiment must be one of {SENTIMENTS}")
-    if not isinstance(item.get("praise_only"), bool):
-        raise ValueError(f"{key}: praise_only must be a boolean")
-    if item["praise_only"] != (item["sentiment"] == "pos"):
-        raise ValueError(f"{key}: praise_only must be true exactly when sentiment is pos")
-    if not isinstance(item.get("gist"), str):
-        raise ValueError(f"{key}: gist must be a string")
-
 
 def label_rows(items, site_by_key, labeled_at):
     """labels.json entries -> staging rows. Unknown review_key or duplicate key -> ValueError."""
@@ -94,18 +62,6 @@ def label_rows(items, site_by_key, labeled_at):
     } for i in items]
     check_unique(rows, KEYS)
     return rows
-
-
-def merge_sql(target, source):
-    """MERGE `source` (staging) into place_review_labels on (review_key, method); matched rows are overwritten."""
-    cols = [s[0] for s in STAGE]
-    non_key = [c for c in cols if c not in KEYS]
-    on = " AND ".join(f"T.{k} = S.{k}" for k in KEYS)
-    return (
-        f"MERGE `{target}` T\nUSING `{source}` S\nON {on}\n"
-        f"WHEN MATCHED THEN UPDATE SET {', '.join(f'{c} = S.{c}' for c in non_key)}\n"
-        f"WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join(f'S.{c}' for c in cols)})"
-    )
 
 
 # --- BigQuery ----------------------------------------------------------------------

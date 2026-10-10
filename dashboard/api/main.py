@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import auth
-from .routers import places, sites, traffic, weather
+from .routers import places, reviews, sites, traffic, weather
 
 # Python's mimetypes table lacks woff2 on some platforms (it served as application/octet-stream).
 mimetypes.add_type("font/woff2", ".woff2")
@@ -29,6 +29,7 @@ api.include_router(sites.router)
 api.include_router(traffic.router)
 api.include_router(weather.router)
 api.include_router(places.router)
+api.include_router(reviews.router)
 app.include_router(api)
 
 

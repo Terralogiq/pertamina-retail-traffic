@@ -4,6 +4,7 @@ import { BASELINE_FULL, baselineProgress, legBand } from "../map/bands";
 import { SiteMap } from "../map";
 import { baselineDaysLeft } from "../map/severity";
 import { PlacesPanel } from "../places";
+import { ReviewThemesPanel } from "../reviews";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
 import { TrafficCharts, TrafficPattern } from "../traffic";
@@ -23,6 +24,7 @@ const SECTIONS = [
   { id: "pattern", label: "Weekly pattern" },
   { id: "weather", label: "Weather" },
   { id: "places", label: "Places" },
+  { id: "review-themes", label: "Review themes" },
 ];
 
 /** "SPBU 24.351.34 · Bandar Lampung · Jl. P. Antasari · WIB": the ID stays secondary to the name (F4). */
@@ -156,6 +158,7 @@ export function SiteDetail() {
           <div className="span-4 site-column">
             <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />
             <PlacesPanel data={places} />
+            <ReviewThemesPanel siteId={siteId} />
           </div>
         </div>
       )}

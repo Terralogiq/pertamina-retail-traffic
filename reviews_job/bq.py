@@ -6,15 +6,29 @@ Each table is written with ONE MERGE per run, from a per-run staging table (raw 
   union of seen_in. Re-running the same poll, or a Cloud Run retry, therefore changes nothing but last_seen_at.
 - place_review_snapshots: MERGE on (run_id, site_id, variant), like the places tables, so a retry of the same
   Cloud Run execution overwrites its own rows instead of duplicating them.
+- place_review_labels (--mode label): MERGE on (review_key, method), SQL and columns from review_labels.py.
 """
 import uuid
 from datetime import timedelta, timezone
+
+import review_labels
 
 SITES_SQL = """
 SELECT site_id, place_id
 FROM `{project}.{dataset}.sites`
 WHERE place_id IS NOT NULL
 ORDER BY site_id
+"""
+
+# Text reviews that have no Gemini label at the current model_version (a new model or prompt version relabels all).
+UNLABELLED_SQL = """
+SELECT r.review_key, r.site_id, r.text
+FROM `{project}.{dataset}.v_place_reviews` r
+WHERE r.text IS NOT NULL AND TRIM(r.text) != ''
+  AND NOT EXISTS (
+    SELECT 1 FROM `{project}.{dataset}.place_review_labels` l
+    WHERE l.review_key = r.review_key AND l.method = 'gemini' AND l.model_version = @model_version)
+ORDER BY r.review_key
 """
 
 # (column, type). "X[]" = REPEATED. Staging columns and target columns share names and order.
@@ -34,6 +48,9 @@ SNAPSHOTS_STAGE = [
     ("raw", "STRING"),  # JSON text; JSON in the target
 ]
 SNAPSHOTS_KEYS = ("run_id", "site_id", "variant")
+
+LABELS_STAGE = review_labels.STAGE
+LABELS_KEYS = review_labels.KEYS
 
 PARSE_RAW = "PARSE_JSON(S.raw, wide_number_mode => 'round')"
 
@@ -107,6 +124,17 @@ def read_sites(project, dataset, location):
     return [dict(r.items()) for r in rows]
 
 
+def read_unlabelled(project, dataset, location, model_version):
+    """Text reviews without a gemini row at `model_version`, as dicts {review_key, site_id, text}."""
+    from google.cloud import bigquery
+    client = _client(project, location)
+    job = client.query(
+        UNLABELLED_SQL.format(project=project, dataset=dataset),
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("model_version", "STRING", model_version)]))
+    return [dict(r.items()) for r in job.result()]
+
+
 def _merge_table(client, project, dataset, table, stage, keys, rows, fetched_at, merge_sql):
     from google.cloud import bigquery
     check_unique(rows, keys)
@@ -137,3 +165,10 @@ def write_rows(project, dataset, location, fetched_at, reviews, snapshots):
     ):
         if rows:
             _merge_table(client, project, dataset, table, stage, keys, rows, fetched_at, sql)
+
+
+def write_labels(project, dataset, location, labeled_at, rows):
+    """One MERGE into place_review_labels on (review_key, method). labeled_at in the rows is an ISO string."""
+    client = _client(project, location)
+    _merge_table(client, project, dataset, review_labels.TABLE, LABELS_STAGE, LABELS_KEYS, rows, labeled_at,
+                 review_labels.merge_sql)

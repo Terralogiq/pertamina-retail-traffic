@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Deploy the newest-reviews poller: Cloud Run job + two Cloud Scheduler triggers + failure alert.
-# Spec: docs/plans/reviews-feasibility.md ("Test"), bead .10.14. Mirrors scripts/deploy_places_job.sh.
+# Deploy the newest-reviews poller and labeller: Cloud Run job + three Cloud Scheduler triggers + failure alert.
+# Spec: docs/plans/reviews-feasibility.md ("Test"), bead .10.14; labeller: docs/plans/review-labels.md phase 4,
+# bead .10.5.4. Mirrors scripts/deploy_places_job.sh.
 #
 # Re-runnable. Every step describes first and only creates or updates what is missing or changed.
 # Read-only checks (describe/list) always run; every mutating command goes through run().
@@ -17,11 +18,13 @@
 # demogcp-terra2021, so the API key is read from Secret Manager THERE: the runtime account gets
 # roles/secretmanager.secretAccessor on projects/demogcp-terra2021/secrets/maps-api-key (step 2a), and Cloud Run
 # mounts it with the cross-project resource path (projects/<PROJECT_NUMBER>/secrets/<name>:<version>, per
-# https://docs.cloud.google.com/run/docs/configuring/jobs/secrets).
+# https://docs.cloud.google.com/run/docs/configuring/jobs/secrets). --mode label calls the Gemini API with the key
+# in Secret Manager in gcp-coe-492507 (gemini-api-key), mounted the same way as GEMINI_API_KEY.
 #
-# Two triggers of the same job (args override in the Scheduler request body):
+# Three triggers of the same job (args override in the Scheduler request body):
 #   --mode newest  daily 06:00 Asia/Jakarta  (10 calls)
 #   --mode sample  weekly Mon 03:00          (30 calls)
+#   --mode label   daily 06:30 Asia/Jakarta  (Gemini, 10 reviews per call; 0 calls when nothing is new)
 # About 10 x 30 + 130 = 430 legacy Place Details calls a month, inside the 1,000 free calls a month cap.
 # This script never runs the job: the first run is the manual command printed at the end.
 set -euo pipefail
@@ -32,13 +35,18 @@ DATASET=traffic
 JOB=reviews-poller
 SCHED_NEWEST=reviews-poller-newest
 SCHED_SAMPLE=reviews-poller-sample
+SCHED_LABEL=reviews-poller-label
 SCHEDULE_NEWEST="0 6 * * *"
 SCHEDULE_SAMPLE="0 3 * * 1"
+SCHEDULE_LABEL="30 6 * * *"     # after the 06:00 newest run
 SA_RUN=traffic-collector        # the collector's dedicated accounts, reused when --default-sa is not given
 SA_SCHED=traffic-scheduler
 SECRET_PROJECT=demogcp-terra2021   # holds the key and the only project with legacy Places API enabled
 SECRET=maps-api-key
 ENV_VAR=MAPS_API_KEY
+GEMINI_SECRET_PROJECT=gcp-coe-492507   # holds the Gemini API key (--mode label)
+GEMINI_SECRET=gemini-api-key
+GEMINI_ENV_VAR=GEMINI_API_KEY
 ALERT_EMAIL=farry@terralogiq.com
 POLICY_NAME="reviews-poller job failed"
 CHANNEL_NAME="traffic-collector alerts ($ALERT_EMAIL)"   # the collector's email channel, reused when it exists
@@ -55,7 +63,7 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     --no-schedule) NO_SCHEDULE=1 ;;
     --default-sa) DEFAULT_SA=1 ;;
-    -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -66,11 +74,14 @@ cd "$ROOT"
 # The default quota project of gcloud is a different project, so name the project and the billing project everywhere.
 GC_PROJ=(--project "$PROJECT" --billing-project "$PROJECT")
 GC_SECRET_PROJ=(--project "$SECRET_PROJECT" --billing-project "$PROJECT")
+GC_GEMINI_PROJ=(--project "$GEMINI_SECRET_PROJECT" --billing-project "$PROJECT")
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
 DEFAULT_SA_EMAIL="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
 # Cloud Run wants the project NUMBER in a cross-project secret path, not the project id.
 SECRET_PROJECT_NUMBER=$(gcloud projects describe "$SECRET_PROJECT" --format='value(projectNumber)')
 SECRET_PATH="projects/$SECRET_PROJECT_NUMBER/secrets/$SECRET"
+GEMINI_SECRET_PROJECT_NUMBER=$(gcloud projects describe "$GEMINI_SECRET_PROJECT" --format='value(projectNumber)')
+GEMINI_SECRET_PATH="projects/$GEMINI_SECRET_PROJECT_NUMBER/secrets/$GEMINI_SECRET"
 if [ "$DEFAULT_SA" = 1 ]; then
   # Editor covers BigQuery jobs (bigquery.jobs.create), table writes (dataset ACL grants projectWriters WRITER)
   # and starting the job (run.jobs.run). It does not include reading secret payloads, granted in step 2a.
@@ -140,6 +151,31 @@ fi
 run gcloud secrets add-iam-policy-binding "$SECRET" \
   --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/secretmanager.secretAccessor \
   --format=none "${GC_SECRET_PROJ[@]}"
+# The Gemini key (label mode) is in a third project. Read-only checks first: the grant is only written when the
+# runtime account lacks it (the default compute account of $PROJECT already has it, 2026-10-10). If the policy
+# cannot be read, the grant command is printed for the secret owner and the deploy continues.
+if gcloud secrets describe "$GEMINI_SECRET" "${GC_GEMINI_PROJ[@]}" --format='value(name)' >/dev/null 2>&1; then
+  echo "  secret exists: $GEMINI_SECRET_PATH"
+elif [ "$DRY_RUN" = 1 ]; then
+  echo "  MISSING or not readable: $GEMINI_SECRET_PATH; a real run stops here"
+else
+  echo "secret $GEMINI_SECRET_PATH is missing or not readable by the caller" >&2
+  exit 1
+fi
+if GEMINI_GRANTED=$(gcloud secrets get-iam-policy "$GEMINI_SECRET" "${GC_GEMINI_PROJ[@]}" --flatten='bindings[].members' \
+  --filter="bindings.role=roles/secretmanager.secretAccessor AND bindings.members=serviceAccount:$SA_RUN_EMAIL" \
+  --format='value(bindings.members)' 2>/dev/null); then
+  if [ -n "$GEMINI_GRANTED" ]; then
+    echo "  $SA_RUN_EMAIL can already read $GEMINI_SECRET"
+  else
+    run gcloud secrets add-iam-policy-binding "$GEMINI_SECRET" \
+      --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/secretmanager.secretAccessor \
+      --format=none "${GC_GEMINI_PROJ[@]}"
+  fi
+else
+  echo "  cannot read the IAM policy of $GEMINI_SECRET_PATH; the secret owner must run:"
+  echo "    gcloud secrets add-iam-policy-binding $GEMINI_SECRET --project $GEMINI_SECRET_PROJECT --billing-project $PROJECT --member serviceAccount:$SA_RUN_EMAIL --role roles/secretmanager.secretAccessor"
+fi
 
 # --- 2b. Cloud Build permissions for --source deploys ----------------------------------------
 # Cloud Build builds as the Compute Engine default service account, which needs roles/run.builder. In this
@@ -160,14 +196,15 @@ fi
 # `jobs deploy` creates or updates, so it is idempotent. --set-* replace the whole env/secret set, so drift is
 # reset on every run. --quiet accepts the prompt to create the Artifact Registry repo cloud-run-source-deploy.
 # --max-retries 1: a retry is the same execution; the review MERGE is idempotent and the snapshot MERGE re-uses
-# the run_id. The job exits 1 when any call failed.
+# the run_id; the label MERGE is idempotent and a retry only sends what is still unlabelled. The job exits 1 when
+# any call failed.
 step "3. Cloud Run job $JOB (build from reviews_job/)"
 run gcloud run jobs deploy "$JOB" \
   --source reviews_job \
   --region "$REGION" \
   --service-account "$SA_RUN_EMAIL" \
   --set-env-vars "GCP_PROJECT=$PROJECT,BQ_DATASET=$DATASET" \
-  --set-secrets "$ENV_VAR=$SECRET_PATH:latest" \
+  --set-secrets "$ENV_VAR=$SECRET_PATH:latest,$GEMINI_ENV_VAR=$GEMINI_SECRET_PATH:latest" \
   --task-timeout 10m \
   --max-retries 1 \
   --tasks 1 \
@@ -229,9 +266,10 @@ ensure_schedule() {  # name, cron, mode
   fi
 }
 
-step "4. Cloud Scheduler jobs $SCHED_NEWEST and $SCHED_SAMPLE"
+step "4. Cloud Scheduler jobs $SCHED_NEWEST, $SCHED_SAMPLE and $SCHED_LABEL"
 ensure_schedule "$SCHED_NEWEST" "$SCHEDULE_NEWEST" newest
 ensure_schedule "$SCHED_SAMPLE" "$SCHEDULE_SAMPLE" sample
+ensure_schedule "$SCHED_LABEL" "$SCHEDULE_LABEL" label
 
 # --- 5. Alert on failed executions -----------------------------------------------------------
 # Same metric and condition as the collector's policy (scripts/collector_alert_policy.json), for this job.
@@ -285,7 +323,7 @@ cat > "$POLICY_FILE" <<'EOF'
   ],
   "documentation": {
     "mimeType": "text/markdown",
-    "content": "The Cloud Run job `__JOB__` (daily newest-reviews poll, weekly sample) had a failed execution. The job fails when no call was made or any legacy Place Details call failed (denied key, quota, network) or on a BigQuery or startup error. A failed execution is retried once (the writes are idempotent). Check the logs: `gcloud run jobs executions list --job __JOB__ --region __REGION__` and Cloud Logging for resource `cloud_run_job`."
+    "content": "The Cloud Run job `__JOB__` (daily newest-reviews poll, weekly sample, daily Gemini labelling) had a failed execution. The job fails when no call was made or any legacy Place Details call failed (denied key, quota, network), when a Gemini call failed (label mode), or on a BigQuery or startup error. A failed execution is retried once (the writes are idempotent). Check the logs: `gcloud run jobs executions list --job __JOB__ --region __REGION__` and Cloud Logging for resource `cloud_run_job`."
   }
 }
 EOF
@@ -306,15 +344,17 @@ step "6. Summary"
 cat <<EOF
   project / region : $PROJECT / $REGION
   job              : $JOB (runs as $SA_RUN_EMAIL)
-  secret           : $ENV_VAR <- $SECRET_PATH:latest (runtime account has secretAccessor)
-  scheduler        : $SCHED_NEWEST $SCHEDULE_NEWEST (--mode newest), $SCHED_SAMPLE $SCHEDULE_SAMPLE (--mode sample), Asia/Jakarta$([ "$NO_SCHEDULE" = 1 ] && echo " (skipped or paused: --no-schedule)")
-  volume           : about 10 x 30 + 130 = 430 Place Details calls a month (inside the 1,000 free calls a month cap)
+  secrets          : $ENV_VAR <- $SECRET_PATH:latest, $GEMINI_ENV_VAR <- $GEMINI_SECRET_PATH:latest (runtime account has secretAccessor)
+  scheduler        : $SCHED_NEWEST $SCHEDULE_NEWEST (--mode newest), $SCHED_SAMPLE $SCHEDULE_SAMPLE (--mode sample), $SCHED_LABEL $SCHEDULE_LABEL (--mode label), Asia/Jakarta$([ "$NO_SCHEDULE" = 1 ] && echo " (skipped or paused: --no-schedule)")
+  volume           : about 10 x 30 + 130 = 430 Place Details calls a month (inside the 1,000 free calls a month cap);
+                     label mode: Gemini gemini-3.8-flash, 10 reviews per call, 13 calls for the first 129 text reviews (2026-10-10), then 0 to 2 a day
   alert            : "$POLICY_NAME" -> $ALERT_EMAIL
 $([ "$DRY_RUN" = 1 ] && echo "  DRY RUN          : nothing was changed")
 
-Tables traffic.place_reviews, place_review_snapshots and view v_place_reviews come from sql/ddl.sql
+Tables traffic.place_reviews, place_review_snapshots, place_review_labels and view v_place_reviews come from sql/ddl.sql
 (scripts/bq_setup.sh); create them before the first run.
 
-Trigger one manual run (calls the legacy Places API; add --args=--mode,sample for the 3-variant sample):
+Trigger one manual run (calls the legacy Places API; add --args=--mode,sample for the 3-variant sample, or
+--args=--mode,label to label the unlabelled text reviews with Gemini):
   gcloud run jobs execute $JOB --region $REGION --project $PROJECT --wait --billing-project $PROJECT
 EOF

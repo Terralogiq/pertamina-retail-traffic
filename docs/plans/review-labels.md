@@ -39,7 +39,7 @@ Acceptance: build-and-test green; panel renders for all 10 sites (browser check,
 
 ### 4. Gemini labeller (bead `.10.5.4`, after `.10.13` and `.10.5.1`)
 
-- `reviews_job` gains `--mode label`: reads `v_place_reviews` rows with text and no `gemini` row at the current `model_version`, calls the Gemini API (JSON output constrained to the taxonomy), MERGEs into `place_review_labels`. Key from Secret Manager `gemini-api-key` in `gcp-coe-492507` (projects/14729129282/secrets/gemini-api-key:latest); the gcp-coe-sandbox default compute SA has secretAccessor on it (2026-10-10). Key verified with models.list (gemini-2.5-flash available).
+- `reviews_job` gains `--mode label`: reads `v_place_reviews` rows with text and no `gemini` row at the current `model_version`, calls the Gemini API (JSON output constrained to the taxonomy), MERGEs into `place_review_labels`. Key from Secret Manager `gemini-api-key` in `gcp-coe-492507` (projects/14729129282/secrets/gemini-api-key:latest); the gcp-coe-sandbox default compute SA has secretAccessor on it (2026-10-10). Model `gemini-3.8-flash` (`model_version` `gemini-3.8-flash/p1`): `gemini-2.5-flash` is listed by models.list but generateContent returns 404 "no longer available to new users" for this key. Model ids alias forward on this endpoint, so a pin is not immutable.
 - Scheduler `reviews-poller-label` at `30 6 * * *` Asia/Jakarta, after the 06:00 newest run.
 - Pinned model id; prompt holds the category table and the decision rules from `complaints-analysis.md` Method.
 - Compare with the `manual` labels and with the validation set once it is back.
@@ -52,7 +52,7 @@ Acceptance: one live run labels all unlabelled text reviews; rerun is a no-op; t
 |---|---|---|
 | 1 | `.10.5.1` | `sql/ddl.sql` (review section), `docs/plans/data-schema.md` (Reviews tables), `scripts/load_review_labels.py`, `tests/test_load_review_labels.py`, `tests/test_reviews_job.py` (view test slice) |
 | 2 | `.10.5.2` | `scripts/export_validation_sample.py`, `tests/test_export_validation_sample.py`, `out/complaints/2026-10-10/` |
-| 3 | `.10.5.3` | `dashboard/api/routers/reviews.py`, `dashboard/api/main.py` (router include), `dashboard/web/src/reviews/`, site page mount point, `tests/dashboard/test_reviews*.py` |
-| 4 | `.10.5.4` | `reviews_job/` (label mode, gemini client), `scripts/deploy_reviews_job.sh`, `tests/reviews_job/test_label*.py` |
+| 3 | `.10.5.3` | `dashboard/api/routers/reviews.py`, `dashboard/api/main.py` (router include), `dashboard/web/src/reviews/`, site page mount point, `tests/test_dashboard_reviews.py` |
+| 4 | `.10.5.4` | `reviews_job/` (`gemini.py`, `review_labels.py`, `bq.py`, `main.py`), `scripts/deploy_reviews_job.sh`, `scripts/load_review_labels.py` (imports shared code), `docs/plans/data-schema.md` (schedule + labels notes), `tests/test_reviews_label.py`, `tests/test_reviews_job.py` (NAMES tuple) |
 
 Phases 1 and 2 can run in parallel. 3 and 4 both read the table from 1 and do not share files.

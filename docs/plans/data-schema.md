@@ -222,7 +222,7 @@ Places Aggregate `computeInsights`, `INSIGHT_COUNT`, circle around `places/<plac
 ## Reviews tables
 Written by the Cloud Run job `reviews-poller` (`reviews_job/`, bead `.10.14`). DDL: the review section at the end of `sql/ddl.sql`. Source: the **legacy** Place Details endpoint (`maps.googleapis.com/maps/api/place/details/json`, `fields=reviews,user_ratings_total,rating`, `reviews_no_translations=true`), because only it takes `reviews_sort=newest`; Places API (New) returns 5 reviews in Google's order with no sort. Legacy Places is enabled only in `demogcp-terra2021`, so the job runs in `gcp-coe-sandbox`, writes to `traffic`, and reads the API key from Secret Manager in `demogcp-terra2021` (`maps-api-key`). Why newest-first and what each variant returns: `docs/plans/reviews-feasibility.md`, section "Test". Places storage limits are waived for the demo; core + `raw`, no `demo_*` column.
 
-**Schedule and volume.** `--mode newest` runs once a day (`0 6 * * *` Asia/Jakarta): 1 call per site (`newest`, `id`). `--mode sample` runs weekly (`0 3 * * 1`): 3 calls per site (`newest_id`, `most_relevant_id`, `most_relevant_en`). About 10 x 30 + 130 = 430 calls a month, inside the 1,000 free calls a month cap. At KM57A (about 2.5 reviews a day) a daily newest-5 poll can miss reviews on a busy day; the snapshot table shows how often a poll returns 5 new ones.
+**Schedule and volume.** `--mode newest` runs once a day (`0 6 * * *` Asia/Jakarta): 1 call per site (`newest`, `id`). `--mode sample` runs weekly (`0 3 * * 1`): 3 calls per site (`newest_id`, `most_relevant_id`, `most_relevant_en`). About 10 x 30 + 130 = 430 calls a month, inside the 1,000 free calls a month cap. At KM57A (about 2.5 reviews a day) a daily newest-5 poll can miss reviews on a busy day; the snapshot table shows how often a poll returns 5 new ones. `--mode label` runs daily after it (`30 6 * * *` Asia/Jakarta, Scheduler job `reviews-poller-label`): it sends the text reviews that have no `gemini` row at the current `model_version` to the Gemini API (`gemini-3.8-flash`, 10 reviews per call, key from Secret Manager `gemini-api-key` in `gcp-coe-492507`) and MERGEs the labels into `place_review_labels`. The first run (2026-10-10) labelled all 129 text reviews in 13 calls; afterwards only the new text reviews are sent (a few a day, 0 to 2 calls), and a day with nothing new makes no call. Not part of the 1,000 free calls a month cap (that cap is for legacy Place Details only). Logs carry counts only, never review text or gists.
 
 | Table | Grain (MERGE key) | Rows |
 |---|---|---|
@@ -264,7 +264,7 @@ One row per successful API call, to measure the review rate (growth of `user_rat
 Core + `raw`, like the other tables. A failed call leaves no row. The job exits 1 when any call failed (after writing the successful ones) and Cloud Run retries once.
 
 ### place_review_labels
-Derived table (bead `.10.5.1`): labels per review for the complaints analysis and the Review themes panel, written by `scripts/load_review_labels.py` (manual pass) and later by `reviews_job --mode label` (Gemini). Core columns only, no `raw`: it holds labels and a masked English gist, never review text or author fields. Clustered by `site_id`, not partitioned (same reasoning as `place_reviews`). Taxonomy and sentiment rules: `docs/plans/complaints-analysis.md`.
+Derived table (bead `.10.5.1`): labels per review for the complaints analysis and the Review themes panel, written by `scripts/load_review_labels.py` (manual pass) and by `reviews_job --mode label` (Gemini, bead `.10.5.4`). Core columns only, no `raw`: it holds labels and a masked English gist, never review text or author fields. Clustered by `site_id`, not partitioned (same reasoning as `place_reviews`). Taxonomy and sentiment rules: `docs/plans/complaints-analysis.md`.
 
 | Column | Type | Source |
 |---|---|---|
@@ -275,7 +275,7 @@ Derived table (bead `.10.5.1`): labels per review for the complaints analysis an
 | `praise_only` | BOOL | true when `sentiment` is `pos` |
 | `gist` | STRING | one-line English gist, masked |
 | `method` | STRING | `manual` or `gemini`; MERGE key with `review_key` |
-| `model_version` | STRING | `taxonomy_v1` for `manual`; pinned Gemini model id plus prompt version for `gemini` |
+| `model_version` | STRING | `taxonomy_v1` for `manual`; `gemini-3.8-flash/p1` (pinned model id + prompt version) for `gemini`. The model id and prompt version are constants in `reviews_job/gemini.py`; `PROMPT_VERSION` is bumped by hand (a test pins the prompt hash). A new `model_version` makes every text review unlabelled again, so the MERGE replaces the `gemini` rows |
 | `labeled_at` | TIMESTAMP | when the row was written |
 
 **Merge.** One MERGE on `(review_key, method)` per load: a rerun, or a new taxonomy or model version, overwrites that method's row and leaves the other method's row alone. The loader fails on a `review_key` that is not in `v_place_reviews` rather than writing a label with no site.

@@ -23,7 +23,7 @@ from unittest import mock
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JOB_DIR = os.path.join(ROOT, "reviews_job")
 FIXTURES = os.path.join(ROOT, "tests", "fixtures")
-NAMES = ("httpjson", "reviews", "bq", "main")
+NAMES = ("httpjson", "review_labels", "reviews", "gemini", "bq", "main")
 
 
 def _load():

@@ -1,0 +1,106 @@
+.themes-n {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.theme-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.theme-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.theme-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+}
+
+/* Two tokens: recent is the brand blue, older the neutral series grey. Counts are printed beside every bar. */
+.theme-seg-recent {
+  background: var(--brand-primary);
+}
+
+.theme-seg-older {
+  background: var(--series-dry);
+}
+
+.theme-rows,
+.theme-gists {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.theme-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 9rem) minmax(4rem, 1fr);
+  grid-template-areas: "name bar" ". counts";
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.theme-name {
+  grid-area: name;
+  color: var(--ink-1);
+}
+
+.theme-bar {
+  grid-area: bar;
+  display: flex;
+  height: 0.875rem;
+}
+
+/* Segment width = count / largest total, as a share of the track; no unit written as text anywhere. */
+.theme-bar .theme-seg {
+  height: 100%;
+}
+
+.theme-bar .theme-seg-recent {
+  width: calc(var(--recent) / var(--max) * 100%);
+  border-radius: 2px 0 0 2px;
+}
+
+.theme-bar .theme-seg-older {
+  width: calc(var(--older) / var(--max) * 100%);
+  border-radius: 0 2px 2px 0;
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+}
+
+.theme-counts {
+  grid-area: counts;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.theme-gist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.theme-gist-meta time {
+  color: var(--ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.theme-gist {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  max-width: 65ch;
+}
