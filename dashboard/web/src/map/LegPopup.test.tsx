@@ -174,7 +174,7 @@ describe("buildGroupPopup", () => {
     expect(model.sites).toEqual([
       { name: "SPBU 2", band: "heavy", bandLabel: "Heavy", delay: "+2.0 min" },
       { name: "SPBU 1", band: "moderate", bandLabel: "Moderate", delay: "+1.0 min" },
-      { name: "SPBU 0", band: "free", bandLabel: "Free flow", delay: "+0 s" },
+      { name: "SPBU 0", band: "free", bandLabel: "Free flow", delay: "no delay" },
     ]);
     expect(model.more).toBe(0);
   });
