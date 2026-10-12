@@ -5,7 +5,7 @@ import { CHART_INK, SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
 import { TrafficPoint, TypicalDayResponse, getTrafficSeries, getTypicalDay } from "./api";
 import Chart from "./Chart";
-import { actionHeadline } from "./headlines";
+import { trafficHeadline } from "./headlines";
 import {
   DelayDatum,
   Range,
@@ -164,13 +164,7 @@ export default function TrafficCharts({
     };
   }, [siteId]);
 
-  const weekdayHeadline = profile
-    ? actionHeadline(
-        profile.ready,
-        profile.legs.filter((leg) => leg.day_kind === "weekday"),
-        "weekday",
-      )
-    : null;
+  const weekdayHeadline = trafficHeadline(profile);
 
   const tz = tzLabel(timezone);
   const offsetMin = utcOffsetMinutes(timezone, now);

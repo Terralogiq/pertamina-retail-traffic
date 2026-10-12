@@ -1,4 +1,4 @@
-import type { BusyWindow, DayKind, TypicalLeg } from "./api";
+import type { BusyWindow, DayKind, TypicalDayResponse, TypicalLeg } from "./api";
 import { legLabel } from "./model";
 
 function clock(hour: number): string {
@@ -31,11 +31,26 @@ function busiest(legs: TypicalLeg[]): { leg: string; window: BusyWindow } | null
 /**
  * One sentence for a traffic card.
  * Ready: the busiest peak window. Otherwise a neutral line, even if windows were passed in.
+ * `labelDay` prefixes the window sentence with Weekdays or Weekends, for a card that has no day-kind control.
  */
-export function actionHeadline(ready: boolean, legs: TypicalLeg[], dayKind: DayKind): string {
+export function actionHeadline(ready: boolean, legs: TypicalLeg[], dayKind: DayKind, labelDay = false): string {
   if (!ready) return "Not enough days yet.";
+  if (legs.length === 0) return "No readings for this day kind.";
   const peak = busiest(legs);
   if (!peak) return `No busy hours on ${dayKind === "weekend" ? "weekends" : "weekdays"}.`;
   const { leg, window } = peak;
-  return `${legLabel(leg)} is slowest ${clock(window.start_hour)}–${clock(window.end_hour)}, ${delayPhrase(window.median_delay_s)}.`;
+  const sentence = `${legLabel(leg)} is slowest ${clock(window.start_hour)}–${clock(window.end_hour)}, ${delayPhrase(window.median_delay_s)}.`;
+  const days = dayKind === "weekend" ? "Weekends" : "Weekdays";
+  return labelDay ? `${days}: ${sentence}` : sentence;
+}
+
+/** Weekday headline for the recent-traffic card. Null until the profile has loaded. */
+export function trafficHeadline(profile: TypicalDayResponse | null): string | null {
+  if (!profile) return null;
+  return actionHeadline(
+    profile.ready,
+    profile.legs.filter((leg) => leg.day_kind === "weekday"),
+    "weekday",
+    true,
+  );
 }

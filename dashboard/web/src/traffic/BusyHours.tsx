@@ -70,12 +70,9 @@ export function BusyStrip({ leg, hours }: { leg: string; hours: TypicalHour[] })
 /** Peak-window list and 24-cell strip for one day kind. The caller hides this until the profile is ready. */
 export default function BusyHours({ legs, dayKind }: { legs: TypicalLeg[]; dayKind: DayKind }) {
   const lines = legs.flatMap((leg) => leg.windows.map((window) => ({ leg: leg.leg, window, hours: leg.hours })));
-  const kind = dayKind === "weekday" ? "weekdays" : "weekends";
   return (
     <div className="busy-hours">
-      {lines.length === 0 ? (
-        <p className="typical-caption">No busy hours on {kind}.</p>
-      ) : (
+      {lines.length > 0 && (
         <ul className="busy-list">
           {lines.map(({ leg, window, hours }) => (
             <li key={`${leg}-${window.start_hour}`}>{busyWindowText(dayKind, leg, window, hours)}</li>

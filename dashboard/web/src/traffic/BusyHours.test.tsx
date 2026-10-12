@@ -48,6 +48,9 @@ describe("busy hours", () => {
     expect(cell(6)).not.toContain("is-busy");
     expect(ready).toContain("07:00–09:00");
 
+    const quiet = renderToStaticMarkup(<BusyHours legs={[leg([], [])]} dayKind="weekday" />);
+    expect(quiet).not.toContain("No busy hours");
+
     const waiting = renderToStaticMarkup(
       <TypicalDayBody
         data={{ days: 6, ready: false, legs: [leg([7], [])] }}
