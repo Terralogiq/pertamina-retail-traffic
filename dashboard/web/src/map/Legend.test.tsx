@@ -10,6 +10,8 @@ const site: Site = {
   place_id: "p",
   road_name: null,
   city: null,
+  road_type: "arterial",
+  road_class: "urban",
   timezone: "Asia/Jakarta",
   location: { lat: -7, lng: 110 },
   legs: [
@@ -48,19 +50,19 @@ describe("compact Legend", () => {
   });
 
   it("puts the ranges only in each item's title and visually-hidden text", () => {
-    expect(html).toContain('title="Congestion index under 1.2"');
-    expect(html).toContain('title="Congestion index 2.2 and over"');
-    // "under 1.2": once in a title, once in the hidden text, nowhere else.
-    expect(count(html, "under 1.2")).toBe(2);
-    expect(count(html, 'class="visually-hidden">(Congestion index under 1.2)')).toBe(1);
+    expect(html).toContain('title="under 1.5×, or under the delay gate"');
+    expect(html).toContain('title="3× and over"');
+    expect(count(html, "under 1.5×, or under the delay gate")).toBe(2);
+    expect(count(html, 'class="visually-hidden">(under 1.5×, or under the delay gate)')).toBe(1);
     expect(html).not.toContain("km/h");
   });
 
-  it("adds the speed range only when a leg is on speed basis", () => {
-    const mixed = legend([row("a"), row("d", { baseline_samples: 5, congestion_index: null, speed_kmh: 20 })], true);
-    expect(mixed).toContain('title="Congestion index 1.6 to 2.2; Speed 15 to 25 km/h"');
+  it("adds the provisional note only when a leg is still on provisional usual speed", () => {
+    const mixed = legend([row("a"), row("d", { baseline_samples: 5, congestion_index: null })], true);
+    expect(mixed).toContain("45 km/h urban");
+    expect(mixed).toContain("80 km/h toll");
     const speedOnly = legend([row("a", { baseline_samples: 5 }), row("d", { baseline_samples: 5 })], true);
-    expect(speedOnly).toContain('title="Speed under 15 km/h"');
+    expect(speedOnly).toContain("20 s urban or 30 s toll");
     expect(speedOnly).not.toContain("Congestion index");
   });
 

@@ -5,8 +5,8 @@ import { BandIndicator } from "../theme/BandIndicator";
 import { DemoMarker, DemoNote } from "../weather/DemoBadge";
 import type { WeatherLatest } from "../weather/api";
 import { LatestLeg } from "./api";
-import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legLabel } from "./bands";
-import { SiteFilter, SiteSort, SiteState, Summary, baselineDaysLeft, orderSites, rankSites, summarize } from "./severity";
+import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legContext, legLabel } from "./bands";
+import { SiteFilter, SiteSort, SiteState, Summary, orderSites, rankSites, summarize } from "./severity";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
@@ -43,7 +43,7 @@ export function SiteRow({ state, latest, weather }: { state: SiteState; latest: 
             return (
               <span key={leg.selected_route_id} className="site-leg">
                 <span className="site-leg-name">{legLabel(leg.leg)}</span>
-                <BandIndicator band={legBand(row).band} />
+                <BandIndicator band={legBand(row, legContext(site, leg.selected_route_id)).band} />
                 <span className="site-leg-delay num">{formatDelay(row?.delay_s)}</span>
                 <span className="site-leg-speed num">{formatSpeed(row?.speed_kmh)}</span>
               </span>
@@ -82,11 +82,9 @@ export function NowSummary({ summary }: { summary: Summary }) {
 /** One page-level notice while any leg's baseline is still building, instead of a badge on every site. */
 export function BaselineNotice({ samples }: { samples: number | null }) {
   if (samples === null || samples >= BASELINE_FULL) return null;
-  const days = baselineDaysLeft(samples);
   return (
     <p className="baseline-notice">
-      <strong>Baseline building</strong> ({samples} of {BASELINE_FULL} readings per leg). Legs are coloured by speed until the
-      usual travel time is known{days > 0 ? `, in about ${days} day${days === 1 ? "" : "s"}` : ""}.
+      <strong>Provisional</strong> ({samples} of {BASELINE_FULL} readings per leg). The usual travel time is not ready yet.
     </p>
   );
 }

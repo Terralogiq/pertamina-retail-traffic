@@ -3,7 +3,7 @@ import type { BandId } from "../theme/palette";
 import { BANDS } from "../theme/palette";
 import type { ReactNode } from "react";
 import type { LatestLeg, Leg, Site } from "./api";
-import { formatDelay, formatSlot, formatSpeed, legBand, legLabel } from "./bands";
+import { formatDelay, formatSlot, formatSpeed, legBand, legContext, legLabel } from "./bands";
 import type { SiteState } from "./severity";
 import "./LegPopup.css";
 
@@ -23,7 +23,7 @@ export interface LegPopupModel {
 }
 
 export function buildLegPopup(site: Site, leg: Leg, row: LatestLeg | undefined): LegPopupModel {
-  const { band, basis } = legBand(row);
+  const { band, basis } = legBand(row, { roadClass: site.road_class, expectedDistanceM: leg.expected_distance_m });
   return {
     overline: `${legLabel(leg.leg)} · ${leg.leg === "approach" ? "toward the SPBU" : "away from the SPBU"}`,
     title: site.name,
@@ -32,7 +32,7 @@ export function buildLegPopup(site: Site, leg: Leg, row: LatestLeg | undefined):
     delay: formatDelay(row?.delay_s),
     speed: formatSpeed(row?.speed_kmh),
     slot: row ? formatSlot(row.slot_time, site.timezone) : null,
-    basis: basis === "speed" ? "Band from speed while the baseline builds" : null,
+    basis: basis === "speed" ? "Provisional until the usual travel time is known" : null,
   };
 }
 
@@ -52,7 +52,7 @@ export function buildSitePopup(site: Site, latest: Map<string, LatestLeg>): Site
     overline: [site.city, site.road_name].filter(Boolean).join(" · ") || null,
     title: site.name,
     legs: rows.map(({ leg, row }) => {
-      const { band } = legBand(row);
+      const { band } = legBand(row, legContext(site, leg.selected_route_id));
       return { name: legLabel(leg.leg), band, bandLabel: BANDS[band].label, delay: formatDelay(row?.delay_s) };
     }),
     slot: slots.length ? formatSlot(slots[slots.length - 1], site.timezone) : null,

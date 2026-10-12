@@ -13,10 +13,11 @@ const weather = (over: Partial<WeatherLatest> = {}) =>
   ({ site_id: "a", slot_time: "2026-10-07T07:30:00Z", temperature_c: 30.4, demo_icon_uri: null, demo_condition_text: null, ...over }) as WeatherLatest;
 
 describe("BaselineNotice", () => {
-  it("shows once with progress and days left while building", () => {
+  it("shows the reading count and no calendar date while the usual time is provisional", () => {
     const out = html(<BaselineNotice samples={30} />);
     expect(out).toContain(`30 of ${BASELINE_FULL}`);
-    expect(out).toContain("in about 6 days");
+    expect(out).toContain("not ready yet");
+    expect(out).not.toContain("day");
   });
   it("is hidden when full or without data", () => {
     expect(html(<BaselineNotice samples={BASELINE_FULL} />)).toBe("");

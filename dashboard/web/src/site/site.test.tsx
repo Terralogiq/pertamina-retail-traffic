@@ -12,9 +12,19 @@ const site: Site = {
   place_id: "p",
   road_name: "Jl. Urip Sumoharjo",
   city: "Makassar",
+  road_type: "arterial",
+  road_class: "urban",
   timezone: "Asia/Makassar",
   location: { lat: 0, lng: 0 },
-  legs: [],
+  legs: ["approach", "departure"].map((name, i) => ({
+    selected_route_id: `r-${name}`,
+    display_name: null,
+    side: "spbu_side",
+    leg: name,
+    leg_index: i,
+    expected_distance_m: 500,
+    expected_polyline: null,
+  })),
 };
 
 const leg = (name: string, extra: Partial<LatestLeg> = {}): LatestLeg => ({
@@ -51,12 +61,13 @@ describe("site header", () => {
           rain_flag: false, wind_speed_kmh: null, demo_condition_type: null, demo_condition_text: null,
           demo_icon_uri: null, demo_rain_flag: null, demo_precip_probability: null,
         }}
+        site={site}
         places={{ site_id: site.site_id, run_id: "r", fetched_at: null, details: { display_name: null, rating: 4.2, user_rating_count: 9, business_status: null, open_now: null, weekday_descriptions: [], reviews: [] }, competitors: [], competitor_totals: [], poi: [] }}
       />,
     );
     expect(html.indexOf("Approach")).toBeLessThan(html.indexOf("Departure"));
     for (const s of ["+16 s", "+1.3 min", "30 km/h", "29.1 °C", "no rain", "4.2"]) expect(html).toContain(s);
-    // colour is never the only signal: the band label is in the markup (speed fallback, 30 km/h = moderate)
+    // 500 m at 45 km/h is 40 s; 60 s is 1.5× and 20 s over, so moderate. The label is in the markup.
     expect(html).toContain(BANDS.moderate.label);
   });
 });
@@ -64,8 +75,11 @@ describe("site header", () => {
 describe("legBand", () => {
   it("returns the band id with its basis", () => {
     expect(legBand(undefined)).toEqual({ band: "none", basis: "none" });
-    expect(legBand(leg("approach", { speed_kmh: 10 }))).toEqual({ band: "jam", basis: "speed" });
-    expect(legBand(leg("approach", { baseline_samples: BASELINE_FULL, congestion_index: 1.1 }))).toEqual({
+    expect(legBand(leg("approach", { duration_s: 180, baseline_samples: 10 }), { roadClass: "urban", expectedDistanceM: 500 })).toEqual({
+      band: "jam",
+      basis: "speed",
+    });
+    expect(legBand(leg("approach", { baseline_samples: BASELINE_FULL, congestion_index: 1.1, delay_s: 16 }))).toEqual({
       band: "free",
       basis: "congestion",
     });

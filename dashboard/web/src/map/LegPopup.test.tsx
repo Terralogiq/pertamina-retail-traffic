@@ -21,6 +21,8 @@ const site = (timezone: string): Site => ({
   place_id: "p",
   road_name: null,
   city: null,
+  road_type: "arterial",
+  road_class: "urban",
   timezone,
   location: { lat: -7, lng: 110 },
   legs: [leg("approach"), leg("departure")],
@@ -44,8 +46,8 @@ describe("buildLegPopup", () => {
     expect(buildLegPopup(site("Asia/Jakarta"), leg("departure"), row({ congestion_index: 1.7 }))).toEqual({
       overline: "Departure · away from the SPBU",
       title: "SPBU Pertamina 3440116",
-      band: "heavy",
-      bandLabel: "Heavy",
+      band: "moderate",
+      bandLabel: "Moderate",
       delay: "+1.1 min",
       speed: "18 km/h",
       slot: "13:30 WIB",
@@ -55,8 +57,8 @@ describe("buildLegPopup", () => {
 
   it("says the band comes from speed while the baseline builds", () => {
     const model = buildLegPopup(site("Asia/Jakarta"), leg("departure"), row({ baseline_samples: 10, congestion_index: null }));
-    expect(model.band).toBe("heavy"); // 18 km/h: 15 to 25
-    expect(model.basis).toBe("Band from speed while the baseline builds");
+    expect(model.band).toBe("heavy"); // 100 s over 500 m is 2.5× a 45 km/h usual time, and 60 s over the gate
+    expect(model.basis).toBe("Provisional until the usual travel time is known");
   });
 
   it("shows the slot in the site's local time (WITA)", () => {
@@ -93,7 +95,7 @@ describe("LegPopup", () => {
     expect(html).toContain("+1.1 min");
     expect(html).toContain("Speed 18 km/h");
     expect(html).toContain("Slot 13:30 WIB");
-    expect(html).toContain("Band from speed while the baseline builds");
+    expect(html).toContain("Provisional until the usual travel time is known");
     expect(html).not.toContain("<button");
   });
 
@@ -133,7 +135,7 @@ describe("buildSitePopup", () => {
       title: "SPBU Pertamina 3440116",
       legs: [
         { name: "Approach", band: "free", bandLabel: "Free flow", delay: "+20 s" },
-        { name: "Departure", band: "jam", bandLabel: "Jammed", delay: "+2.5 min" },
+        { name: "Departure", band: "heavy", bandLabel: "Heavy", delay: "+2.5 min" },
       ],
       slot: "14:30 WITA",
     });

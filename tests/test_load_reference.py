@@ -11,8 +11,8 @@ _spec.loader.exec_module(lr)
 # Google's documented example: (38.5, -120.2), (40.7, -120.95), (43.252, -126.453)
 POLY = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
 
-SITE = {"spbu_code": "34.121.03", "road": "Jl. TB Simatupang", "city": "Jakarta Selatan",
-        "place_id": "ChIJabc", "timezone": "Asia/Jakarta"}
+SITE = {"spbu_code": "34.121.03", "road": "Jl. TB Simatupang", "road_type": "congested arterial",
+        "city": "Jakarta Selatan", "place_id": "ChIJabc", "timezone": "Asia/Jakarta"}
 ROUTE = {
     "selected_route_id": "spbu-3412103-spbuside-approach", "site_id": "34.121.03",
     "side": "spbu_side", "leg": "approach", "call_id": "spbu-3412103-spbuside", "leg_index": "0",
@@ -85,7 +85,7 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(r, {"site_id": "34.121.03", "name": "SPBU X", "place_id": "ChIJabc",
                              "location_wkt": "POINT(106.8100000 -6.2900000)",
                              "road_name": "Jl. TB Simatupang", "city": "Jakarta Selatan",
-                             "timezone": "Asia/Jakarta"})
+                             "road_type": "congested arterial", "timezone": "Asia/Jakarta"})
 
     def test_site_row_carries_timezone(self):
         r = lr.site_row(dict(SITE, timezone="Asia/Makassar"), {})
@@ -98,6 +98,15 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(set(zones.values()), {"Asia/Jakarta", "Asia/Makassar"})
         self.assertIn("timezone", lr.SITES_SCHEMA)
         self.assertIn("timezone", lr.MERGE_SITES)
+        self.assertIn("road_type", lr.SITES_SCHEMA)
+        self.assertIn("road_type", lr.MERGE_SITES)
+
+    def test_sites_csv_road_class(self):
+        """KM57A is the only toll site; the word toll in road_type is the rule."""
+        rows = lr.read_csv(lr.SITES_CSV)
+        toll = [s["spbu_code"] for s in rows if "toll" in s["road_type"].lower()]
+        self.assertEqual(toll, ["KM57A"])
+        self.assertEqual(len(rows), 10)
 
     def test_site_row_without_details(self):
         r = lr.site_row(SITE, {})

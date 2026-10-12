@@ -1,6 +1,6 @@
 import { BandIndicator } from "../theme/BandIndicator";
 import { LatestLeg, Site } from "./api";
-import { BAND_RANK, Basis, CONGESTION_BANDS, SPEED_BANDS, legBand } from "./bands";
+import { BAND_RANK, Basis, CONGESTION_BANDS, legBand, legContext } from "./bands";
 
 /** Worst first, so the legend reads in the same order as the site list. */
 function Scale({ title, bands }: { title: string; bands: typeof CONGESTION_BANDS }) {
@@ -21,24 +21,25 @@ function Scale({ title, bands }: { title: string; bands: typeof CONGESTION_BANDS
 }
 
 /** One row, free flow to jammed: icon and name per band, the ranges in each item's tooltip (and for screen readers). */
-function CompactScale({ bases }: { bases: Set<Basis> }) {
-  const scales = [
-    { on: bases.has("congestion"), name: "Congestion index", bands: CONGESTION_BANDS },
-    { on: bases.has("speed"), name: "Speed", bands: SPEED_BANDS },
-  ].filter((s) => s.on);
+function CompactScale() {
   const ordered = [...CONGESTION_BANDS].sort((a, b) => BAND_RANK[a.band] - BAND_RANK[b.band]);
   return (
     <ul className="map-legend-row">
-      {ordered.map(({ band }) => {
-        const ranges = scales.map((s) => `${s.name} ${s.bands.find((b) => b.band === band)!.label}`).join("; ");
-        return (
-          <li key={band} title={ranges}>
-            <BandIndicator band={band} />
-            <span className="visually-hidden">({ranges})</span>
-          </li>
-        );
-      })}
+      {ordered.map(({ band, label }) => (
+        <li key={band} title={label}>
+          <BandIndicator band={band} />
+          <span className="visually-hidden">({label})</span>
+        </li>
+      ))}
     </ul>
+  );
+}
+
+function ProvisionalNote() {
+  return (
+    <p className="map-legend-note">
+      Provisional usual speed: 45 km/h urban, 80 km/h toll. The same bands apply, with a 20 s urban or 30 s toll delay gate.
+    </p>
   );
 }
 
@@ -48,13 +49,15 @@ function CompactScale({ bases }: { bases: Set<Basis> }) {
  * would cover the legs.
  */
 export default function Legend({ sites, latest, compact = false }: { sites: Site[]; latest: Map<string, LatestLeg>; compact?: boolean }) {
-  const bases = new Set<Basis>(sites.flatMap((s) => s.legs.map((l) => legBand(latest.get(l.selected_route_id)).basis)));
+  const bases = new Set<Basis>(
+    sites.flatMap((s) => s.legs.map((l) => legBand(latest.get(l.selected_route_id), legContext(s, l.selected_route_id)).basis)),
+  );
   const scaled = bases.has("congestion") || bases.has("speed");
   return (
     <aside className={compact ? "map-legend map-legend-compact" : "map-legend"} aria-label="Map key">
-      {compact && scaled && <CompactScale bases={bases} />}
-      {!compact && bases.has("congestion") && <Scale title="Congestion index (duration ÷ usual)" bands={CONGESTION_BANDS} />}
-      {!compact && bases.has("speed") && <Scale title="Speed, while the baseline builds" bands={SPEED_BANDS} />}
+      {compact && scaled && <CompactScale />}
+      {!compact && scaled && <Scale title="Usual time" bands={CONGESTION_BANDS} />}
+      {bases.has("speed") && <ProvisionalNote />}
       {bases.size === 0 || (bases.size === 1 && bases.has("none")) ? (
         <p className="map-legend-title">
           <BandIndicator band="none" /> No readings yet

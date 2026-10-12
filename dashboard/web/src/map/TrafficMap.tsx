@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { BANDS, CHART_INK } from "../theme/palette";
 import { LatestLeg, Site } from "./api";
-import { boundsOf, formatDelay, legColor, lineToPath, sitePoints } from "./bands";
+import { boundsOf, formatDelay, legColor, legContext, lineToPath, sitePoints } from "./bands";
 import Legend from "./Legend";
 import { GroupPopup, LegPopup, SitePopup, buildGroupPopup, buildLegPopup, buildSitePopup } from "./LegPopup";
 import { loadMaps } from "./maps";
@@ -143,7 +143,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         if (path.length < 2) continue;
         const row = latest.get(leg.selected_route_id);
         const model = buildLegPopup(site, leg, row);
-        const { color } = legColor(row);
+        const { color } = legColor(row, legContext(site, leg.selected_route_id));
         const casing = new libs.maps.Polyline({ map, path, strokeColor: CHART_INK.surface, strokeOpacity: 0.95, strokeWeight: 10, clickable: false });
         const line = new libs.maps.Polyline({
           map,

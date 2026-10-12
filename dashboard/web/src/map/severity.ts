@@ -1,7 +1,7 @@
 // Pure helpers for the overview: per-site severity, ranking, the "now" summary and marker clustering.
 import type { BandId } from "../theme/palette";
 import type { LatestLeg, Site } from "./api";
-import { BAND_RANK, BASELINE_FULL, Basis, isSlowed, legBand } from "./bands";
+import { BAND_RANK, BASELINE_FULL, Basis, isSlowed, legBand, legContext } from "./bands";
 
 export interface SiteState {
   site: Site;
@@ -20,7 +20,7 @@ export function siteState(site: Site, latest: Map<string, LatestLeg>): SiteState
   let worstDelay: number | null = null;
   for (const leg of site.legs) {
     const row = latest.get(leg.selected_route_id);
-    const b = legBand(row);
+    const b = legBand(row, legContext(site, leg.selected_route_id));
     if (BAND_RANK[b.band] > BAND_RANK[band]) {
       band = b.band;
       basis = b.basis;

@@ -1,8 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import type { LatestLeg, Site } from "../map/api";
-import { BASELINE_FULL, baselineProgress, legBand } from "../map/bands";
+import { BASELINE_FULL, baselineProgress, legBand, legContext } from "../map/bands";
 import { SiteMap } from "../map";
-import { baselineDaysLeft } from "../map/severity";
 import { PlacesPanel } from "../places";
 import { ReviewThemesPanel } from "../reviews";
 import { Page } from "../shell/AppShell";
@@ -32,20 +31,21 @@ export function siteContext(site: Site): string {
   return [`SPBU ${site.site_id}`, site.city, site.road_name, tzLabel(site.timezone)].filter(Boolean).join(" · ");
 }
 
-/** Same facts and maths as the overview's BaselineNotice (302 readings per leg, days left), while any leg's baseline is building; else null. */
+/** Same count as the overview's BaselineNotice, while any leg's baseline is building; else null. */
 export function baselineNotice(legs: LatestLeg[]): string | null {
   const n = baselineProgress(legs);
   if (n === null || n >= BASELINE_FULL) return null;
-  const days = baselineDaysLeft(n);
-  return `Baseline building (${n} of ${BASELINE_FULL} readings per leg). Leg status uses speed until the usual travel time is known, in about ${days} ${days === 1 ? "day" : "days"}; the congestion index is provisional.`;
+  return `Provisional (${n} of ${BASELINE_FULL} readings per leg). The usual travel time is not ready yet.`;
 }
 
 /** Status line under the heading: each leg's latest delay and band, the weather now and the rating (F4). */
 export function StatusStrip({
+  site,
   legs,
   weather,
   places,
 }: {
+  site?: Site;
   legs: Load<LatestLeg[]>;
   weather: Load<WeatherLatest>;
   places: Load<PlacesResponse>;
@@ -64,7 +64,7 @@ export function StatusStrip({
           [...legs]
             .sort((a, b) => a.leg.localeCompare(b.leg))
             .map((leg) => {
-              const { band, basis } = legBand(leg);
+              const { band, basis } = legBand(leg, site ? legContext(site, leg.selected_route_id) : undefined);
               return (
                 <div className="status-item" key={leg.selected_route_id}>
                   <dt>{legLabel(leg.leg)}</dt>
@@ -139,7 +139,9 @@ export function SiteDetail() {
         <div className="site-context">
           {isReady(site) && <p>{siteContext(site)}</p>}
           {site instanceof Error && <p role="alert">Couldn't load the site. {site.message}</p>}
-          {!(site instanceof Error) && <StatusStrip legs={legs} weather={weather} places={places} />}
+          {!(site instanceof Error) && (
+            <StatusStrip site={isReady(site) ? site : undefined} legs={legs} weather={weather} places={places} />
+          )}
         </div>
       }
       actions={<SiteNav />}

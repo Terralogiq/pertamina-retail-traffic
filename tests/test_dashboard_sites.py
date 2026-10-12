@@ -11,13 +11,14 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from dashboard.api import cache  # noqa: E402
 from dashboard.api.main import app  # noqa: E402
+from dashboard.api.routers.sites import road_class  # noqa: E402
 
 LINE = {"type": "LineString", "coordinates": [[106.81, -6.29], [106.82, -6.29]]}
 
 
 def row(site_id, leg, **kw):
     base = {"site_id": site_id, "name": f"SPBU {site_id}", "place_id": "ChIJ" + site_id,
-            "road_name": "Jl. X", "city": "Makassar", "timezone": "Asia/Makassar",
+            "road_name": "Jl. X", "city": "Makassar", "road_type": "arterial", "timezone": "Asia/Makassar",
             "lat": -5.14, "lng": 119.49, "selected_route_id": f"r-{site_id}-{leg}",
             "display_name": f"{site_id} {leg}", "side": "spbu_side", "leg": leg,
             "leg_index": 0 if leg == "approach" else 1, "expected_distance_m": 500,
@@ -44,9 +45,12 @@ class SitesTest(unittest.TestCase):
         sql = q.call_args.args[0]
         self.assertIn("ST_ASGEOJSON(r.expected_polyline)", sql)
         self.assertIn("s.timezone", sql)
+        self.assertIn("s.road_type", sql)
         sites = res.json()
         self.assertEqual([s["site_id"] for s in sites], ["74.902.22", "34.121.03"])
         makassar = sites[0]
+        self.assertEqual(makassar["road_class"], "urban")
+        self.assertEqual(makassar["road_type"], "arterial")
         self.assertEqual(makassar["timezone"], "Asia/Makassar")
         self.assertEqual(makassar["location"], {"lat": -5.14, "lng": 119.49})
         self.assertEqual([leg["leg"] for leg in makassar["legs"]], ["approach", "departure"])
@@ -71,6 +75,15 @@ class SitesTest(unittest.TestCase):
         with mock.patch("dashboard.api.bq.query") as q:
             self.assertEqual(self.client.get("/api/sites").status_code, 401)
         q.assert_not_called()
+
+    def test_toll_rest_area_is_the_only_toll_site(self):
+        import csv
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "sites.csv")
+        with open(path, newline="", encoding="utf-8") as f:
+            classes = {r["spbu_code"]: road_class(r["road_type"]) for r in csv.DictReader(f)}
+        self.assertEqual(classes["KM57A"], "toll")
+        self.assertEqual({c for code, c in classes.items() if code != "KM57A"}, {"urban"})
+        self.assertEqual(len(classes), 10)
 
     def test_config_serves_browser_key(self):
         self.assertEqual(self.client.get("/api/config").json(), {"maps_browser_key": "browser-key", "maps_map_id": None})
