@@ -6,6 +6,7 @@ import type { DayKind, TypicalDayResponse, TypicalHour, TypicalLeg } from "./api
 import { getTypicalDay } from "./api";
 import BusyHours from "./BusyHours";
 import Chart from "./Chart";
+import { actionHeadline } from "./headlines";
 import { formatDelay, legLabel, tzLabel } from "./model";
 import "./TrafficCharts.css";
 
@@ -181,6 +182,7 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
 
   return (
     <div className="traffic-stack">
+      <p className="traffic-headline">{actionHeadline(data.ready, legs, dayKind)}</p>
       <p className="typical-readiness">{typicalNote(data.days, data.ready)}</p>
       {data.ready && <BusyHours legs={legs} dayKind={dayKind} />}
       {legs.length === 0 && <Notice>No {kindLabel} readings in the last 28 days.</Notice>}

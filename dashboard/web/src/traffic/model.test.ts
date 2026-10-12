@@ -99,7 +99,7 @@ describe("delaySeries", () => {
 describe("delay tooltip", () => {
   it("names the delay, the speed and how many times the usual travel time", () => {
     expect(delayTooltipText("Approach", 20, 28, 1.5)).toBe("Approach: +20 s · 28 km/h · 1.50× usual time");
-    expect(delayTooltipText("Departure", -4, null, null)).toBe("Departure: -4 s · n/a · n/a");
+    expect(delayTooltipText("Departure", -4, null, null)).toBe("Departure: no delay · n/a · n/a");
     expect(delayTooltipText("Approach", null, 30, 1.2)).toBe("Approach: n/a · 30 km/h · 1.20× usual time");
   });
 });
@@ -114,7 +114,7 @@ describe("rain helpers", () => {
   it("formats delay with sign and minutes", () => {
     expect(formatDelay(16.4)).toBe("+16 s");
     expect(formatDelay(75)).toBe("+1.3 min");
-    expect(formatDelay(-4)).toBe("-4 s");
+    expect(formatDelay(-4)).toBe("no delay");
     expect(formatDelay(null)).toBe("-");
   });
 });

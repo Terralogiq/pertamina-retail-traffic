@@ -158,7 +158,9 @@ describe("formatting", () => {
     expect(formatDelay(null)).toBe("-");
     expect(formatDelay(45)).toBe("+45 s");
     expect(formatDelay(90)).toBe("+1.5 min");
-    expect(formatDelay(-20)).toBe("-20 s");
+    expect(formatDelay(-2)).toBe("no delay");
+    expect(formatDelay(-20)).toBe("no delay");
+    expect(formatDelay(0)).toBe("no delay");
   });
   it("shows slot time in the site's local time with a zone label", () => {
     expect(formatSlot("2026-10-07T07:30:00Z", "Asia/Jakarta")).toBe("14:30 WIB");

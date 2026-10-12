@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
 import { CHART_INK, SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
-import { TrafficPoint, getTrafficSeries } from "./api";
+import { TrafficPoint, TypicalDayResponse, getTrafficSeries, getTypicalDay } from "./api";
 import Chart from "./Chart";
+import { actionHeadline } from "./headlines";
 import {
   DelayDatum,
   Range,
@@ -128,6 +129,7 @@ export default function TrafficCharts({
 }) {
   const [range, setRange] = useState<Range>("24h");
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
+  const [profile, setProfile] = useState<TypicalDayResponse | null>(null);
   const [weather, setWeather] = useState<WeatherSeriesPoint[] | null>(null);
   const [error, setError] = useState("");
   const [rainError, setRainError] = useState("");
@@ -151,6 +153,24 @@ export default function TrafficCharts({
       live = false;
     };
   }, [siteId, from]);
+
+  useEffect(() => {
+    let live = true;
+    getTypicalDay(siteId)
+      .then((body) => live && setProfile(body))
+      .catch(() => live && setProfile(null));
+    return () => {
+      live = false;
+    };
+  }, [siteId]);
+
+  const weekdayHeadline = profile
+    ? actionHeadline(
+        profile.ready,
+        profile.legs.filter((leg) => leg.day_kind === "weekday"),
+        "weekday",
+      )
+    : null;
 
   const tz = tzLabel(timezone);
   const offsetMin = utcOffsetMinutes(timezone, now);
@@ -177,6 +197,7 @@ export default function TrafficCharts({
       actions={<RangeControl value={range} onChange={setRange} />}
     >
       {baselineNote && <p className="traffic-provisional">{baselineNote}</p>}
+      {weekdayHeadline && <p className="traffic-headline">{weekdayHeadline}</p>}
       {error && <Notice tone="error">Couldn't load traffic. {error}</Notice>}
       {!error && points === null && (
         <div className="traffic-stack" aria-busy="true">

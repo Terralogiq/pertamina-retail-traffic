@@ -75,6 +75,13 @@
   box-shadow: var(--shadow-1);
 }
 
+.traffic-headline {
+  margin: 0;
+  color: var(--ink-1);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
 .typical-readiness,
 .typical-caption {
   margin: 0;

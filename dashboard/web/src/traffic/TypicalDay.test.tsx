@@ -64,6 +64,8 @@ describe("typical day", () => {
   it("shows the readiness note and both day kinds", () => {
     const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" />);
     expect(html).toContain("Based on 6 days. Needs 1 more day.");
+    expect(html).toContain("Not enough days yet.");
+    expect(html).not.toContain("is slowest");
     expect(html).toContain("Approach");
     expect(html).toContain("Departure");
     const section = renderToStaticMarkup(<TypicalDay siteId="74.902.22" timezone="Asia/Jakarta" />);
@@ -71,5 +73,24 @@ describe("typical day", () => {
     expect(section).toContain("Weekday");
     expect(section).toContain("Weekend");
     expect(section).toContain('aria-pressed="true"');
+  });
+
+  it("names the busiest window once the profile is ready", () => {
+    const ready: TypicalDayResponse = {
+      days: 7,
+      ready: true,
+      legs: [
+        {
+          ...leg("departure", "weekday"),
+          windows: [{ start_hour: 17, end_hour: 18, median_delay_s: 60 }],
+        },
+        {
+          ...leg("approach", "weekday"),
+          windows: [{ start_hour: 7, end_hour: 9, median_delay_s: 180 }],
+        },
+      ],
+    };
+    const html = renderToStaticMarkup(<TypicalDayBody data={ready} dayKind="weekday" />);
+    expect(html).toContain("Approach is slowest 07:00–09:00, about 3 min slower than usual.");
   });
 });

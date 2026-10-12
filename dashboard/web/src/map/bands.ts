@@ -127,12 +127,11 @@ export function boundsOf(points: LatLng[]): Bounds | null {
   return { north: Math.max(...lats), south: Math.min(...lats), east: Math.max(...lngs), west: Math.min(...lngs) };
 }
 
-/** "+1.5 min", "+45 s", "-20 s"; "-" when unknown. */
+/** "+1.5 min", "+45 s", "no delay" at or below zero; "-" when unknown. */
 export function formatDelay(delayS: number | null | undefined): string {
   if (delayS == null) return "-";
-  const sign = delayS < 0 ? "-" : "+";
-  const abs = Math.abs(delayS);
-  return abs < 60 ? `${sign}${Math.round(abs)} s` : `${sign}${(abs / 60).toFixed(1)} min`;
+  if (delayS <= 0) return "no delay";
+  return delayS < 60 ? `+${Math.round(delayS)} s` : `+${(delayS / 60).toFixed(1)} min`;
 }
 
 export const formatSpeed = (kmh: number | null | undefined): string => (kmh == null ? "-" : `${Math.round(kmh)} km/h`);
