@@ -107,3 +107,29 @@
 .hour-tick-n {
   font-variant-numeric: tabular-nums;
 }
+
+.busy-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+}
+
+.busy-strip {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.busy-cell {
+  height: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.busy-cell.is-busy {
+  background: var(--band-moderate);
+}

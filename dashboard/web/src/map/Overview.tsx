@@ -6,7 +6,7 @@ import { DemoMarker, DemoNote } from "../weather/DemoBadge";
 import type { WeatherLatest } from "../weather/api";
 import { LatestLeg } from "./api";
 import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legContext, legLabel } from "./bands";
-import { SiteFilter, SiteSort, SiteState, Summary, orderSites, rankSites, summarize } from "./severity";
+import { SiteFilter, SiteSort, SiteState, Summary, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
@@ -132,7 +132,11 @@ export default function Overview() {
   const { sites, latest, weatherBySite, error } = useTrafficData();
   const navigate = useNavigate();
   const select = useCallback((id: string) => navigate(`/site/${id}`), [navigate]);
-  const ranked = useMemo(() => (sites ? rankSites(sites, latest) : []), [sites, latest]);
+  // Current-state order. Busy-hour delay is not a sort key until a site profile is ready.
+  const ranked = useMemo(
+    () => (sites ? guardBusyRank(rankSites(sites, latest), false, () => null) : []),
+    [sites, latest],
+  );
   const summary = useMemo(() => summarize(ranked, latest), [ranked, latest]);
   const [sort, setSort] = useState<SiteSort>("worst");
   const [filter, setFilter] = useState<SiteFilter>("all");

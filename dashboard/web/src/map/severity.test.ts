@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "./api";
 import { BASELINE_FULL, indexLatest } from "./bands";
-import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, orderSites, rankSites, summarize } from "./severity";
+import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
 
 const mkSite = (id: string, name: string, lat: number, lng: number): Site => ({
   site_id: id,
@@ -80,6 +80,15 @@ describe("rankSites", () => {
   it("summarises an empty feed without a worst site or baseline", () => {
     const s = summarize(rankSites([a], new Map()), new Map());
     expect(s).toMatchObject({ reporting: 0, slowed: 0, worst: null, slotTime: null, baseline: null });
+  });
+});
+
+describe("guardBusyRank", () => {
+  it("leaves the current order alone until the typical-day profile is ready", () => {
+    const ranked = [{ id: "quiet" }, { id: "busy" }];
+    const delay = (row: { id: string }) => (row.id === "busy" ? 90 : 10);
+    expect(guardBusyRank(ranked, false, delay).map((row) => row.id)).toEqual(["quiet", "busy"]);
+    expect(guardBusyRank(ranked, true, delay).map((row) => row.id)).toEqual(["busy", "quiet"]);
   });
 });
 

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Query
 
 from .. import bq, cache
+from ..busy import GATE_S, PROVISIONAL_KMH, counts_are_busy, peak_windows, slow_count_sql
 from ..holidays import sql_date_list
 from .sites import get_sites
 
@@ -71,14 +72,16 @@ SELECT
   quantiles[OFFSET(25)] AS p25_delay_s,
   quantiles[OFFSET(50)] AS median_delay_s,
   quantiles[OFFSET(75)] AS p75_delay_s,
-  n
+  n,
+  slow_n
 FROM (
   SELECT
     r.leg AS leg,
     CASE WHEN {_WEEKEND} THEN 'weekend' ELSE 'weekday' END AS day_kind,
     EXTRACT(HOUR FROM t.slot_time AT TIME ZONE s.timezone) AS hour,
     APPROX_QUANTILES(t.delay_s, 100) AS quantiles,
-    COUNT(*) AS n
+    COUNT(*) AS n,
+    COUNTIF({slow_count_sql()}) AS slow_n
   FROM {bq.table("v_traffic")} AS t
   JOIN {bq.table("routes")} AS r ON r.selected_route_id = t.selected_route_id AND r.active
   JOIN {bq.table("sites")} AS s ON s.site_id = r.site_id
@@ -126,27 +129,41 @@ def _cell(row):
 
 def _typical_hour(row, hour):
     if row is None:
-        return {"hour": hour, "median_delay_s": None, "p25_delay_s": None, "p75_delay_s": None, "n": 0, "faded": True}
+        return {
+            "hour": hour, "median_delay_s": None, "p25_delay_s": None, "p75_delay_s": None,
+            "n": 0, "faded": True, "busy": False,
+        }
     n = int(row["n"])
+    median = row["median_delay_s"]
     return {
         "hour": hour,
-        "median_delay_s": row["median_delay_s"],
+        "median_delay_s": median,
         "p25_delay_s": row["p25_delay_s"],
         "p75_delay_s": row["p75_delay_s"],
         "n": n,
         "faded": n < FADED_BELOW,
+        "busy": counts_are_busy(int(row.get("slow_n") or 0), n, median),
     }
 
 
 def _typical_payload(rows, days):
-    """One entry per leg that has any reading, both day kinds, hours 0–23 filled in."""
+    """One entry per leg that has any reading, both day kinds, hours 0–23 filled in.
+
+    Peak windows stay empty until 7 distinct local dates, even when some hours are already busy.
+    """
+    ready = int(days) >= READY_DAYS
     index = {(row["leg"], row["day_kind"], int(row["hour"])): row for row in rows}
     legs = []
     for leg in sorted({row["leg"] for row in rows}):
         for day_kind in ("weekday", "weekend"):
             hours = [_typical_hour(index.get((leg, day_kind, hour)), hour) for hour in range(24)]
-            legs.append({"leg": leg, "day_kind": day_kind, "hours": hours})
-    return {"days": int(days), "ready": int(days) >= READY_DAYS, "legs": legs}
+            legs.append({
+                "leg": leg,
+                "day_kind": day_kind,
+                "hours": hours,
+                "windows": peak_windows(hours) if ready else [],
+            })
+    return {"days": int(days), "ready": ready, "legs": legs}
 
 
 def _parse_time(name, value):
@@ -210,7 +227,10 @@ def traffic_typical_day(site_id: str):
     params = {"site_id": site_id, "from_ts": end - timedelta(days=PATTERN_MAX_DAYS), "to_ts": end}
 
     def compute():
-        hour_rows = bq.query(TYPICAL_SQL, params)
+        site = next(s for s in get_sites() if s["site_id"] == site_id)
+        road = site.get("road_class") or "urban"
+        band = {**params, "gate_s": GATE_S[road], "provisional_kmh": PROVISIONAL_KMH[road]}
+        hour_rows = bq.query(TYPICAL_SQL, band)
         day_rows = bq.query(TYPICAL_DAYS_SQL, params)
         days = day_rows[0]["days"] if day_rows else 0
         return _typical_payload(hour_rows, days)

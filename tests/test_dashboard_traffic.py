@@ -184,7 +184,9 @@ class TrafficTest(unittest.TestCase):
         self.assertEqual(by_hour[0]["n"], 0)
         self.assertTrue(by_hour[0]["faded"])
         weekend = next(leg for leg in body["legs"] if leg["leg"] == "approach" and leg["day_kind"] == "weekend")
-        self.assertTrue(all(hour["n"] == 0 and hour["faded"] for hour in weekend["hours"]))
+        self.assertTrue(all(hour["n"] == 0 and hour["faded"] and not hour["busy"] for hour in weekend["hours"]))
+        self.assertFalse(by_hour[8]["busy"])
+        self.assertEqual(weekday["windows"], [])
         hour_sql, params = next((sql, p) for sql, p in fake.calls if "APPROX_QUANTILES" in sql)
         self.assertIn("DATE '2026-08-17'", hour_sql)
         self.assertNotIn("DATE '2026-02-16'", hour_sql)
@@ -198,6 +200,35 @@ class TrafficTest(unittest.TestCase):
         # A failed slot has a null delay. It must not inflate n, fade, or the day count.
         self.assertIn("t.delay_s IS NOT NULL", hour_sql)
         self.assertIn("t.delay_s IS NOT NULL", days_sql)
+        self.assertIn("COUNTIF", hour_sql)
+        self.assertIn("t.congestion_index >= 1.5", hour_sql)
+        self.assertIn("baseline_samples, 0) >= 302", hour_sql)
+        self.assertIn("duration_in_seconds", hour_sql)
+        self.assertIn("t.delay_s >= @gate_s", hour_sql)
+        self.assertIn("@provisional_kmh", hour_sql)
+        self.assertNotIn("road_type", hour_sql)
+        self.assertEqual(params["gate_s"], 20)
+        self.assertEqual(params["provisional_kmh"], 45)
+
+    def test_busy_windows_wait_until_ready(self):
+        rows = [
+            {"leg": "approach", "day_kind": "weekday", "hour": 7, "median_delay_s": 40.0,
+             "p25_delay_s": 20.0, "p75_delay_s": 60.0, "n": 4, "slow_n": 3},
+            {"leg": "approach", "day_kind": "weekday", "hour": 8, "median_delay_s": 120.0,
+             "p25_delay_s": 80.0, "p75_delay_s": 160.0, "n": 4, "slow_n": 3},
+            {"leg": "approach", "day_kind": "weekday", "hour": 9, "median_delay_s": 20.0,
+             "p25_delay_s": 10.0, "p75_delay_s": 30.0, "n": 4, "slow_n": 3},
+        ]
+        early, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", rows, days=6)
+        early_leg = next(leg for leg in early.json()["legs"] if leg["day_kind"] == "weekday")
+        early_hours = {hour["hour"]: hour for hour in early_leg["hours"]}
+        self.assertTrue(early_hours[7]["busy"])
+        self.assertFalse(early_hours[9]["busy"])
+        self.assertEqual(early_leg["windows"], [])
+        cache.default.clear()
+        ready, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", rows, days=7)
+        ready_leg = next(leg for leg in ready.json()["legs"] if leg["day_kind"] == "weekday")
+        self.assertEqual(ready_leg["windows"], [{"start_hour": 7, "end_hour": 9, "median_delay_s": 80.0}])
 
     def test_typical_day_ready_at_seven_days_and_empty_site(self):
         res, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=7)

@@ -33,6 +33,15 @@ export function siteState(site: Site, latest: Map<string, LatestLeg>): SiteState
   return { site, band, basis, worstLeg, worstDelay };
 }
 
+/**
+ * Busy-hour delay must not reorder the overview until the typical-day profile is ready.
+ * While `ready` is false the current-state order is returned unchanged.
+ */
+export function guardBusyRank<T>(ranked: T[], ready: boolean, busyDelay: (item: T) => number | null): T[] {
+  if (!ready) return ranked;
+  return [...ranked].sort((a, b) => (busyDelay(b) ?? -Infinity) - (busyDelay(a) ?? -Infinity));
+}
+
 /** Worst first: band, then the larger delay (unknown last), then name, so the order is stable between refreshes. */
 export function rankSites(sites: Site[], latest: Map<string, LatestLeg>): SiteState[] {
   return sites

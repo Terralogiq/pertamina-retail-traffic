@@ -11,6 +11,7 @@ function hour(hour: number, n: number, median: number | null): TypicalHour {
     p75_delay_s: median == null ? null : median + 10,
     n,
     faded: n < 4,
+    busy: false,
   };
 }
 
@@ -18,7 +19,7 @@ function leg(name: string, kind: "weekday" | "weekend"): TypicalLeg {
   const hours = Array.from({ length: 24 }, (_, h) => hour(h, 0, null));
   hours[8] = hour(8, 2, 40);
   hours[9] = hour(9, 6, 80);
-  return { leg: name, day_kind: kind, hours };
+  return { leg: name, day_kind: kind, hours, windows: [] };
 }
 
 const data: TypicalDayResponse = {
