@@ -31,3 +31,32 @@ export const getTrafficSeries = (siteId: string, from: string, to?: string) => {
 
 export const getTrafficPattern = (siteId: string, days = 28) =>
   getJson<PatternCell[]>(`/api/traffic/pattern?${new URLSearchParams({ site_id: siteId, days: String(days) })}`);
+
+export type DayKind = "weekday" | "weekend";
+
+/** One local hour of GET /api/traffic/typical-day. `faded` is n < 4. */
+export interface TypicalHour {
+  hour: number;
+  median_delay_s: number | null;
+  p25_delay_s: number | null;
+  p75_delay_s: number | null;
+  n: number;
+  faded: boolean;
+}
+
+/** One leg and day kind, with hours 0–23. */
+export interface TypicalLeg {
+  leg: string;
+  day_kind: DayKind;
+  hours: TypicalHour[];
+}
+
+/** Median delay by local hour over the last 28 days. `ready` is days >= 7. */
+export interface TypicalDayResponse {
+  days: number;
+  ready: boolean;
+  legs: TypicalLeg[];
+}
+
+export const getTypicalDay = (siteId: string) =>
+  getJson<TypicalDayResponse>(`/api/traffic/typical-day?${new URLSearchParams({ site_id: siteId })}`);

@@ -6,7 +6,7 @@ import { PlacesPanel } from "../places";
 import { ReviewThemesPanel } from "../reviews";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
-import { TrafficCharts, TrafficPattern } from "../traffic";
+import { TrafficCharts, TypicalDay } from "../traffic";
 import { formatDelay, legLabel, tzLabel } from "../traffic/model";
 import { WeatherPanel } from "../weather";
 import type { WeatherLatest } from "../weather/api";
@@ -20,7 +20,7 @@ const SITE_LOADING_HEIGHT = 480;
 
 const SECTIONS = [
   { id: "traffic", label: "Traffic" },
-  { id: "pattern", label: "Weekly pattern" },
+  { id: "pattern", label: "Typical day" },
   { id: "weather", label: "Weather" },
   { id: "places", label: "Places" },
   { id: "review-themes", label: "Review themes" },
@@ -155,7 +155,7 @@ export function SiteDetail() {
               <SiteMap siteId={siteId} />
             </Section>
             <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} />
-            <TrafficPattern siteId={siteId} timezone={timezone} />
+            <TypicalDay siteId={siteId} timezone={timezone} />
           </div>
           <div className="span-4 site-column">
             <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />

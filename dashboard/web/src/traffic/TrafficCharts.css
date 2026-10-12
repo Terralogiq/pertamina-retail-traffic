@@ -75,47 +75,35 @@
   box-shadow: var(--shadow-1);
 }
 
-.pattern-grid {
-  display: grid;
-  gap: var(--space-4);
+.typical-readiness,
+.typical-caption {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
 }
 
-.heatmap-legend {
+.hour-strip {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hour-tick {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: 2px;
   color: var(--ink-2);
   font-size: var(--text-xs);
 }
 
-.heatmap-ramp {
-  width: 6rem;
-  height: 0.5rem;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--seq-1), var(--seq-2), var(--seq-3), var(--seq-4), var(--seq-5));
+.hour-tick.is-faded {
+  opacity: 0.4;
 }
 
-.heatmap-nodata {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.heatmap-nodata-swatch {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-}
-
-@media (min-width: 1600px) {
-  .pattern-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pattern-grid .site-block + .site-block {
-    padding-top: 0;
-    border-top: 0;
-  }
+.hour-tick-n {
+  font-variant-numeric: tabular-nums;
 }

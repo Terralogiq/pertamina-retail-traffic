@@ -1,4 +1,4 @@
-"""GET /api/traffic/{latest,series,pattern} with BigQuery mocked."""
+"""GET /api/traffic/{latest,series,pattern,typical-day} with BigQuery mocked."""
 import os
 import sys
 import unittest
@@ -26,10 +26,15 @@ def point(leg="approach", **kw):
 
 
 class FakeBq:
-    """Stands in for bq.query: sites rows for the /api/sites query, `rows` for any traffic query."""
+    """Stands in for bq.query: sites rows for the /api/sites query, `rows` for any traffic query.
 
-    def __init__(self, rows=()):
+    A typical-day request also counts distinct local dates. That query is recognised by COUNT(DISTINCT
+    and returns `days`, so the hour rows and the day count can differ.
+    """
+
+    def __init__(self, rows=(), days=0):
         self.rows = list(rows)
+        self.days = days
         self.calls = []  # (sql, params) of the traffic queries only
 
     def __call__(self, sql, params=None):
@@ -38,6 +43,8 @@ class FakeBq:
                      "timezone": "Asia/Makassar", "lat": 0, "lng": 0, "selected_route_id": None}
                     for s in SITES]
         self.calls.append((sql, params))
+        if "COUNT(DISTINCT" in sql:
+            return [{"days": self.days}]
         return self.rows
 
 
@@ -51,8 +58,8 @@ class TrafficTest(unittest.TestCase):
         self.client = TestClient(app, base_url="https://testserver")
         self.client.post("/api/login", json={"password": "pw"})
 
-    def get(self, url, rows=()):
-        fake = FakeBq(rows)
+    def get(self, url, rows=(), days=0):
+        fake = FakeBq(rows, days=days)
         with mock.patch("dashboard.api.bq.query", fake):
             res = self.client.get(url)
         return res, fake
@@ -118,7 +125,7 @@ class TrafficTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
 
     def test_unknown_site_is_404(self):
-        for path in ("series", "pattern"):
+        for path in ("series", "pattern", "typical-day"):
             with self.subTest(path=path):
                 res, fake = self.get(f"/api/traffic/{path}?site_id=nope")
                 self.assertEqual(res.status_code, 404)
@@ -150,13 +157,57 @@ class TrafficTest(unittest.TestCase):
                 self.assertEqual(res.status_code, status)
 
     def test_core_columns_only(self):
-        for sql in (traffic.LATEST_SQL, traffic.SERIES_SQL, traffic.PATTERN_SQL):
+        for sql in (traffic.LATEST_SQL, traffic.SERIES_SQL, traffic.PATTERN_SQL,
+                    traffic.TYPICAL_SQL, traffic.TYPICAL_DAYS_SQL):
             self.assertNotIn("static_ratio", sql)
             self.assertNotIn("demo_", sql)
 
+    def test_typical_day_payload_and_sql(self):
+        rows = [
+            {"leg": "approach", "day_kind": "weekday", "hour": 8, "median_delay_s": 40.0,
+             "p25_delay_s": 20.0, "p75_delay_s": 60.0, "n": 2},
+            {"leg": "approach", "day_kind": "weekday", "hour": 9, "median_delay_s": 10.0,
+             "p25_delay_s": 5.0, "p75_delay_s": 15.0, "n": 6},
+        ]
+        res, fake = self.get(f"/api/traffic/typical-day?site_id={SITE}", rows, days=6)
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(body["days"], 6)
+        self.assertFalse(body["ready"])
+        weekday = next(leg for leg in body["legs"] if leg["leg"] == "approach" and leg["day_kind"] == "weekday")
+        self.assertEqual(len(weekday["hours"]), 24)
+        by_hour = {hour["hour"]: hour for hour in weekday["hours"]}
+        self.assertEqual(by_hour[8]["n"], 2)
+        self.assertTrue(by_hour[8]["faded"])
+        self.assertEqual(by_hour[8]["median_delay_s"], 40.0)
+        self.assertFalse(by_hour[9]["faded"])
+        self.assertEqual(by_hour[0]["n"], 0)
+        self.assertTrue(by_hour[0]["faded"])
+        weekend = next(leg for leg in body["legs"] if leg["leg"] == "approach" and leg["day_kind"] == "weekend")
+        self.assertTrue(all(hour["n"] == 0 and hour["faded"] for hour in weekend["hours"]))
+        hour_sql, params = next((sql, p) for sql, p in fake.calls if "APPROX_QUANTILES" in sql)
+        self.assertIn("DATE '2026-08-17'", hour_sql)
+        self.assertNotIn("DATE '2026-02-16'", hour_sql)
+        self.assertIn("EXTRACT(DAYOFWEEK FROM t.slot_time AT TIME ZONE s.timezone) IN (1, 7)", hour_sql)
+        self.assertIn("EXTRACT(HOUR FROM t.slot_time AT TIME ZONE s.timezone)", hour_sql)
+        self.assertNotIn("Asia/", hour_sql)
+        self.assertEqual(params["to_ts"] - params["from_ts"], timedelta(days=28))
+        days_sql = next(sql for sql, _ in fake.calls if "COUNT(DISTINCT" in sql)
+        self.assertIn("DATE(t.slot_time, s.timezone)", days_sql)
+        self.assertIn("t.slot_time >= @from_ts", days_sql)
+
+    def test_typical_day_ready_at_seven_days_and_empty_site(self):
+        res, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=7)
+        self.assertTrue(res.json()["ready"])
+        self.assertEqual(res.json()["legs"], [])
+        # The payload is cached per site, so the empty case needs a fresh entry.
+        cache.default.clear()
+        empty, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=0)
+        self.assertEqual(empty.json(), {"days": 0, "ready": False, "legs": []})
+
     def test_need_login(self):
         self.client.cookies.clear()
-        for path in ("latest", "series?site_id=x", "pattern?site_id=x"):
+        for path in ("latest", "series?site_id=x", "pattern?site_id=x", "typical-day?site_id=x"):
             self.assertEqual(self.client.get(f"/api/traffic/{path}").status_code, 401)
 
 
