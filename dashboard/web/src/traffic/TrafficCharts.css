@@ -133,3 +133,15 @@
 .busy-cell.is-busy {
   background: var(--band-moderate);
 }
+
+.busy-ticks {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  text-align: center;
+}

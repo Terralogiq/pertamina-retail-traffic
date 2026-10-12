@@ -39,22 +39,31 @@ export function busyWindowText(dayKind: DayKind, leg: string, window: BusyWindow
 export function BusyStrip({ leg, hours }: { leg: string; hours: TypicalHour[] }) {
   const byHour = new Map(hours.map((hour) => [hour.hour, hour.busy]));
   return (
-    <ol className="busy-strip" aria-label={`${legLabel(leg)} busy hours`}>
-      {HOURS.map((hour) => {
-        const busy = byHour.get(hour) ?? false;
-        const label = clock(hour);
-        return (
-          <li
-            key={hour}
-            data-hour={hour}
-            data-busy={busy ? "true" : "false"}
-            className={busy ? "busy-cell is-busy" : "busy-cell"}
-            title={label}
-            aria-label={label}
-          />
-        );
-      })}
-    </ol>
+    <>
+      <ol className="busy-strip" aria-label={`${legLabel(leg)} busy hours`}>
+        {HOURS.map((hour) => {
+          const busy = byHour.get(hour) ?? false;
+          const label = `${clock(hour)} ${busy ? "busy" : "not busy"}`;
+          return (
+            <li
+              key={hour}
+              data-hour={hour}
+              data-busy={busy ? "true" : "false"}
+              className={busy ? "busy-cell is-busy" : "busy-cell"}
+              title={label}
+              aria-label={label}
+            />
+          );
+        })}
+      </ol>
+      <ol className="busy-ticks" aria-hidden="true">
+        {HOURS.map((hour) => (
+          <li key={hour} className="hour-tick-label">
+            {hour % 6 === 0 ? clock(hour).slice(0, 2) : ""}
+          </li>
+        ))}
+      </ol>
+    </>
   );
 }
 
@@ -74,7 +83,7 @@ export default function BusyHours({ legs, dayKind }: { legs: TypicalLeg[]; dayKi
         </ul>
       )}
       {legs.map((leg) => (
-        <Block key={leg.leg} title={legLabel(leg.leg)}>
+        <Block key={leg.leg} title={`${legLabel(leg.leg)} busy hours`} aside="filled = busy">
           <BusyStrip leg={leg.leg} hours={leg.hours} />
         </Block>
       ))}

@@ -35,9 +35,16 @@ describe("busy hours", () => {
     const cell = (hour: number) => ready.match(new RegExp(`<li[^>]*data-hour="${hour}"[^>]*>`))?.[0] ?? "";
     expect(cell(7)).toContain('data-busy="true"');
     expect(cell(7)).toContain("is-busy");
-    expect(cell(7)).toContain('title="07:00"');
-    expect(ready).toContain(">Approach<");
+    expect(cell(7)).toContain('title="07:00 busy"');
+    expect(cell(7)).toContain('aria-label="07:00 busy"');
+    expect(ready).toContain(">Approach busy hours<");
+    expect(ready).toContain("filled = busy");
+    expect(ready).toContain(">00<");
+    expect(ready).toContain(">06<");
+    expect(ready).toContain(">12<");
+    expect(ready).toContain(">18<");
     expect(cell(6)).toContain('data-busy="false"');
+    expect(cell(6)).toContain('title="06:00 not busy"');
     expect(cell(6)).not.toContain("is-busy");
     expect(ready).toContain("07:00–09:00");
 
