@@ -1,3 +1,4 @@
+import { Block } from "../site/Section";
 import type { BusyWindow, DayKind, TypicalHour, TypicalLeg } from "./api";
 import { formatDelay, legLabel } from "./model";
 import "./TrafficCharts.css";
@@ -41,8 +42,16 @@ export function BusyStrip({ leg, hours }: { leg: string; hours: TypicalHour[] })
     <ol className="busy-strip" aria-label={`${legLabel(leg)} busy hours`}>
       {HOURS.map((hour) => {
         const busy = byHour.get(hour) ?? false;
+        const label = clock(hour);
         return (
-          <li key={hour} data-hour={hour} data-busy={busy ? "true" : "false"} className={busy ? "busy-cell is-busy" : "busy-cell"} />
+          <li
+            key={hour}
+            data-hour={hour}
+            data-busy={busy ? "true" : "false"}
+            className={busy ? "busy-cell is-busy" : "busy-cell"}
+            title={label}
+            aria-label={label}
+          />
         );
       })}
     </ol>
@@ -65,7 +74,9 @@ export default function BusyHours({ legs, dayKind }: { legs: TypicalLeg[]; dayKi
         </ul>
       )}
       {legs.map((leg) => (
-        <BusyStrip key={leg.leg} leg={leg.leg} hours={leg.hours} />
+        <Block key={leg.leg} title={legLabel(leg.leg)}>
+          <BusyStrip leg={leg.leg} hours={leg.hours} />
+        </Block>
       ))}
     </div>
   );
