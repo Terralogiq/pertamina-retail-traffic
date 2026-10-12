@@ -125,3 +125,11 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+## Cursor Cloud specific instructions
+
+The dashboard dev servers start on boot. The API listens on `127.0.0.1:8080` and Vite on `127.0.0.1:5173`. Open the UI at `http://localhost:5173/`. The Maps browser key allows that referrer; `http://127.0.0.1:5173/` does not load the map.
+
+Sign in with the password `local-dev`.
+
+BigQuery uses Application Default Credentials that impersonate the service account `pertamina-retail-traffic`. The source key is the injected `WINGS_APPLICATION_CREDENTIALS_JSON` secret, and `MAPS_BROWSER_KEY` is read from Secret Manager at startup. Do not print either value.
