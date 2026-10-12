@@ -195,6 +195,9 @@ class TrafficTest(unittest.TestCase):
         days_sql = next(sql for sql, _ in fake.calls if "COUNT(DISTINCT" in sql)
         self.assertIn("DATE(t.slot_time, s.timezone)", days_sql)
         self.assertIn("t.slot_time >= @from_ts", days_sql)
+        # A failed slot has a null delay. It must not inflate n, fade, or the day count.
+        self.assertIn("t.delay_s IS NOT NULL", hour_sql)
+        self.assertIn("t.delay_s IS NOT NULL", days_sql)
 
     def test_typical_day_ready_at_seven_days_and_empty_site(self):
         res, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=7)

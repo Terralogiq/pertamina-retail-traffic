@@ -83,6 +83,7 @@ FROM (
   JOIN {bq.table("routes")} AS r ON r.selected_route_id = t.selected_route_id AND r.active
   JOIN {bq.table("sites")} AS s ON s.site_id = r.site_id
   WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND r.site_id = @site_id
+    AND t.delay_s IS NOT NULL
   GROUP BY 1, 2, 3
 )
 ORDER BY leg, day_kind, hour
@@ -94,6 +95,7 @@ FROM {bq.table("v_traffic")} AS t
 JOIN {bq.table("routes")} AS r ON r.selected_route_id = t.selected_route_id AND r.active
 JOIN {bq.table("sites")} AS s ON s.site_id = r.site_id
 WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND r.site_id = @site_id
+  AND t.delay_s IS NOT NULL
 """
 
 
