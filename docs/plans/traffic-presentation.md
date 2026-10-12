@@ -123,6 +123,7 @@ Weekday × hour heatmap in minutes, week-over-week, and a p95 "worst case". Not 
 |---|---|---|
 | `dashboard/web/src/map/bands.ts`, `bands.test.ts`, `Legend.tsx` | `.11.1` | Band rule and legend copy |
 | `dashboard/web/src/map/api.ts` (`Site.road_class`), `map/Overview.tsx`, `site/SiteDetail.tsx` baseline notice | `.11.1` | `.11.3` edits other parts of `SiteDetail.tsx` after `.11.1` |
+| `map/severity.ts`, `map/LegPopup.tsx`, `map/TrafficMap.tsx` and their tests | `.11.1` | Call sites of `legBand` / `legColor`. They pass `road_class` and the leg distance. No other change. |
 | `sql/ddl.sql` (`sites.road_type`), `docs/plans/data-schema.md` sites section, `scripts/load_reference.py`, `tests/test_load_reference.py` | `.11.1` | Column only. Do not edit the Places or reviews sections |
 | `dashboard/api/routers/sites.py`, `tests/test_dashboard_sites.py` | `.11.1` | |
 | `dashboard/web/src/theme/palette.ts`, `palette.test.ts` | `.11.2` | `BANDS` colours only |
