@@ -130,6 +130,6 @@ bd prime                # Refresh Beads context
 
 The dashboard dev servers start on boot. The API listens on `127.0.0.1:8080` and Vite on `127.0.0.1:5173`. Open the UI at `http://localhost:5173/`. The Maps browser key allows that referrer; `http://127.0.0.1:5173/` does not load the map.
 
-Sign in with the password `local-dev`.
+Sign in with the `DASHBOARD_PASSWORD` secret from Secret Manager. Startup reads that value and `MAPS_BROWSER_KEY`; do not print either one.
 
-BigQuery uses Application Default Credentials that impersonate the service account `pertamina-retail-traffic`. The source key is the injected `WINGS_APPLICATION_CREDENTIALS_JSON` secret, and `MAPS_BROWSER_KEY` is read from Secret Manager at startup. Do not print either value.
+BigQuery uses Application Default Credentials that impersonate the service account `pertamina-retail-traffic`. The source key is the injected `WINGS_APPLICATION_CREDENTIALS_JSON` secret.
