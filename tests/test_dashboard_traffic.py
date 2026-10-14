@@ -238,7 +238,7 @@ class TrafficTest(unittest.TestCase):
         # The payload is cached per site, so the empty case needs a fresh entry.
         cache.default.clear()
         empty, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=0)
-        self.assertEqual(empty.json(), {"days": 0, "ready": False, "timezone": None, "legs": []})
+        self.assertEqual(empty.json(), {"days": 0, "ready": False, "timezone": "Asia/Makassar", "legs": []})
 
     def test_need_login(self):
         self.client.cookies.clear()
