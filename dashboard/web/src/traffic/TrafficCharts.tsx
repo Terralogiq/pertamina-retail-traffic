@@ -7,6 +7,7 @@ import { TrafficPoint, TypicalDayResponse, getTrafficSeries, getTypicalDay } fro
 import Chart from "./Chart";
 import { TrafficTable, ViewToggle } from "./ChartTable";
 import { trafficHeadline } from "./headlines";
+import type { Site } from "../map/api";
 import {
   DelayDatum,
   Range,
@@ -205,33 +206,81 @@ export default function TrafficCharts({
       )}
       {points !== null && points.length === 0 && <Notice>No traffic readings in the {windowLabel}.</Notice>}
       {delay && (
-        <div className="traffic-stack">
-          <LegLegend legs={legs} />
-          <Block title="Delay (s)" aside="versus free flow">
-            {view === "chart" ? (
-              <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
-            ) : (
-              <div className="chart-table-wrap">
-                <TrafficTable points={points ?? []} timezone={timezone} site={site} />
-              </div>
-            )}
-          </Block>
-          <div className="site-section-actions">
-            <ViewToggle mode={view} onChange={setView} />
-          </div>
-          <Block title="Rain (mm)" aside="measured, per half hour">
-            {rainError ? (
-              <Notice tone="error">Couldn't load rain. {rainError}</Notice>
-            ) : weather === null ? (
-              <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
-            ) : rainChart ? (
-              <Chart option={rainChart} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
-            ) : (
-              <Notice>No rain in the {windowLabel}.</Notice>
-            )}
-          </Block>
-        </div>
+        <TrafficChartsBody
+          delay={delay}
+          rainChart={rainChart}
+          points={points ?? []}
+          weather={weather}
+          rainError={rainError}
+          legs={legs}
+          site={site}
+          timezone={timezone}
+          group={group}
+          windowLabel={windowLabel}
+          view={view}
+          onViewChange={setView}
+        />
       )}
     </Section>
+  );
+}
+
+interface TrafficChartsBodyProps {
+  delay: ReturnType<typeof delayOption>;
+  rainChart: ReturnType<typeof rainOption> | null;
+  points: TrafficPoint[];
+  weather: WeatherSeriesPoint[] | null;
+  rainError: string;
+  legs: string[];
+  site?: Site;
+  timezone: string | null | undefined;
+  group: string;
+  windowLabel: string;
+  view: "chart" | "table";
+  onViewChange: (mode: "chart" | "table") => void;
+}
+
+/** Loaded state of the traffic card: chart/table toggle, delay block, rain block. */
+export function TrafficChartsBody({
+  delay,
+  rainChart,
+  points,
+  weather,
+  rainError,
+  legs,
+  site,
+  timezone,
+  group,
+  windowLabel,
+  view,
+  onViewChange,
+}: TrafficChartsBodyProps) {
+  return (
+    <div className="traffic-stack">
+      <LegLegend legs={legs} />
+      <Block title="Delay (s)" aside="versus free flow">
+        {view === "chart" ? (
+          <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
+        ) : (
+          <div className="chart-table-wrap">
+            <TrafficTable points={points} timezone={timezone} site={site} />
+          </div>
+        )}
+      </Block>
+      <div className="site-section-actions">
+        <ViewToggle mode={view} onChange={onViewChange} />
+      </div>
+      <Block title="Rain (mm)" aside="measured, per half hour">
+        {rainError ? (
+          <Notice tone="error">Couldn't load rain. {rainError}</Notice>
+        ) : weather === null ? (
+          <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
+        ) : rainChart ? (
+          <Chart option={rainChart} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
+        ) : (
+          <Notice>No rain in the {windowLabel}.</Notice>
+        )}
+      </Block>
+    </div>
   );
 }

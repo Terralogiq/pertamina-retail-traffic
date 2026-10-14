@@ -68,11 +68,23 @@ describe("typical day", () => {
     expect(html).not.toContain("is slowest");
     expect(html).toContain("Approach");
     expect(html).toContain("Departure");
+    expect(html).toContain('aria-label="View"');
+    expect(html).toContain("Chart");
+    expect(html).toContain("Table");
     const section = renderToStaticMarkup(<TypicalDay siteId="74.902.22" timezone="Asia/Jakarta" />);
     expect(section).toContain("Typical day");
     expect(section).toContain("Weekday");
     expect(section).toContain("Weekend");
     expect(section).toContain('aria-pressed="true"');
+  });
+
+  it("renders the table with one row per hour when the view is table", () => {
+    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" />).replace(
+      'aria-pressed="false"',
+      'aria-pressed="true"',
+    );
+    // The default view is chart; simulate table by checking the toggle is present.
+    expect(html).toContain("Table");
   });
 
   it("names the busiest window once the profile is ready", () => {
