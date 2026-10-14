@@ -24,6 +24,7 @@ Consequences for every table below:
   - Barcode or MyPertamina rejection and QRIS limits go to `pembayaran`. A subsidised grade not served, or a lane closed before the stated time, goes to `bbm_kosong`.
   - Jerry-can queue-jumping or bulk buying and fuel spilled while filling go to `lainnya`.
   - Queue spill to the road, or traffic management inside the site, goes to `keamanan_lalu_lintas`.
+  - `lainnya` is rare: it is not used for a general or complimentary description (location, a large site, 24-hour service, grades or LPG on sale), and not added next to other labels when nothing specific is left over. Made explicit in Gemini prompt p2 (see "Gemini labels versus manual"); the manual pass applied it implicitly.
 - Masking: gists contain no personal names, plate numbers, vehicle descriptors, phone numbers or exact dates.
 - Labels: `out/complaints/2026-10-09/labels.json` (`review_key`, `labels[]`, `sentiment`, `praise_only`, `gist`). Nothing was cross-checked by a human, so these are a first draft, not gold labels (see Limitations).
 
@@ -42,7 +43,7 @@ Consequences for every table below:
 | `toilet` | Toilet condition or access |
 | `fasilitas` | Musholla, parking, ATM, minimarket, water and air, lighting |
 | `keamanan_lalu_lintas` | Traffic or safety at entry or exit, queue spilling onto the road |
-| `lainnya` | Everything else (jerry-can use, spillage, site size, operating hours) |
+| `lainnya` | A specific remark that fits no category above (jerry-can use, spillage, a cramped or too small site). Not praise or description of location, size, opening hours or products on sale |
 
 ## Sample counts
 
@@ -160,6 +161,44 @@ What this implies:
 - Rules work on concrete, rarely ambiguous vocabulary: `toilet`, `kebersihan`, `fasilitas`, `antrian`, `pembayaran` (high recall; the false positives are praise or generic "uang"/"bayar"). They fail where meaning depends on context: `bbm_kosong` (the word "solar" or "tutup" appears in unrelated sentences), `keamanan_lalu_lintas` ("jalan"), `lainnya`.
 - Rules cannot see sentiment: "ramah" (friendly) counts as `pelayanan_petugas` in a compliment. Every table that matters here filters on complaint, so a sentiment-aware method is needed.
 - Production path: Gemini zero-shot on Vertex AI with the fixed taxonomy, JSON schema output, temperature 0 and a pinned model version (as in the feasibility doc), with sentiment as a required field. Keep these rules only as a cheap sanity check and fallback for those five clean categories. Before relying on either, hand-label a stratified 100 with an Indonesian speaker; with the present 127 that would be most of the sample, so the validation should wait for the larger set (GBP or polled data). Re-run this baseline against those labels, not against the first-pass labels above.
+
+## Gemini labels versus manual (2026-10-14, bead `.10.5.7`)
+
+Caveat first: the `manual` labels are one reader's first draft (Method, Limitations), not gold. Agreement with them measures how close Gemini is to that reader, not accuracy. Aggregates only; the per-review comparison and raw text stay in `out/complaints/2026-10-14/` (git-ignored).
+
+Set: the 127 reviews that have a `manual` label and text; Gemini `gemini-3.8-flash`, prompt p1 (`gemini-3.8-flash/p1`, first run 2026-10-10) and prompt p2 (`/p2`, run 2026-10-14 offline, same 127 plus 12 newer reviews; the stored rows come from a separate live run, see below). "Neg/mixed" is by the manual sentiment (71 reviews). Cells: reviews carrying the label.
+
+| Category | All 127: manual | p1 | p2 | Neg/mixed 71: manual | p1 | p2 |
+|---|---|---|---|---|---|---|
+| `antrian` | 40 | 42 | 40 | 30 | 33 | 31 |
+| `pelayanan_petugas` | 53 | 56 | 57 | 33 | 36 | 36 |
+| `bbm_kosong` | 6 | 8 | 7 | 5 | 5 | 6 |
+| `kualitas_bbm` | 3 | 2 | 2 | 2 | 1 | 1 |
+| `takaran` | 5 | 5 | 5 | 4 | 4 | 4 |
+| `pembayaran` | 21 | 22 | 21 | 14 | 15 | 14 |
+| `harga` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `kebersihan` | 15 | 16 | 16 | 5 | 5 | 5 |
+| `toilet` | 19 | 20 | 20 | 5 | 6 | 6 |
+| `fasilitas` | 26 | 27 | 26 | 4 | 5 | 5 |
+| `keamanan_lalu_lintas` | 7 | 10 | 10 | 7 | 8 | 8 |
+| `lainnya` | 7 | **29** | **7** | 6 | 12 | 7 |
+
+| Agreement with manual (127 reviews) | p1 | p2 |
+|---|---|---|
+| Sentiment exact (neg / mixed / pos) | 125 | 124 |
+| Positive versus not positive | 127 | 125 |
+| Exact label set, all | 93 | 106 |
+| Exact label set, neg/mixed (of 71) | 55 | 58 |
+| Exact label set, ignoring `lainnya` | 110 | 108 |
+| Micro precision / recall of labels | 0.84 / 0.98 | 0.92 / 0.97 |
+| `lainnya` on positive reviews (manual: 1) | 17 | 0 |
+| `lainnya` on neg/mixed reviews (manual: 6) | 12 | 7 |
+
+Why p1 overused `lainnya`: the p1 category row listed "site size, operating hours" as `lainnya` and "labels are topics, not complaints" told the model to tag any remark, so descriptive or complimentary remarks (strategic location, a large site, 24-hour opening, grades or LPG on sale) got `lainnya`, often next to labels that already covered the review. The manual pass used it only for jerry-can use, spillage, a cramped site and one prayer-time remark. p2 restricts `lainnya` to a specific problem or remark no other category fits, bars it for general description, and says sentiment is unchanged by that rule. A first p2 draft without that sentiment sentence dropped sentiment agreement to 121 of 127 (positive versus not 123): reviews that complain about a small or narrow site read as pos. The sentence was added and the set relabelled; the table is that final p2.
+
+What p2 does not fix: 6 of the 7 manual `lainnya` reviews are matched; `keamanan_lalu_lintas` stays at 10 against 7; ignoring `lainnya`, p2's exact label-set agreement is 2 reviews lower than p1's, and temperature 0 does not make reruns identical (2 of 127 sentiments differ between p1 and p2). No category other than `lainnya` moved by more than 3 reviews between p1 and p2. Against a single-reader draft, differences of 1 to 3 reviews per category are not meaningful; the `lainnya` gap (22 reviews) is.
+
+State of the table: the counts above come from the offline p2 run (`gemini.label_reviews`, no BigQuery write). On 2026-10-14 the `reviews-poller` job was redeployed with p2 and a live label run replaced all 139 `gemini` rows with `gemini-3.8-flash/p2` (8 carry `lainnya`); because reruns at temperature 0 are not identical, the stored rows can differ slightly from this table. The labeller MERGEs on `(review_key, method)`, so a new prompt version replaces the old rows rather than adding beside them; the Review themes panel reads one row per review (`gemini` over `manual`, latest `labeled_at`), so there is no double count either way. The p1 rows and their review text are kept in `out/complaints/2026-10-14/labels_before.json`.
 
 ## Proposed table `place_review_labels` (proposal only, no DDL written)
 

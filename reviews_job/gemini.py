@@ -20,7 +20,7 @@ import review_labels
 # (3.5-flash answered as modelVersion 3.6-flash, 3.7-flash as 3.8-flash), so a pin is not immutable: the response's
 # modelVersion is not stored, and a silent upgrade behind the id would not change MODEL_VERSION.
 MODEL = "gemini-3.8-flash"
-PROMPT_VERSION = "p1"
+PROMPT_VERSION = "p2"   # p2 (2026-10-14): lainnya no longer takes praise or descriptive remarks (p1 overused it)
 MODEL_VERSION = f"{MODEL}/{PROMPT_VERSION}"
 METHOD = "gemini"
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
@@ -51,7 +51,7 @@ Category table (use these exact values):
 | toilet | Toilet condition or access |
 | fasilitas | Musholla, parking, ATM, minimarket, water and air, lighting |
 | keamanan_lalu_lintas | Traffic or safety at entry or exit, queue spilling onto the road |
-| lainnya | Everything else (jerry-can use, spillage, site size, operating hours) |
+| lainnya | A specific remark that fits no category above (jerry-can use, spillage, a cramped or too small site) |
 
 Labels are topics, not complaints: a compliment about a clean toilet gets toilet and kebersihan with sentiment pos.
 
@@ -66,6 +66,8 @@ Decisions that apply to every review:
 - Barcode or MyPertamina rejection and QRIS limits go to pembayaran. A subsidised grade not served, or a lane closed before the stated time, goes to bbm_kosong.
 - Jerry-can queue-jumping or bulk buying, and fuel spilled while filling, go to lainnya.
 - Queue spill to the road, or traffic management inside the site, goes to keamanan_lalu_lintas.
+- lainnya is for a specific problem or remark that none of the other categories fits, and it is rare. Never use it for a general or complimentary description: location ("strategic", on the main road), a large or spacious site, opening hours or 24-hour service, the fuel grades or products on sale (including LPG), or the general atmosphere. A review made only of such remarks gets an empty list. Size gets no label of its own; name a concrete amenity (parking, mosque, food outlets, ATM) and the label is fasilitas. A complaint that the site is cramped, small or has a narrow entry is lainnya. These rules decide labels only: sentiment is judged as before, so such a complaint still makes the review mixed or neg.
+- Never add lainnya next to other labels just because the review also says something general: add it only when a specific point is left that no other chosen category covers. A lane closed before the stated time is bbm_kosong, QRIS or barcode trouble is pembayaran, not lainnya.
 
 Gist masking: the gist must contain no personal names, plate numbers, vehicle descriptors, phone numbers or exact dates. Refer to people by role (attendant, night-shift staff), not by name.
 

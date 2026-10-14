@@ -82,8 +82,17 @@ class TestPromptPin(unittest.TestCase):
         digest = hashlib.sha256(
             (gemini.SYSTEM_PROMPT + json.dumps(gemini.response_schema(), sort_keys=True)).encode()
         ).hexdigest()[:16]
-        self.assertEqual((digest, gemini.PROMPT_VERSION), ("567a3f54e28a4fde", "p1"),
+        self.assertEqual((digest, gemini.PROMPT_VERSION), ("6e24e9e12d58984b", "p2"),
                          "prompt changed: bump PROMPT_VERSION")
+
+
+class TestLainnyaRule(unittest.TestCase):
+    def test_p2_restricts_lainnya_to_specific_remarks_and_keeps_sentiment_rules(self):
+        p = gemini.SYSTEM_PROMPT
+        self.assertIn("lainnya is for a specific problem or remark", p)
+        self.assertIn("Never add lainnya next to other labels", p)
+        self.assertIn("sentiment is judged as before", p)
+        self.assertNotIn("site size, operating hours", p)   # the p1 table row that invited lainnya on praise
 
 
 class TestRequest(unittest.TestCase):
@@ -96,7 +105,7 @@ class TestRequest(unittest.TestCase):
 
     def test_model_is_pinned_and_in_the_url(self):
         self.assertEqual(gemini.MODEL, "gemini-3.8-flash")
-        self.assertEqual(gemini.MODEL_VERSION, "gemini-3.8-flash/p1")
+        self.assertEqual(gemini.MODEL_VERSION, "gemini-3.8-flash/p2")
         self.assertEqual(self.call["method"], "POST")
         self.assertEqual(self.call["url"],
                          "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent")
@@ -191,7 +200,7 @@ class TestRows(unittest.TestCase):
         self.assertEqual(rows, [{
             "review_key": "key000", "site_id": "24.351.34", "labels": ["antrian", "pelayanan_petugas"],
             "sentiment": "mixed", "praise_only": False, "gist": GIST, "method": "gemini",
-            "model_version": "gemini-3.8-flash/p1", "labeled_at": NOW_ISO}])
+            "model_version": "gemini-3.8-flash/p2", "labeled_at": NOW_ISO}])
         self.assertEqual(list(rows[0]), [c for c, _ in review_labels.STAGE])
         self.assertEqual(counts, {"failed_calls": 0, "invalid": 0, "missing": 0})
 
@@ -364,7 +373,7 @@ class TestSql(unittest.TestCase):
         sql = client.query.call_args.args[0]
         self.assertIn("`p.d.v_place_reviews`", sql)
         params = client.query.call_args.kwargs["job_config"].query_parameters
-        self.assertEqual([(p.name, p.type_, p.value) for p in params], [("model_version", "STRING", "gemini-3.8-flash/p1")])
+        self.assertEqual([(p.name, p.type_, p.value) for p in params], [("model_version", "STRING", "gemini-3.8-flash/p2")])
         self.assertEqual(out, [{"review_key": "k1", "site_id": "s", "text": "t"}])
 
     def test_labels_stage_matches_ddl(self):
@@ -445,8 +454,8 @@ class TestMainLabel(unittest.TestCase):
         self.assertEqual((project, dataset, location), ("gcp-coe-sandbox", "traffic", "asia-southeast2"))
         self.assertEqual(len(rows), 23)
         self.assertEqual({(r["method"], r["model_version"], r["labeled_at"]) for r in rows},
-                         {("gemini", "gemini-3.8-flash/p1", labeled_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))})
-        self.assertEqual(fake.reads, [("gcp-coe-sandbox", "traffic", "asia-southeast2", "gemini-3.8-flash/p1")])
+                         {("gemini", "gemini-3.8-flash/p2", labeled_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))})
+        self.assertEqual(fake.reads, [("gcp-coe-sandbox", "traffic", "asia-southeast2", "gemini-3.8-flash/p2")])
         self.assertIn("23 text reviews without a gemini label", logs)
         self.assertIn("3 Gemini calls, 0 failed; 23 rows labelled, 0 invalid and 0 missing skipped", logs)
         self.assert_no_secrets(out + logs)
@@ -466,10 +475,10 @@ class TestMainLabel(unittest.TestCase):
         fake = FakeBq([review(n) for n in range(3)])
         self.run_main(fake, StubGemini())
         stub2 = StubGemini()
-        with mock.patch.object(gemini, "MODEL_VERSION", "gemini-3.8-flash/p2"):
+        with mock.patch.object(gemini, "MODEL_VERSION", "gemini-3.8-flash/p3"):
             self.run_main(fake, stub2)
         self.assertEqual(len(stub2.calls), 1)
-        self.assertEqual(len(fake.labelled), 6)   # p1 and p2 rows (the real MERGE replaces on (review_key, method))
+        self.assertEqual(len(fake.labelled), 6)   # p2 and p3 rows (the real MERGE replaces on (review_key, method))
 
     def test_dry_run_calls_gemini_but_writes_nothing_and_prints_counts_only(self):
         fake, stub = FakeBq([review(n) for n in range(4)]), StubGemini()
