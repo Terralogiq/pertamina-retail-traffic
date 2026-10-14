@@ -174,6 +174,7 @@ class TrafficTest(unittest.TestCase):
         body = res.json()
         self.assertEqual(body["days"], 6)
         self.assertFalse(body["ready"])
+        self.assertEqual(body["timezone"], "Asia/Makassar")
         weekday = next(leg for leg in body["legs"] if leg["leg"] == "approach" and leg["day_kind"] == "weekday")
         self.assertEqual(len(weekday["hours"]), 24)
         by_hour = {hour["hour"]: hour for hour in weekday["hours"]}
@@ -237,7 +238,7 @@ class TrafficTest(unittest.TestCase):
         # The payload is cached per site, so the empty case needs a fresh entry.
         cache.default.clear()
         empty, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=0)
-        self.assertEqual(empty.json(), {"days": 0, "ready": False, "legs": []})
+        self.assertEqual(empty.json(), {"days": 0, "ready": False, "timezone": None, "legs": []})
 
     def test_need_login(self):
         self.client.cookies.clear()

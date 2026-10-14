@@ -146,7 +146,7 @@ def _typical_hour(row, hour):
     }
 
 
-def _typical_payload(rows, days):
+def _typical_payload(rows, days, timezone):
     """One entry per leg that has any reading, both day kinds, hours 0–23 filled in.
 
     Peak windows stay empty until 7 distinct local dates, even when some hours are already busy.
@@ -163,7 +163,7 @@ def _typical_payload(rows, days):
                 "hours": hours,
                 "windows": peak_windows(hours) if ready else [],
             })
-    return {"days": int(days), "ready": ready, "legs": legs}
+    return {"days": int(days), "ready": ready, "timezone": timezone, "legs": legs}
 
 
 def _parse_time(name, value):
@@ -233,6 +233,6 @@ def traffic_typical_day(site_id: str):
         hour_rows = bq.query(TYPICAL_SQL, band)
         day_rows = bq.query(TYPICAL_DAYS_SQL, params)
         days = day_rows[0]["days"] if day_rows else 0
-        return _typical_payload(hour_rows, days)
+        return _typical_payload(hour_rows, days, site.get("timezone"))
 
     return cache.default.get_or_compute("traffic/typical-day", {"site_id": site_id}, compute)

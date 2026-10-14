@@ -7,6 +7,7 @@ import { getTypicalDay } from "./api";
 import BusyHours from "./BusyHours";
 import Chart from "./Chart";
 import { actionHeadline } from "./headlines";
+import { TypicalDayTable, ViewToggle } from "./ChartTable";
 import { formatDelay, legLabel, tzLabel } from "./model";
 import "./TrafficCharts.css";
 
@@ -178,6 +179,7 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
     [data, dayKind],
   );
   const option = useMemo(() => (legs.length ? typicalChartOption(legs) : null), [legs]);
+  const [view, setView] = useState<"chart" | "table">("chart");
   const kindLabel = dayKind === "weekday" ? "weekday" : "weekend";
 
   return (
@@ -189,8 +191,17 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
       {option && (
         <>
           <Block title="Median delay (s)" aside="band is the middle 50%">
-            <Chart option={option} height={CHART_HEIGHT} label={`Typical ${kindLabel} delay`} />
+            {view === "chart" ? (
+              <Chart option={option} height={CHART_HEIGHT} label={`Typical ${kindLabel} delay`} />
+            ) : (
+              <div className="chart-table-wrap">
+                <TypicalDayTable legs={legs} timezone={data.timezone} />
+              </div>
+            )}
           </Block>
+          <div className="site-section-actions">
+            <ViewToggle mode={view} onChange={setView} />
+          </div>
           <p className="typical-caption">Count under each hour. Faded hours have fewer than 4 readings.</p>
           {legs.map((leg) => (
             <Block key={leg.leg} title={legLabel(leg.leg)}>

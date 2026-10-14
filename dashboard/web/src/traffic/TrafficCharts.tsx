@@ -5,6 +5,7 @@ import { CHART_INK, SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
 import { TrafficPoint, TypicalDayResponse, getTrafficSeries, getTypicalDay } from "./api";
 import Chart from "./Chart";
+import { TrafficTable, ViewToggle } from "./ChartTable";
 import { trafficHeadline } from "./headlines";
 import {
   DelayDatum,
@@ -131,6 +132,7 @@ export default function TrafficCharts({
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
   const [profile, setProfile] = useState<TypicalDayResponse | null>(null);
   const [weather, setWeather] = useState<WeatherSeriesPoint[] | null>(null);
+  const [view, setView] = useState<"chart" | "table">("chart");
   const [error, setError] = useState("");
   const [rainError, setRainError] = useState("");
   const [now] = useState(() => new Date());
@@ -204,8 +206,17 @@ export default function TrafficCharts({
         <div className="traffic-stack">
           <LegLegend legs={legs} />
           <Block title="Delay (s)" aside="versus free flow">
-            <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
+            {view === "chart" ? (
+              <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
+            ) : (
+              <div className="chart-table-wrap">
+                <TrafficTable points={points ?? []} timezone={timezone} roadType={null} />
+              </div>
+            )}
           </Block>
+          <div className="site-section-actions">
+            <ViewToggle mode={view} onChange={setView} />
+          </div>
           <Block title="Rain (mm)" aside="measured, per half hour">
             {rainError ? (
               <Notice tone="error">Couldn't load rain. {rainError}</Notice>
