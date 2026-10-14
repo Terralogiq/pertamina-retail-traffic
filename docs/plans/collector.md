@@ -153,7 +153,7 @@ Tests go in `tests/test_collector_*.py`, cover the pure functions only and make 
 |---|---|---|---|---|
 | Routes, main-road pairs | 10 sites × 48 slots × 30 days | 14,400 | Pro $10/1k | |
 | **Routes total** | 10 calls per slot | **14,400** | 5k free | **≈ $94** (≈ $144 if the free allowance is used elsewhere on the billing account) |
-| Weather `currentConditions` | 10 × 48 × 30 | 14,400 | $0.15/1k after 10k free (unverified, bead `.5`) | ≈ $0.66 (≈ $2 without the free allowance) |
+| Weather `currentConditions` | 10 × 48 × 30 | 14,400 | $0.15/1k after 10k free (public price list, checked 2026-10-14) | ≈ $0.66 (≈ $2 without the free allowance) |
 | Cloud Run job | 1,440 runs × ~60 s, 1 vCPU / 512 MiB | | 180k vCPU-s free | $0 (≈ $2 without the free allowance) |
 | Scheduler, BigQuery (≈ 0.6 GB/month added, `MERGE` ≈ 30 GB scanned), Secret Manager, Logging, Artifact Registry | | | free allowances | ≈ $0 |
 | **Total** | | | | **≈ $95** (worst case ≈ $148) |

@@ -91,20 +91,30 @@ Every traffic and weather table has three column groups (Places tables: core + `
 
 ## Cost estimate
 
-Prices as of 2026-10-06.
+Prices checked 2026-10-14 (public pricing page); see the notes under the table. Since 2025-03-01 each SKU has its own monthly free usage cap (Essentials 10,000, Pro 5,000, Enterprise 1,000 events); the $200 credit is gone.
 
 | Item | Volume / month | Price | Est. |
 |---|---|---|---|
-| Routes, 1 call per SPBU (Approach + Departure) | 10 × 48/day × 30 ≈ 14,400 | Pro $10/1k after 5k free | ≈ $94 (≈ $144 if the free allowance is used elsewhere) |
+| Routes, 1 call per SPBU (Approach + Departure) | 10 × 48/day × 30 ≈ 14,400 | Compute Routes Pro (`TRAFFIC_AWARE`, `heading`) $10/1k after 5k free | ≈ $94 (≈ $144 if the free allowance is used elsewhere) |
 | Re-adding an opposite side | +1,440 per site | Pro | +$14 per site |
 | Routes with `TRAFFIC_ON_POLYLINE` | — | Enterprise $15/1k after 1k free | optional |
-| Weather `currentConditions` | 10 × 48/day ≈ 14,400 | $0.15/1k after 10k free* | ≈ $0.66 |
-| Nearby Search | 20 per weekly run | $32–40/1k by tier* | ≈ $3 |
-| Place Details with reviews | 10 per weekly run (stored, not per view) | $25/1k* | ≈ $1 |
-| Places Aggregate | 450 per weekly run (1,800/month) | $10/1k after 5k free* | ≈ $0 |
-| Dashboard (Cloud Run, BigQuery, Maps JS loads) | demo traffic | free tiers | ≈ $0 |
+| Weather `currentConditions` | 10 × 48/day ≈ 14,400 | Weather Usage (Essentials) $0.15/1k after 10k free | ≈ $0.66 (≈ $2 without the free allowance) |
+| Nearby Search (New) | 20 per weekly run ≈ 87 | Enterprise + Atmosphere (`rating` and `fuelOptions` in the field mask) $40/1k after 1k free | ≈ $0 (≈ $3.5 without the free allowance) |
+| Place Details (New) with reviews | 10 per weekly run ≈ 43 (stored, not per view) | Enterprise + Atmosphere (`reviews` in the field mask) $25/1k after 1k free | ≈ $0 (≈ $1 without the free allowance) |
+| Places Aggregate | 450 per weekly run (1,800/month) | Pro $10/1k after 5k free | ≈ $0 (≈ $18 without the free allowance) |
+| Reviews poller, legacy Place Details with `reviews` | ≈ 430 (10 × 30 daily + 130 weekly sample) | Places Details (Pro) $17/1k after 5k free, plus Atmosphere Data $5/1k after 1k free | ≈ $0 (≈ $9.5 without the free allowances) |
+| Dashboard Maps JS dynamic maps | demo traffic | Dynamic Maps (Essentials) $7/1k after 10k free | ≈ $0 |
+| Dashboard Cloud Run, one always-on instance (`--min-instances 1`, 1 vCPU, 512 MiB) | 730 h idle | Cloud Run idle rate, Tier 2 (asia-southeast2) | ≈ $14 (Tier 2 idle rate not confirmed on the pricing page) |
+| Dashboard BigQuery | demo traffic | free tier | ≈ $0 |
 
-\* Taken directly from Google's pricing pages but not double-checked like the Routes prices. Recheck in the console; the Weather price looks low.
+Estimates: ≈ $109/month (Routes + Weather + the always-on dashboard instance); ≈ $192 if no free allowance applies.
+
+Checked 2026-10-14 against Google's public pages, not the console (bead `.5` asked for the console; that check was not done):
+- Price list: https://developers.google.com/maps/billing-and-pricing/pricing (per-SKU prices, free caps)
+- Which request triggers which SKU (Routes Pro, Places field-mask tiers, legacy Atmosphere Data): https://developers.google.com/maps/billing-and-pricing/sku-details
+- Free caps replacing the $200 credit: https://developers.google.com/maps/billing-and-pricing/overview
+- The Weather price ($0.15/1k) is correct on the price list. A console view may still show a different rate if the billing account has a negotiated discount.
+- Gemini labeller (Gemini API) is not a Maps Platform SKU and was not checked.
 
 ## Roadmap
 
