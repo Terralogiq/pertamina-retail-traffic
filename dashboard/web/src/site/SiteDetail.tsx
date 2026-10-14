@@ -154,7 +154,7 @@ export function SiteDetail() {
             <Section id="map" title="Road segments" note="Approach and departure legs on the SPBU side, coloured by current state">
               <SiteMap siteId={siteId} />
             </Section>
-            <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} />
+            <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} site={site} />
             <TypicalDay siteId={siteId} timezone={timezone} />
           </div>
           <div className="span-4 site-column">

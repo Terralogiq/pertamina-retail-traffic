@@ -1,5 +1,7 @@
+import type { Site } from "../map/api";
+import { BANDS } from "../theme/palette";
 import type { TrafficPoint, TypicalLeg } from "./api";
-import { formatSlot, legBand, roadClassOf } from "../map/bands";
+import { formatSlot, legBand, legContext } from "../map/bands";
 import { formatDelay, legLabel } from "./model";
 import "./TrafficCharts.css";
 
@@ -18,32 +20,19 @@ export function ViewToggle({ mode, onChange }: { mode: TableMode; onChange: (mod
   );
 }
 
-function trafficBand(point: TrafficPoint, roadType: string | null | undefined): string {
-  const roadClass = roadClassOf(roadType);
-  return legBand(
-    {
-      selected_route_id: point.selected_route_id,
-      site_id: point.site_id,
-      leg: point.leg,
-      slot_time: point.slot_time,
-      duration_s: point.duration_s,
-      delay_s: point.delay_s,
-      congestion_index: point.congestion_index,
-      speed_kmh: point.speed_kmh,
-      baseline_samples: point.baseline_samples,
-    },
-    { roadClass, expectedDistanceM: null },
-  ).band;
+function trafficBand(point: TrafficPoint, site?: Site): string {
+  const ctx = site ? legContext(site, point.selected_route_id) : undefined;
+  return BANDS[legBand(point, ctx).band].label;
 }
 
 export function TrafficTable({
   points,
   timezone,
-  roadType,
+  site,
 }: {
   points: TrafficPoint[];
   timezone: string | null | undefined;
-  roadType: string | null | undefined;
+  site?: Site;
 }) {
   const rows = [...points].sort((a, b) => Date.parse(b.slot_time) - Date.parse(a.slot_time));
   return (
@@ -63,7 +52,7 @@ export function TrafficTable({
             <td>{timezone ? formatSlot(p.slot_time, timezone) : p.slot_time}</td>
             <td>{legLabel(p.leg)}</td>
             <td className="num">{formatDelay(p.delay_s)}</td>
-            <td>{trafficBand(p, roadType)}</td>
+            <td>{trafficBand(p, site)}</td>
             <td className="num">{p.speed_kmh == null ? "-" : `${Math.round(p.speed_kmh)} km/h`}</td>
           </tr>
         ))}
@@ -72,7 +61,7 @@ export function TrafficTable({
   );
 }
 
-export function TypicalDayTable({ legs, timezone }: { legs: TypicalLeg[]; timezone: string | null | undefined }) {
+export function TypicalDayTable({ legs }: { legs: TypicalLeg[] }) {
   const rows = legs.flatMap((leg) =>
     leg.hours
       .filter((h) => h.median_delay_s != null)

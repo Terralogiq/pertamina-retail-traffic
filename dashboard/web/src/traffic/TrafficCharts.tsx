@@ -123,10 +123,12 @@ export default function TrafficCharts({
   siteId,
   timezone,
   baselineNote,
+  site,
 }: {
   siteId: string;
   timezone: string | null | undefined;
   baselineNote?: string | null;
+  site?: import("../map/api").Site;
 }) {
   const [range, setRange] = useState<Range>("24h");
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
@@ -210,7 +212,7 @@ export default function TrafficCharts({
               <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
             ) : (
               <div className="chart-table-wrap">
-                <TrafficTable points={points ?? []} timezone={timezone} roadType={null} />
+                <TrafficTable points={points ?? []} timezone={timezone} site={site} />
               </div>
             )}
           </Block>

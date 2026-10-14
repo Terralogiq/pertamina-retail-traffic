@@ -64,7 +64,6 @@ export interface TypicalLeg {
 export interface TypicalDayResponse {
   days: number;
   ready: boolean;
-  timezone?: string;
   legs: TypicalLeg[];
 }
 

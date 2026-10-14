@@ -10,6 +10,7 @@ import { actionHeadline } from "./headlines";
 import { TypicalDayTable, ViewToggle } from "./ChartTable";
 import { formatDelay, legLabel, tzLabel } from "./model";
 import "./TrafficCharts.css";
+import type { Site } from "../map/api";
 
 const CHART_HEIGHT = 220;
 const READY_DAYS = 7;
@@ -195,7 +196,7 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
               <Chart option={option} height={CHART_HEIGHT} label={`Typical ${kindLabel} delay`} />
             ) : (
               <div className="chart-table-wrap">
-                <TypicalDayTable legs={legs} timezone={data.timezone} />
+                <TypicalDayTable legs={legs} />
               </div>
             )}
           </Block>
