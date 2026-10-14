@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { LatestLeg, Site } from "../map/api";
 import { BASELINE_FULL, legBand } from "../map/bands";
 import { BANDS } from "../theme/palette";
-import { StatusStrip, baselineNotice, siteContext } from "./SiteDetail";
+import { SECTIONS, StatusStrip, baselineNotice, siteContext } from "./SiteDetail";
 import { loadSiteData, siteApi } from "./useSiteData";
 
 const site: Site = {
@@ -69,6 +69,13 @@ describe("site header", () => {
     for (const s of ["+16 s", "+1.3 min", "30 km/h", "29.1 °C", "no rain", "4.2"]) expect(html).toContain(s);
     // 500 m at 45 km/h is 40 s; 60 s is 1.5× and 20 s over, so moderate. The label is in the markup.
     expect(html).toContain(BANDS.moderate.label);
+  });
+});
+
+describe("section nav", () => {
+  it("lists the sections in page order: left column (Review themes under Typical day), then right", () => {
+    expect(SECTIONS.map((s) => s.label)).toEqual(["Traffic", "Typical day", "Review themes", "Weather", "Places"]);
+    expect(SECTIONS.map((s) => s.id)).toEqual(["traffic", "pattern", "review-themes", "weather", "places"]);
   });
 });
 

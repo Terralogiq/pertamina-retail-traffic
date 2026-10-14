@@ -1,0 +1,102 @@
+/* "Stations at a glance" table under the overview map. Colours and type from tokens.css. */
+
+.station-table-section {
+  --station-table-min-width: 60rem;
+  --station-sub-max-width: 28rem;
+
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: var(--space-5);
+}
+
+.station-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* On narrow widths the table scrolls sideways inside its own region instead of widening the page. */
+.station-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+
+.station-table {
+  width: 100%;
+  min-width: var(--station-table-min-width);
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.station-table th,
+.station-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.station-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.station-table thead th {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.station-table tbody th {
+  font-weight: var(--weight-regular);
+}
+
+.station-table tbody th a {
+  color: var(--brand-secondary);
+  font-weight: var(--weight-semibold);
+}
+
+th.station-count,
+td.station-count {
+  text-align: right;
+}
+
+.station-sub {
+  display: block;
+  max-width: var(--station-sub-max-width);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+}
+
+.station-tier,
+.station-level {
+  color: var(--ink-1);
+  font-weight: var(--weight-semibold);
+}
+
+.station-tier[data-tier="none"],
+.station-tier[data-tier="cannot_tell"] {
+  color: var(--ink-2);
+}
+
+.station-asof {
+  margin-top: var(--space-1);
+}
+
+.station-captions {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.station-captions p {
+  max-width: 75ch;
+}

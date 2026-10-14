@@ -56,24 +56,21 @@ export function usePageTitle(page: string) {
 
 /**
  * Page heading row: the page's only <h1>, an optional line of context, and optional actions.
- * `fill` pages (the overview map) take the full height under the header instead of scrolling.
  */
 export function Page({
   title,
   context,
   actions,
-  fill = false,
   children,
 }: {
   title: string;
   context?: ReactNode;
   actions?: ReactNode;
-  fill?: boolean;
   children: ReactNode;
 }) {
   usePageTitle(title);
   return (
-    <div className={fill ? "page page-fill" : "page"}>
+    <div className="page">
       <div className="page-header">
         <div className="page-heading">
           <h1>{title}</h1>

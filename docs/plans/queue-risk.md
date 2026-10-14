@@ -138,18 +138,18 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 - A masked state, for sites like Bandung and Daan Mogot: "The road past the station is slower than the road before it at these hours, so a station queue cannot be seen here." It shows no strip.
 - A link to the Review themes panel's `antrian` and `keamanan_lalu_lintas` counts, labelled "sampled reviews, weak evidence".
 
-**Overview.** No queue ranking yet. Once there are 14 days of data and at least one validation step agrees, add a "Queue risk" sort to the side list, showing rank and confidence chip with the masked sites at the end. The existing 7-day ranking gate is met, but a ranking reads as a finding, and that needs ground truth first.
+**Overview.** Superseded 2026-10-14 by a user decision: the overview shows queue risk now, as a sortable column with neutral wording, before the gate below; see [overview-station-table.md](overview-station-table.md). Original proposal: no queue ranking yet. Once there are 14 days of data and at least one validation step agrees, add a "Queue risk" sort to the side list, showing rank and confidence chip with the masked sites at the end. The existing 7-day ranking gate is met, but a ranking reads as a finding, and that needs ground truth first.
 
 **Hidden until ready.**
 
 | Item | Until |
 |---|---|
-| Overview ranking | 14 days and one validation step agreeing |
+| Overview ranking | ~~14 days and one validation step agreeing~~ Superseded 2026-10-14, see [overview-station-table.md](overview-station-table.md) |
 | Weekend headline | 4 weekend days in the window. Until then the strip shows weekend hours faded and the headline uses weekdays |
 | Rain effect | 4 weeks, `.7.13` closed, and at least 8 hour-matched rain slots |
 | "Likely queue" wording | Validation steps 3 or 4 confirm |
 
-**API.** One endpoint, `GET /api/traffic/queue-risk?site_id=`, over the same 28-day window as typical-day. It reuses `busy.py`'s gates and `holidays.py`, so the band rule stays in one place. ALS needs both legs from the same slot, so it cannot be computed from the per-leg typical-day aggregates. Core columns only, no demo-only badge.
+**API.** `GET /api/traffic/queue-risk` for all sites exists (built under `.10.25`); `.10.18` adds `?site_id=` and the card. Same 28-day window as typical-day. It reuses `busy.py`'s gates and `holidays.py`, so the band rule stays in one place. ALS needs both legs from the same slot, so it cannot be computed from the per-leg typical-day aggregates. Core columns only, no demo-only badge.
 
 ## Follow-ups for the orchestrator
 
@@ -157,7 +157,7 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 - Desk check of the four approach legs (validation step 1).
 - Ask Pertamina for per-30-minute transaction counts and CCTV access (validation steps 2 and 3).
 - With RMI: register a short third SelectedRoute covering the last 100–150 m before each turn-in, so a slowdown can be placed at the station. This changes `routes` and needs a decision.
-- Build the card and endpoint above, after validation step 1.
+- Build the card and the `?site_id=` filter, after validation step 1 (`.10.18`). The all-sites `GET /api/traffic/queue-risk` already exists (`.10.25`).
 
 ## Reproduce
 

@@ -10,7 +10,7 @@ Terralogiq demo for Pertamina: monitors traffic on the road in front of 10 SPBU 
   - Road segments for all 10 sites, validated and user-checked (`data/routes.csv`).
   - BigQuery dataset `gcp-coe-sandbox.traffic` (asia-southeast2) with reference data loaded (10 sites, 20 legs).
   - Collector deployed 2026-10-07 00:40 WIB: Cloud Run job `traffic-collector`, Scheduler `traffic-collector-every-30min` (`*/30` Asia/Jakarta), failure alert by email. Every slot so far has 20 traffic + 10 weather rows, no gaps.
-  - Dashboard live: https://traffic-dashboard-509833145296.asia-southeast2.run.app (password in Secret Manager `DASHBOARD_PASSWORD`). Screens: overview map, site detail (traffic charts with rain bars, day × hour heatmap in local time, weather, Places), traffic vs rain. Plan: `docs/plans/dashboard.md`.
+  - Dashboard live: https://traffic-dashboard-509833145296.asia-southeast2.run.app (password in Secret Manager `DASHBOARD_PASSWORD`). Screens: overview map with a "Stations at a glance" table, site detail (traffic charts with rain bars, day × hour heatmap in local time, review themes, weather, Places), traffic vs rain. Plan: `docs/plans/dashboard.md`.
   - Places profiling job `places-profiler`: weekly (Mon 02:00 WIB) into `places_details`, `places_nearby`, `places_aggregate`; first two runs 2026-10-07.
 - In progress:
   - Collector 24 h acceptance run (through ~2026-10-07 18:00 UTC).

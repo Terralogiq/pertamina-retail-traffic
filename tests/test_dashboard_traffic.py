@@ -239,9 +239,65 @@ class TrafficTest(unittest.TestCase):
         empty, _ = self.get(f"/api/traffic/typical-day?site_id={SITE}", days=0)
         self.assertEqual(empty.json(), {"days": 0, "ready": False, "legs": []})
 
+    def test_queue_risk_payload_order_and_confidence(self):
+        def row(site_id, als, both, dep, days, median):
+            return {"site_id": site_id, "als_pct": als, "both_slow_pct": both, "departure_only_pct": dep,
+                    "days_with_2h_als": days, "full_days": 7, "als_median_delay_s": median}
+        rows = [row("34.401.16", 0.0, 33.6, 27.3, 0, None), row("unlisted", 0.0, 0.0, 0.0, 0, None),
+                row("34.121.03", 19.7, 3.0, 0.0, 6, 25.0), row("54.801.17", 29.8, 10.7, 2.2, 7, 75.0)]
+        res, fake = self.get("/api/traffic/queue-risk", rows)
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(set(body), {"window_days", "sites"})
+        self.assertEqual(body["window_days"], 28)
+        self.assertEqual([s["site_id"] for s in body["sites"]], ["54.801.17", "34.121.03", "unlisted", "34.401.16"])
+        self.assertEqual([s["tier"] for s in body["sites"]], ["strong", "moderate", "none", "cannot_tell"])
+        pemogan = body["sites"][0]
+        self.assertEqual(set(pemogan), {"site_id", "tier", "als_pct", "both_slow_pct", "departure_only_pct",
+                                        "days_with_2h_als", "full_days", "als_median_delay_s", "confidence"})
+        self.assertEqual(pemogan["confidence"]["level"], "medium")
+        self.assertEqual(set(pemogan["confidence"]), {"level", "reason", "as_of"})
+        self.assertEqual((pemogan["als_pct"], pemogan["days_with_2h_als"], pemogan["als_median_delay_s"]),
+                         (29.8, 7, 75.0))
+        self.assertIsNone(body["sites"][2]["confidence"])  # a site with no reviewed entry
+        self.assertIsNone(body["sites"][3]["als_median_delay_s"])
+        self.assertEqual(len(fake.calls), 1)  # one job for all sites
+
+    def test_queue_risk_empty_when_no_readings(self):
+        res, _ = self.get("/api/traffic/queue-risk")
+        self.assertEqual(res.json(), {"window_days": 28, "sites": []})
+
+    def test_queue_risk_sql_window_band_rule_and_core_columns(self):
+        _, fake = self.get("/api/traffic/queue-risk")
+        sql, params = fake.calls[0]
+        self.assertEqual(params["to_ts"] - params["from_ts"], timedelta(days=28))
+        self.assertIn("t.slot_time >= @from_ts AND t.slot_time <= @to_ts", sql)
+        self.assertIn("r.active", sql)
+        self.assertIn("t.delay_s IS NOT NULL", sql)
+        self.assertNotIn("static_ratio", sql)
+        self.assertNotIn("demo_", sql)
+        self.assertNotIn("Asia/", sql)
+        # band rule is busy.slow_count_sql() with the road class per site, never one gate for all
+        self.assertIn("t.congestion_index >= 1.5", sql)
+        self.assertIn("baseline_samples, 0) >= 302", sql)
+        self.assertIn("IF(LOWER(s.road_type) LIKE '%toll%', @toll_gate_s, @urban_gate_s)", sql)
+        self.assertIn("IF(LOWER(s.road_type) LIKE '%toll%', @toll_provisional_kmh, @urban_provisional_kmh)", sql)
+        self.assertNotIn("@gate_s", sql)
+        self.assertNotIn("@provisional_kmh", sql)
+        self.assertEqual((params["urban_gate_s"], params["toll_gate_s"]), (20, 30))
+        self.assertEqual((params["urban_provisional_kmh"], params["toll_provisional_kmh"]), (45, 80))
+        self.assertIn("n >= 40 AND als_n >= 4", sql)
+
+    def test_queue_risk_is_cached(self):
+        fake = FakeBq()
+        with mock.patch("dashboard.api.bq.query", fake):
+            self.client.get("/api/traffic/queue-risk")
+            self.client.get("/api/traffic/queue-risk")
+        self.assertEqual(len(fake.calls), 1)
+
     def test_need_login(self):
         self.client.cookies.clear()
-        for path in ("latest", "series?site_id=x", "pattern?site_id=x", "typical-day?site_id=x"):
+        for path in ("latest", "series?site_id=x", "pattern?site_id=x", "typical-day?site_id=x", "queue-risk"):
             self.assertEqual(self.client.get(f"/api/traffic/{path}").status_code, 401)
 
 

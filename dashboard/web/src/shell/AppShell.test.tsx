@@ -13,7 +13,7 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <AppShell>
         <Routes>
-          <Route path="/" element={<Page title="Overview" fill>map</Page>} />
+          <Route path="/" element={<Page title="Overview">map</Page>} />
           <Route path="/rain" element={<Page title="Traffic vs rain">rain</Page>} />
           <Route path="/site/:site_id" element={<SiteDetail />} />
         </Routes>

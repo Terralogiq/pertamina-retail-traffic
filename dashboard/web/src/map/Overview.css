@@ -11,11 +11,13 @@
   --site-list-width: 23rem;
   --map-legend-compact-width: calc(100vw - 7rem);
   --map-compact-height: 45vh;
+  /* The map and list fill the first screen; the station table below scrolls into view. 10rem is the page heading, context line and spacing above. */
+  --overview-height: max(28rem, calc(100vh - var(--shell-header-height) - var(--shell-footer-height) - 10rem));
 
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--site-list-width);
   gap: var(--space-4);
-  height: 100%;
+  height: var(--overview-height);
 }
 
 /* Map */
@@ -399,6 +401,7 @@
 @supports (height: 1dvh) {
   .overview {
     --map-compact-height: 45dvh;
+    --overview-height: max(28rem, calc(100dvh - var(--shell-header-height) - var(--shell-footer-height) - 10rem));
   }
 }
 

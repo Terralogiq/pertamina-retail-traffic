@@ -40,11 +40,12 @@ A web app that shows Pertamina, for each of the 10 SPBU, the traffic on the road
 
 ## Screens
 
-1. **Overview:** full-width Google basemap with 10 SPBU markers and both legs drawn as polylines, coloured by the latest `congestion_index` (or `speed_kmh` while the baseline is pending). A side list shows each site's city, latest delay per leg, current weather icon and temperature, and the "baseline building" badge where it applies.
-2. **Site detail** (`/site/:site_id`):
+1. **Overview:** Google basemap, capped at the page max width (90rem), with 10 SPBU markers and both legs drawn as polylines, coloured by the latest `congestion_index` (or `speed_kmh` while the baseline is pending). A side list shows each site's city, latest delay per leg, current weather icon and temperature, and the "baseline building" badge where it applies. Below the map and list, a "Stations at a glance" table has one row per station: slower-before-than-after tier, confidence, queue complaints, top complaint, reviews labelled; default sort by name (see [overview-station-table.md](overview-station-table.md)).
+2. **Site detail** (`/site/:site_id`), nav order Traffic, Typical day, Review themes, Weather, Places:
    - Map zoomed to the site's legs.
    - Per-leg time series for the last 24 h / 7 d (`congestion_index`, `delay_s`, `speed_kmh`), with `precipitation_mm` bars on the same time axis.
-   - Day × hour heatmap of mean `congestion_index` in local time.
+   - Typical day: day × hour heatmap of mean `congestion_index` in local time.
+   - Review themes, in the left column under Typical day.
    - Weather panel.
    - Places panel.
 3. **Traffic vs rain:** per site, mean `delay_s` in slots with `rain_flag` vs without, plus a scatter of `precipitation_mm` against `congestion_index`. A `demo_rain_flag` toggle carries the demo-only badge.
@@ -61,6 +62,8 @@ All endpoints are GET unless noted, return JSON, and require the session cookie 
 | `GET /api/traffic/latest` | latest slot per leg: duration, delay, congestion, speed, baseline_samples | `v_traffic`, last 2 h |
 | `GET /api/traffic/series?site_id&from&to` | per slot per leg | `v_traffic` |
 | `GET /api/traffic/pattern?site_id&days=28` | day-of-week × local hour → mean congestion, n | `v_traffic` ⨝ `sites` |
+| `GET /api/traffic/queue-risk` | all sites, 28-day window: tier, metrics and reviewed confidence | `v_traffic` ⨝ `routes` ⨝ `sites` (core columns) |
+| `GET /api/review-themes` | per site: negative/mixed review category counts, queue complaints, top category; no review text | `place_review_labels` ⨝ `v_place_reviews` |
 | `GET /api/weather/latest` | latest slot per site | `weather_slots`, last 2 h |
 | `GET /api/weather/series?site_id&from&to` | per slot | `weather_slots` |
 | `GET /api/rain?site_id&days=28` | rain vs dry delay summary + scatter points | `v_traffic` ⨝ `weather_slots` |

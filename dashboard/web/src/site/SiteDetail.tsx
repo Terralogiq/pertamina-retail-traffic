@@ -18,12 +18,13 @@ import "./SiteDetail.css";
 /** Height of the placeholder shown while /api/sites resolves, before any panel mounts. */
 const SITE_LOADING_HEIGHT = 480;
 
-const SECTIONS = [
+/** In page order: the left column (Traffic, Typical day, Review themes), then the right (Weather, Places). */
+export const SECTIONS = [
   { id: "traffic", label: "Traffic" },
   { id: "pattern", label: "Typical day" },
+  { id: "review-themes", label: "Review themes" },
   { id: "weather", label: "Weather" },
   { id: "places", label: "Places" },
-  { id: "review-themes", label: "Review themes" },
 ];
 
 /** "SPBU 24.351.34 · Bandar Lampung · Jl. P. Antasari · WIB": the ID stays secondary to the name (F4). */
@@ -156,11 +157,11 @@ export function SiteDetail() {
             </Section>
             <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} site={site} />
             <TypicalDay siteId={siteId} timezone={timezone} />
+            <ReviewThemesPanel siteId={siteId} />
           </div>
           <div className="span-4 site-column">
             <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />
             <PlacesPanel data={places} />
-            <ReviewThemesPanel siteId={siteId} />
           </div>
         </div>
       )}

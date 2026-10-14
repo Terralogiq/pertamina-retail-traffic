@@ -1,4 +1,4 @@
-"""GET /api/traffic/latest, /series, /pattern and /typical-day. Core columns only (no static_ratio, no demo_*).
+"""GET /api/traffic/latest, /series, /pattern, /typical-day and /queue-risk. Core columns only (no static_ratio, no demo_*).
 
 v_traffic has no site_id or leg, so every query joins routes (active legs). Every query filters slot_time
 (the partition column) and a range is at most bq.MAX_DAYS wide.
@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query
 
-from .. import bq, cache
+from .. import bq, cache, queue_risk
 from ..busy import GATE_S, PROVISIONAL_KMH, counts_are_busy, peak_windows, slow_count_sql
 from ..holidays import sql_date_list
 from .sites import get_sites
@@ -102,6 +102,53 @@ WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND r.site_id = @site_id
 """
 
 
+# slow_count_sql() takes one road class through @gate_s and @provisional_kmh. This query spans all sites, so each
+# parameter becomes the site's own value. Toll test as in sites.road_class().
+_IS_TOLL = "LOWER(s.road_type) LIKE '%toll%'"
+_SITE_SLOW = (slow_count_sql()
+              .replace("@gate_s", f"IF({_IS_TOLL}, @toll_gate_s, @urban_gate_s)")
+              .replace("@provisional_kmh", f"IF({_IS_TOLL}, @toll_provisional_kmh, @urban_provisional_kmh)"))
+
+# Queue-risk proxy (docs/plans/queue-risk.md, "Reproduce"), all sites in one job. A slot is approach-led (ALS)
+# when the approach reading is slow and the departure reading of the same slot is not. A full local date has at
+# least 40 slots; it recurs when 4 of them (2 h) are ALS.
+QUEUE_RISK_SQL = f"""
+WITH legs AS (
+  SELECT
+    r.site_id, r.leg, t.slot_time, t.delay_s,
+    DATE(t.slot_time, s.timezone) AS local_date,
+    IFNULL(({_SITE_SLOW}), FALSE) AS slow
+  FROM {bq.table("v_traffic")} AS t
+  JOIN {bq.table("routes")} AS r ON r.selected_route_id = t.selected_route_id AND r.active
+  JOIN {bq.table("sites")} AS s ON s.site_id = r.site_id
+  WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND t.delay_s IS NOT NULL
+),
+paired AS (  -- one row per site and slot: both legs come from the same computeRoutes call
+  SELECT a.site_id, a.slot_time, a.local_date, a.delay_s AS app_delay_s,
+    a.slow AS app_slow, d.slow AS dep_slow, a.slow AND NOT d.slow AS als
+  FROM legs AS a
+  JOIN legs AS d ON d.site_id = a.site_id AND d.slot_time = a.slot_time AND d.leg = 'departure'
+  WHERE a.leg = 'approach'
+),
+daily AS (
+  SELECT site_id, COUNTIF(n >= 40 AND als_n >= 4) AS days_with_2h_als, COUNTIF(n >= 40) AS full_days
+  FROM (SELECT site_id, local_date, COUNT(*) AS n, COUNTIF(als) AS als_n FROM paired GROUP BY 1, 2)
+  GROUP BY site_id
+)
+SELECT
+  p.site_id,
+  ROUND(100 * AVG(IF(p.als, 1, 0)), 1) AS als_pct,
+  ROUND(100 * AVG(IF(p.app_slow AND p.dep_slow, 1, 0)), 1) AS both_slow_pct,
+  ROUND(100 * AVG(IF(p.dep_slow AND NOT p.app_slow, 1, 0)), 1) AS departure_only_pct,
+  APPROX_QUANTILES(IF(p.als, p.app_delay_s, NULL), 100)[OFFSET(50)] AS als_median_delay_s,
+  ANY_VALUE(d.days_with_2h_als) AS days_with_2h_als,
+  ANY_VALUE(d.full_days) AS full_days
+FROM paired AS p
+LEFT JOIN daily AS d USING (site_id)
+GROUP BY p.site_id
+"""
+
+
 def _iso(value):
     """ISO 8601 UTC string with a Z suffix."""
     if isinstance(value, datetime):
@@ -164,6 +211,27 @@ def _typical_payload(rows, days):
                 "windows": peak_windows(hours) if ready else [],
             })
     return {"days": int(days), "ready": ready, "legs": legs}
+
+
+def _queue_risk_site(row, confidence):
+    median = row["als_median_delay_s"]
+    entry = {
+        "site_id": row["site_id"],
+        "als_pct": round(float(row["als_pct"]), 1),
+        "both_slow_pct": round(float(row["both_slow_pct"]), 1),
+        "departure_only_pct": round(float(row["departure_only_pct"]), 1),
+        "days_with_2h_als": int(row["days_with_2h_als"] or 0),
+        "full_days": int(row["full_days"] or 0),
+        "als_median_delay_s": None if median is None else round(float(median), 1),
+    }
+    return {**entry, "tier": queue_risk.tier(entry), "confidence": confidence.get(row["site_id"])}
+
+
+def _queue_risk_payload(rows):
+    """Sites that have paired readings in the window, in queue-risk order."""
+    confidence = queue_risk.load_confidence()
+    sites = sorted((_queue_risk_site(row, confidence) for row in rows), key=queue_risk.sort_key)
+    return {"window_days": PATTERN_MAX_DAYS, "sites": sites}
 
 
 def _parse_time(name, value):
@@ -235,3 +303,19 @@ def traffic_typical_day(site_id: str):
         return _typical_payload(hour_rows, days)
 
     return cache.default.get_or_compute("traffic/typical-day", {"site_id": site_id}, compute)
+
+
+@router.get("/traffic/queue-risk")
+def traffic_queue_risk():
+    """Per site: how often the road is slower before the station than after it, over the last 28 days.
+
+    Not a queue measurement: the tier ranks a road signal and `confidence` is a reviewed judgement.
+    """
+    end = cache.utc_now()
+    params = {
+        "from_ts": end - timedelta(days=PATTERN_MAX_DAYS), "to_ts": end,
+        "urban_gate_s": GATE_S["urban"], "toll_gate_s": GATE_S["toll"],
+        "urban_provisional_kmh": PROVISIONAL_KMH["urban"], "toll_provisional_kmh": PROVISIONAL_KMH["toll"],
+    }
+    return cache.default.get_or_compute(
+        "traffic/queue-risk", {}, lambda: _queue_risk_payload(bq.query(QUEUE_RISK_SQL, params)))

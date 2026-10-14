@@ -137,19 +137,6 @@
   padding: var(--space-5) var(--page-gutter) var(--space-7);
 }
 
-.page-fill {
-  display: flex;
-  flex-direction: column;
-  max-width: none;
-  height: calc(100dvh - var(--shell-header-height) - var(--shell-footer-height));
-  padding-bottom: var(--space-4);
-}
-
-.page-fill .page-body {
-  flex: 1;
-  min-height: 0;
-}
-
 .page-header {
   display: flex;
   flex-wrap: wrap;
@@ -157,10 +144,6 @@
   justify-content: space-between;
   gap: var(--space-3) var(--space-5);
   margin-bottom: var(--space-5);
-}
-
-.page-fill .page-header {
-  margin-bottom: var(--space-4);
 }
 
 .page-heading {
@@ -256,10 +239,5 @@
 
   .page {
     padding-top: var(--space-4);
-  }
-
-  .page-fill {
-    height: auto;
-    min-height: calc(100dvh - var(--shell-header-height-mobile) - var(--shell-footer-height));
   }
 }

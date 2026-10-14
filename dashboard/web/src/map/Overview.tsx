@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { StationTable } from "../overview/StationTable";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
 import { DemoMarker, DemoNote } from "../weather/DemoBadge";
@@ -7,6 +8,7 @@ import type { WeatherLatest } from "../weather/api";
 import { LatestLeg } from "./api";
 import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legContext, legLabel } from "./bands";
 import { SiteFilter, SiteSort, SiteState, Summary, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
+import { Segmented } from "./Segmented";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
@@ -99,35 +101,6 @@ const FILTERS: { value: SiteFilter; label: string }[] = [
   { value: "slowed", label: "Slowed only" },
 ];
 
-/** A small group of toggle buttons; `aria-pressed` marks the current one. */
-export function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="segmented" role="group" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          className={value === o.value ? "segment selected" : "segment"}
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function Overview() {
   const { sites, latest, weatherBySite, error } = useTrafficData();
   const navigate = useNavigate();
@@ -146,7 +119,6 @@ export default function Overview() {
   return (
     <Page
       title="Overview"
-      fill
       actions={
         <>
           <Segmented label="Sort sites" options={SORTS} value={sort} onChange={setSort} />
@@ -186,6 +158,7 @@ export default function Overview() {
           {anyDemoIcon && <DemoNote>Weather icons come from Google's condition field, which only the demo source has.</DemoNote>}
         </section>
       </div>
+      {(sites || !error) && <StationTable sites={sites} />}
     </Page>
   );
 }
