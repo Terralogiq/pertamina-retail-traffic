@@ -17,16 +17,21 @@ Consequences for every table below:
 
 - Rows: 149 distinct reviews over 10 SPBU, published 2014-12 to 2026-10. 127 have text; 22 are rating-only and are not labelled (they count in the site and window tables only).
 - Window counts use `seen_in` membership: 150 window appearances for 149 reviews, because one Pemogan review was returned by both the newest and most-relevant (Indonesian) windows.
-- Labelling: every review with text was read and labelled by a single automated reader, with no Indonesian-speaking human review, multi-label against the taxonomy, no external model or API call. Labels are topics, not complaints: a clean-toilet compliment gets `toilet` and `kebersihan` with sentiment `pos`. Tables on "complaints" therefore filter on sentiment (`neg` or `mixed`), not on star rating, because several 4 to 5 star reviews carry a complaint (short change, QRIS refused, staff idling) and several 3-star reviews are neutral.
-- `sentiment`: `pos` = no complaint; `mixed` = praise and complaint both; `neg` = complaint dominates. `praise_only` is true exactly when sentiment is `pos`. Bare "Ok", "Good" or emoji reviews get no categories and sentiment `pos`; a 3-star "Ok" is included in that (neutral, no complaint).
+- Labelling: every review with text was read and labelled by a single automated reader, multi-label against the taxonomy, no external model or API call. Labels are topics, not complaints: a clean-toilet compliment gets `toilet` and `kebersihan` with sentiment `pos`. Tables on "complaints" therefore filter on sentiment (`neg` or `mixed`), not on star rating, because several 4 to 5 star reviews carry a complaint (short change, QRIS refused, staff idling) and several 3-star reviews are neutral.
+- `sentiment` (three values only): `pos` = no complaint (covers praise and also purely informational reviews with neither praise nor complaint); `mixed` = praise and complaint both; `neg` = complaint dominates. `praise_only` is true exactly when sentiment is `pos`. Bare praise ("Good", an emoji, "Ok") gets no categories and sentiment `pos`; a 3-star "Ok" is included in that (neutral, no complaint).
+- Reviews that look written by the station itself are kept; there is no exclusion rule.
 - Decisions applied everywhere:
-  - Understaffing queues (one open lane, one attendant covering the car and motorcycle lanes) get `antrian` only. `pelayanan_petugas` is added only when staff behaviour is attacked (rudeness, idling, inattention).
-  - Barcode or MyPertamina rejection and QRIS limits go to `pembayaran`. A subsidised grade not served, or a lane closed before the stated time, goes to `bbm_kosong`.
+  - Queues caused by too few staff (one open lane, one attendant covering the car and motorcycle lanes) get `antrian` only. `pelayanan_petugas` is added only when staff behaviour (rudeness, idling, inattention) or the slowness of a named role or shift is criticised.
+  - Barcode or MyPertamina rejection and QRIS limits go to `pembayaran`. `bbm_kosong` means the fuel is actually out of stock, or the grade is not sold or served because it is unavailable (including a subsidised grade's scheduled hours, e.g. a Solar pump that only opens in the evening). Being turned away, or a lane closed before its stated time, while the station still has fuel is `pelayanan_petugas` (a staff decision), not `bbm_kosong`. Rule from Gemini prompt p3 (2026-10-14); the first-pass labels and tables below predate it.
   - Jerry-can queue-jumping or bulk buying and fuel spilled while filling go to `lainnya`.
   - Queue spill to the road, or traffic management inside the site, goes to `keamanan_lalu_lintas`.
   - `lainnya` is rare: it is not used for a general or complimentary description (location, a large site, 24-hour service, grades or LPG on sale), and not added next to other labels when nothing specific is left over. Made explicit in Gemini prompt p2 (see "Gemini labels versus manual"); the manual pass applied it implicitly.
+- **Decision (reviewer, 2026-10-14)**, from the Indonesian-speaking check of the 100-review validation sample, encoded in Gemini prompt p3:
+  1. `bbm_kosong` = fuel actually out of stock, or a grade not sold or served because it is unavailable, including a subsidised grade's scheduled hours. A turn-away or a lane closed before its stated time while fuel is available is `pelayanan_petugas`.
+  2. Sentiment stays `pos` / `mixed` / `neg`; `pos` means "no complaint" and covers praise and purely informational reviews.
+  3. Unchanged, restated: queues from too few staff are `antrian` only (add `pelayanan_petugas` only for staff behaviour or the slowness of a named role or shift); bare praise gets no categories and `pos`; reviews that look written by the station are kept.
 - Masking: gists contain no personal names, plate numbers, vehicle descriptors, phone numbers or exact dates.
-- Labels: `out/complaints/2026-10-09/labels.json` (`review_key`, `labels[]`, `sentiment`, `praise_only`, `gist`). Nothing was cross-checked by a human, so these are a first draft, not gold labels (see Limitations).
+- Labels: `out/complaints/2026-10-09/labels.json` (`review_key`, `labels[]`, `sentiment`, `praise_only`, `gist`). An Indonesian-speaking reviewer later checked 100 of the 127 and corrected 2 (see "Validation against a human reviewer"); the other 27 are unchecked.
 
 ### Category definitions
 
@@ -34,7 +39,7 @@ Consequences for every table below:
 |---|---|
 | `antrian` | Queue, waiting time, lane or staff shortage causing a queue |
 | `pelayanan_petugas` | Attendant attitude, rudeness, idling, slowness of a named role or shift |
-| `bbm_kosong` | Grade out of stock or not served (Pertalite, Solar), service-hour cut-offs |
+| `bbm_kosong` | Fuel out of stock, or a grade not sold or served because it is unavailable (Pertalite, Solar), including a subsidised grade's scheduled hours. Not a turn-away or early lane closure while fuel is available (that is `pelayanan_petugas`) |
 | `kualitas_bbm` | Contaminated or bad fuel, engine trouble after filling |
 | `takaran` | Short fill, meter not accurate, suspected manipulation |
 | `pembayaran` | QRIS (including minimums), MyPertamina, barcode, EDC, cash, change |
@@ -108,7 +113,7 @@ Recent (last 12 months) versus older: 58 of the 71 negative or mixed reviews are
 Traffic flag: relevant to .10.1 means `antrian`, `keamanan_lalu_lintas` or `bbm_kosong` causing a queue. All statements are about sampled reviews.
 
 - **Antasari (Bandar Lampung)**: staff attitude (6 of 8 negative or mixed reviews, night shift and female attendants named by role); payment (QRIS and MyPertamina unavailable, barcode "disturbance" while the grade seemed out, change dispute); jerry-can queue-jumping and bulk buying, plus fuel spilled while filling. Traffic relevance: low in this sample (1 queue mention); the jerry-can items touch queue fairness.
-- **Tirtayasa (Bandar Lampung)**: staff attitude (7 of 9), queues (5): service slow while queues wait, a Solar queue forming on the roadside from morning because the Solar pump opens only in the evening, Pertalite lane closed before the stated time. One short-fill complaint. Traffic relevance: high (`antrian`, roadside queue, `bbm_kosong` as queue cause).
+- **Tirtayasa (Bandar Lampung)**: staff attitude (7 of 9), queues (5): service slow while queues wait, a Solar queue forming on the roadside from morning because the Solar pump opens only in the evening, Pertalite lane closed before the stated time (under the 2026-10-14 rule, an early closure with fuel available counts as `pelayanan_petugas`, not `bbm_kosong`; the Solar evening-hours item stays `bbm_kosong`). One short-fill complaint. Traffic relevance: high (`antrian`, roadside queue, `bbm_kosong` as queue cause).
 - **Daan Mogot (Jakarta Barat)**: queues (6 of 10), almost all about one lane or one attendant open while others idle, Pertalite worse than Pertamax, queue reaching the entrance or the road; QRIS minimum purchase (3 reviews, 25k and 50k thresholds, not displayed); two short-fill or meter complaints. Traffic relevance: high.
 - **Lingkar Selatan (Jakarta Selatan)**: staff attitude (3), QRIS or change disputes (2), one complaint about staff using the public toilet; positives are facilities and parking. Traffic relevance: low (queue mentions are mild: motorcycle queues in general, small site, hectic evenings).
 - **Bandung 3440116**: queues (5 of 7), all one pattern: one attendant covering both the car and motorcycle lanes, shared Pertalite and Pertamax queue, 20 to 30 minute waits at rush hour. Facilities praised. Traffic relevance: high, but queue cause is staffing.
@@ -126,7 +131,7 @@ Confidence reflects both n and the sampling bias. "Sites" = how many of the 10.
 |---|---|---|
 | **Understaffing leads to queues**: one lane open or one attendant covering car and motorcycle lanes, Pertalite lane thinner than Pertamax | About 13 reviews at 4 sites (Daan Mogot 5, Bandung 5, Makassar 2, Gayungan 1); consistent explanation across independent reviewers, almost all in 2026 | Medium: consistent, but 2 sites supply 10 of the 13 and the Indonesian windows are complaint-selected |
 | **Queue spill onto the road** | 7 reviews at 5 sites (Gayungan 3, Tirtayasa, Daan Mogot, Pemogan, plus one 2019 review at MT Haryono) | Medium for Gayungan, low for the rest (1 review each) |
-| **Solar or Pertalite lane hours and cut-offs** causing roadside queues | Tirtayasa (Solar opens late, queue from morning; lane closed early), MT Haryono (Pertalite lane closed before time), Antasari (Pertalite seemed out) | Low: 3 sites, 1 review each |
+| **Solar or Pertalite lane hours and cut-offs** causing roadside queues | Tirtayasa (Solar opens late, queue from morning; lane closed early), MT Haryono (Pertalite lane closed before time), Antasari (Pertalite seemed out) | Low: 3 sites, 1 review each. Note: under the 2026-10-14 rule only the scheduled-hours and out-of-stock items are `bbm_kosong`; an early closure with fuel available is `pelayanan_petugas` |
 | **QRIS availability and limits** | 9 reviews at 5 sites (with barcode, MyPertamina and change disputes, `pembayaran` is 14 reviews at 6 sites, Makassar being the sixth): unavailable (Gayungan, Antasari, Lingkar Selatan, MT Haryono at shift change), unaccepted bank (MT Haryono), minimum purchase 25k to 50k (Daan Mogot, 3 reviews) | Medium: recurring, same causes |
 | **Subsidised-fuel barcode / MyPertamina rejection** | 3 reviews at 2 sites (Antasari, Makassar): barcode "disturbance", vehicle colour mismatch with registration, MyPertamina refused for Pertamax. The brief's expected "barcode queue" pattern is not visible as queues here, only as rejections | Low |
 | **Staff attitude by shift** | 33 negative or mixed reviews, spread over 9 sites; night shift, female attendants and motorcycle side named by role at several sites | Medium on prevalence in this sample; low on the shift detail |
@@ -160,11 +165,11 @@ What this implies:
 
 - Rules work on concrete, rarely ambiguous vocabulary: `toilet`, `kebersihan`, `fasilitas`, `antrian`, `pembayaran` (high recall; the false positives are praise or generic "uang"/"bayar"). They fail where meaning depends on context: `bbm_kosong` (the word "solar" or "tutup" appears in unrelated sentences), `keamanan_lalu_lintas` ("jalan"), `lainnya`.
 - Rules cannot see sentiment: "ramah" (friendly) counts as `pelayanan_petugas` in a compliment. Every table that matters here filters on complaint, so a sentiment-aware method is needed.
-- Production path: Gemini zero-shot on Vertex AI with the fixed taxonomy, JSON schema output, temperature 0 and a pinned model version (as in the feasibility doc), with sentiment as a required field. Keep these rules only as a cheap sanity check and fallback for those five clean categories. Before relying on either, hand-label a stratified 100 with an Indonesian speaker; with the present 127 that would be most of the sample, so the validation should wait for the larger set (GBP or polled data). Re-run this baseline against those labels, not against the first-pass labels above.
+- Production path: Gemini zero-shot on Vertex AI with the fixed taxonomy, JSON schema output, temperature 0 and a pinned model version (as in the feasibility doc), with sentiment as a required field. Keep these rules only as a cheap sanity check and fallback for those five clean categories. A stratified 100 has since been human-reviewed (see "Validation against a human reviewer"); re-scoring this baseline against that set is bead `.10.23`.
 
 ## Gemini labels versus manual (2026-10-14, bead `.10.5.7`)
 
-Caveat first: the `manual` labels are one reader's first draft (Method, Limitations), not gold. Agreement with them measures how close Gemini is to that reader, not accuracy. Aggregates only; the per-review comparison and raw text stay in `out/complaints/2026-10-14/` (git-ignored).
+Caveat first: the `manual` labels are one reader's first draft (Method, Limitations), not gold. Agreement with them measures how close Gemini is to that reader, not accuracy; the human-reviewed comparison is in "Validation against a human reviewer" below. Aggregates only; the per-review comparison and raw text stay in `out/complaints/2026-10-14/` (git-ignored).
 
 Set: the 127 reviews that have a `manual` label and text; Gemini `gemini-3.8-flash`, prompt p1 (`gemini-3.8-flash/p1`, first run 2026-10-10) and prompt p2 (`/p2`, run 2026-10-14 offline, same 127 plus 12 newer reviews; the stored rows come from a separate live run, see below). "Neg/mixed" is by the manual sentiment (71 reviews). Cells: reviews carrying the label.
 
@@ -198,7 +203,24 @@ Why p1 overused `lainnya`: the p1 category row listed "site size, operating hour
 
 What p2 does not fix: 6 of the 7 manual `lainnya` reviews are matched; `keamanan_lalu_lintas` stays at 10 against 7; ignoring `lainnya`, p2's exact label-set agreement is 2 reviews lower than p1's, and temperature 0 does not make reruns identical (2 of 127 sentiments differ between p1 and p2). No category other than `lainnya` moved by more than 3 reviews between p1 and p2. Against a single-reader draft, differences of 1 to 3 reviews per category are not meaningful; the `lainnya` gap (22 reviews) is.
 
-State of the table: the counts above come from the offline p2 run (`gemini.label_reviews`, no BigQuery write). On 2026-10-14 the `reviews-poller` job was redeployed with p2 and a live label run replaced all 139 `gemini` rows with `gemini-3.8-flash/p2` (8 carry `lainnya`); because reruns at temperature 0 are not identical, the stored rows can differ slightly from this table. The labeller MERGEs on `(review_key, method)`, so a new prompt version replaces the old rows rather than adding beside them; the Review themes panel reads one row per review (`gemini` over `manual`, latest `labeled_at`), so there is no double count either way. The p1 rows and their review text are kept in `out/complaints/2026-10-14/labels_before.json`.
+State of the table: the counts above come from the offline p2 run (`gemini.label_reviews`, no BigQuery write). On 2026-10-14 the `reviews-poller` job was redeployed with p2 and a live label run replaced all 139 `gemini` rows with `gemini-3.8-flash/p2` (8 carry `lainnya`). Later the same day p3 was deployed and a label run replaced them again with 139 `gemini-3.8-flash/p3` rows (9 carry `lainnya`, 5 `bbm_kosong`); because reruns at temperature 0 are not identical, the stored rows can differ slightly from this table. The labeller MERGEs on `(review_key, method)`, so a new prompt version replaces the old rows rather than adding beside them; the Review themes panel reads one row per review (`gemini` over `manual`, latest `labeled_at`), so there is no double count either way. The p1 rows and their review text are kept in `out/complaints/2026-10-14/labels_before.json`.
+
+## Validation against a human reviewer (2026-10-14, bead `.10.5.5`)
+
+An Indonesian-speaking reviewer checked all 100 reviews of the stratified validation sample (`out/complaints/2026-10-10/validation_sample.csv`, 71 neg/mixed by the draft) and corrected 2 rows: an early closure with fuel available moved from `bbm_kosong` to `pelayanan_petugas`, and a toilet complaint that praised the other facilities gained `fasilitas` and became `mixed`. The reviewer's rule (Decision, reviewer, 2026-10-14) was then applied to one more row with the same situation. The result is the reference set (`validation_sample_reviewed.csv`, git-ignored): 57 neg, 14 mixed, 29 pos.
+
+The reviewer saw the draft labels while checking, so agreement with the draft is inflated by anchoring: read the `manual` column as "the reviewer accepted the draft", not as an independent accuracy. Gemini was not shown to the reviewer, so its column is the fairer test, but it is not a holdout: the p3 rule for `bbm_kosong` versus `pelayanan_petugas` came from the corrections on these same 100 reviews. A clean accuracy figure needs a fresh sample of new reviews. Gemini is `gemini-3.8-flash/p3`, run after the rule change.
+
+| Agreement with the reviewer (100 reviews) | `manual` draft | Gemini p3 |
+|---|---|---|
+| Sentiment exact | 99 | 96 |
+| Positive versus not positive | 100 | 97 |
+| Exact label set | 97 | 83 |
+| Micro precision / recall of labels | 0.99 / 0.99 | 0.92 / 0.96 |
+
+Gemini p3 per category against the reviewer (reviews carrying the label in the reference / Gemini extra / Gemini missed): `antrian` 34 / 2 / 2, `pelayanan_petugas` 44 / 4 / 1, `bbm_kosong` 4 / 2 / 1, `kualitas_bbm` 2 / 0 / 1, `takaran` 4 / 0 / 0, `pembayaran` 20 / 0 / 0, `kebersihan` 9 / 0 / 0, `toilet` 11 / 1 / 0, `fasilitas` 17 / 0 / 2, `keamanan_lalu_lintas` 7 / 2 / 0, `lainnya` 6 / 2 / 0, `harga` 0 / 0 / 0.
+
+What this supports: Gemini p3 is good enough for the counts-only Review themes panel. Sentiment, which decides what counts as a complaint, matches in 96 of 100; payment, toilet, cleanliness and short-fill labels match almost exactly. Its errors are extra labels (13) more than missed ones (7); no category has more than 4 extra or 2 missed labels, and no category's count is off by more than 3 net. What it does not support: per-category rates at a single site, where n is a handful of reviews.
 
 ## Proposed table `place_review_labels` (proposal only, no DDL written)
 
@@ -223,7 +245,7 @@ A "Review themes" panel per site with a "demo-only, sampled n<=15" badge (data c
 ## Limitations, and what more data changes
 
 - Non-random sample, at most 15 per site, see the caveat at the top. Counts are not rates and sites are not comparable.
-- One labeller, one pass, no Indonesian-speaking human check; slang, regional words and sarcasm may be misread. Treat labels as a draft. The keyword baseline agrees with them by construction of the same reading, so agreement is not accuracy.
+- One labeller, one pass; an Indonesian-speaking reviewer checked 100 of the 127 but saw the draft labels while doing so, so the check is anchored and the 27 unchecked reviews may still misread slang, regional words or sarcasm. The keyword baseline agrees with them by construction of the same reading, so agreement is not accuracy.
 - Reviews are self-selected (customers with a complaint or a compliment) and fuel type, shift and date are often missing; claims such as short-filling or fuel contamination are unverified single-reviewer reports.
 - 22 rating-only reviews and the bare "Ok" style reviews carry no topic; one 2014 review reads like an owner or staff post, so treat it as praise-only noise.
 - Dates: 96 of 100 Indonesian reviews fall in the last 12 months, but no site has more than about 10 recent text reviews, so no trend, seasonal or shift-level claim is supported.
@@ -231,4 +253,4 @@ A "Review themes" panel per site with a "demo-only, sampled n<=15" badge (data c
   - **GBP API** (full history, owner replies, about 3,500 to 5,500 reviews a year across the 10 sites per the feasibility doc): replaces the biased windows, allows real per-site rates, monthly counts and a 12-month comparison. Needs listing ownership; storage under the GBP 30-day rule likely means keeping labels and counts only.
   - **Contact Center 135 export**: SPBU-level complaint categories with resolution, a different (direct-complainant) population that can validate the taxonomy and the subsidised-fuel and staffing patterns.
   - **Months of daily polling** (`reviews-poller`): newest-5 daily builds a time series for new complaints; the snapshot table gives the review rate; mixed daily polling does not remove the relevance-window bias but dilutes it as `place_reviews` grows.
-  - **Human validation** of at least 100 labels by an Indonesian speaker, then precision and recall for Gemini and rules on that set.
+  - **Fresh human validation** on new reviews, labelled blind (no draft labels shown), for a non-anchored precision and recall that the p3 prompt was not tuned on.
