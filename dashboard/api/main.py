@@ -7,6 +7,7 @@ import mimetypes
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -20,6 +21,8 @@ mimetypes.add_type("font/woff2", ".woff2")
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 app = FastAPI(title="Pertamina SPBU traffic dashboard", docs_url=None, redoc_url=None, openapi_url=None)
+# Cloud Run does not compress: /api/rain alone is ~740 KB of JSON, and the JS bundle ships as-is.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(auth.router)  # POST /api/login: open
 
 # Every router below is gated: 401 without a valid session cookie. Later beads add one line each here

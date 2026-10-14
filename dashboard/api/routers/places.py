@@ -95,9 +95,9 @@ def _latest(site_id):
                 "competitors": [], "competitor_totals": [], "poi": []}
     row = found[0]
     params = {"site_id": site_id, "since": since, "run_id": row["run_id"]}
-    by_brand, totals = competitors(bq.query(NEARBY_SQL, params))
-    poi = [{"place_type": r["place_type"], "radius_m": r["radius_m"], "count": r["count"]}
-           for r in bq.query(AGGREGATE_SQL, params)]
+    nearby, aggregate = bq.query_all((NEARBY_SQL, params), (AGGREGATE_SQL, params))
+    by_brand, totals = competitors(nearby)
+    poi = [{"place_type": r["place_type"], "radius_m": r["radius_m"], "count": r["count"]} for r in aggregate]
     return {"site_id": site_id, "run_id": row["run_id"], "fetched_at": _iso(row["fetched_at"]),
             "details": _details(row), "competitors": by_brand, "competitor_totals": totals, "poi": poi}
 

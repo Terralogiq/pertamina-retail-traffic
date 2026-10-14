@@ -27,7 +27,18 @@ export class ApiError extends Error {
 /** Reader-facing text for any caught error: the message alone, without "Error:" or a request URL. */
 export const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-export async function getJson<T>(path: string): Promise<T> {
+const inFlight = new Map<string, Promise<unknown>>();
+
+/** Concurrent calls for one path share one request (two panels asking for the same endpoint at once); nothing is kept after it settles. */
+export function getJson<T>(path: string): Promise<T> {
+  const pending = inFlight.get(path) as Promise<T> | undefined;
+  if (pending) return pending;
+  const request = fetchJson<T>(path).finally(() => inFlight.delete(path));
+  inFlight.set(path, request);
+  return request;
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, { credentials: "same-origin" });

@@ -238,7 +238,8 @@ run gcloud run deploy "$SERVICE" \
   --allow-unauthenticated \
   --set-secrets "$SECRET_PASSWORD=$SECRET_PASSWORD:latest,$SECRET_KEY=$SECRET_KEY:latest" \
   ${MAP_ENV[@]+"${MAP_ENV[@]}"} \
-  --min-instances 0 \
+  --min-instances 1 \
+  --cpu-boost \
   --max-instances 3 \
   --quiet "${GC_PROJ[@]}"
 

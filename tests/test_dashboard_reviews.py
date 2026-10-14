@@ -116,13 +116,14 @@ class ReviewThemesTest(unittest.TestCase):
             self.assertIn("site_id = @site_id", sql)
             self.assertNotIn("34.121.03", sql)
             self.assertEqual(params["site_id"], "34.121.03")
-        sql = q.call_args_list[1].args[0]
+        # the two queries run concurrently: find each by its content, not its position
+        sql = next(c.args[0] for c in q.call_args_list if "place_review_labels" in c.args[0])
         self.assertIn("v_place_reviews", sql)
         self.assertIn("QUALIFY ROW_NUMBER() OVER (", sql)
         self.assertIn("PARTITION BY l.review_key ORDER BY IF(l.method = 'gemini', 0, 1), l.labeled_at DESC) = 1", sql)
         for forbidden in ("r.text", "author", "raw"):  # the view has no author fields; text is only counted
             self.assertNotIn(forbidden, sql)
-        counts_sql = q.call_args_list[0].args[0]
+        counts_sql = next(c.args[0] for c in q.call_args_list if "COUNT(*)" in c.args[0])
         self.assertIn("v_place_reviews", counts_sql)
         self.assertNotIn("place_review_labels", counts_sql)
 

@@ -230,8 +230,7 @@ def traffic_typical_day(site_id: str):
         site = next(s for s in get_sites() if s["site_id"] == site_id)
         road = site.get("road_class") or "urban"
         band = {**params, "gate_s": GATE_S[road], "provisional_kmh": PROVISIONAL_KMH[road]}
-        hour_rows = bq.query(TYPICAL_SQL, band)
-        day_rows = bq.query(TYPICAL_DAYS_SQL, params)
+        hour_rows, day_rows = bq.query_all((TYPICAL_SQL, band), (TYPICAL_DAYS_SQL, params))
         days = day_rows[0]["days"] if day_rows else 0
         return _typical_payload(hour_rows, days)
 

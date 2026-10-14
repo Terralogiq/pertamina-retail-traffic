@@ -30,26 +30,42 @@ class TtlCache:
         self._clock = clock
         self._lock = threading.Lock()
         self._entries = {}  # key -> (expires_at, value)
+        self._inflight = {}  # key -> Event set when the computing caller is done
 
     @staticmethod
     def key(endpoint, params):
         return endpoint, tuple(sorted((params or {}).items()))
 
     def get_or_compute(self, endpoint, params, compute):
+        """Cached value, or `compute()` once: concurrent callers of one key wait for the first instead of
+        each running the BigQuery job. A failed compute is not shared; the next waiter retries it."""
         key = self.key(endpoint, params)
-        now = self._clock()
-        with self._lock:
-            hit = self._entries.get(key)
-            if hit and now < hit[0]:
-                return hit[1]
-        value = compute()  # outside the lock: a slow BigQuery job must not block other endpoints
-        stored_at = self._clock()
-        with self._lock:
-            self._entries = {k: e for k, e in self._entries.items() if e[0] > stored_at}
-            self._entries[key] = (next_expiry(stored_at), value)
-            while len(self._entries) > MAX_ENTRIES:  # evict the entry that expires first
-                del self._entries[min(self._entries, key=lambda k: self._entries[k][0])]
-        return value
+        while True:
+            now = self._clock()
+            with self._lock:
+                hit = self._entries.get(key)
+                if hit and now < hit[0]:
+                    return hit[1]
+                flight = self._inflight.get(key)
+                leader = flight is None
+                if leader:
+                    flight = self._inflight[key] = threading.Event()
+            if not leader:
+                flight.wait()
+                continue
+            try:
+                value = compute()  # outside the lock: a slow BigQuery job must not block other endpoints
+                stored_at = self._clock()
+                with self._lock:
+                    self._entries = {k: e for k, e in self._entries.items() if e[0] > stored_at}
+                    self._entries[key] = (next_expiry(stored_at), value)
+                    while len(self._entries) > MAX_ENTRIES:  # evict the entry that expires first
+                        del self._entries[min(self._entries, key=lambda k: self._entries[k][0])]
+                return value
+            finally:
+                with self._lock:
+                    del self._inflight[key]
+                flight.set()
 
     def clear(self):
         with self._lock:

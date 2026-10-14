@@ -139,8 +139,8 @@ def rain(site_id: str | None = None, days: str = "28"):
         if site_id:
             params["site_id"] = site_id
             site_filter = _SITE_FILTER
-        summary = bq.query(RAIN_SQL.format(site_filter=site_filter), params)
-        scatter = bq.query(SCATTER_SQL.format(site_filter=site_filter), params)
+        summary, scatter = bq.query_all(
+            (RAIN_SQL.format(site_filter=site_filter), params), (SCATTER_SQL.format(site_filter=site_filter), params))
         return {
             "site_id": site_id or None, "days": n_days,
             "core": [_split(row) for row in summary],  # rain_flag, no badge

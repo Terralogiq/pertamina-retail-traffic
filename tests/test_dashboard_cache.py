@@ -1,6 +1,8 @@
 """TTL cache: entries expire at the next :05/:35 UTC, never later than 30 min."""
 import os
 import sys
+import threading
+import types
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest import mock
@@ -91,6 +93,85 @@ class TtlCacheTest(unittest.TestCase):
         self.assertEqual(len(self.cache._entries), 3)
         self.assertNotIn(self.cache.key("old", None), self.cache._entries)
         self.assertEqual(self.get("e", {"i": 4}), 6)  # still cached: no extra compute
+
+    def flight_pair(self, leader_compute, waiter_compute):
+        """Run a leader and then a waiter on one key; return (leader, waiter) outcome dicts once both are done.
+
+        The waiter starts only after the leader is inside its compute, and the leader is released only after the
+        waiter has entered the in-flight Event's wait(): `cache.threading.Event` is swapped for a subclass that
+        reports that. So the waiter provably blocked on the flight instead of finding a stored entry.
+        """
+        in_wait = threading.Event()  # created before the swap: a plain Event
+
+        class RecordingEvent(threading.Event):
+            def wait(self, timeout=None):
+                in_wait.set()
+                return super().wait(timeout)
+
+        fake_threading = types.SimpleNamespace(Lock=threading.Lock, Event=RecordingEvent)
+        entered, release = threading.Event(), threading.Event()
+        out = {"leader": {}, "waiter": {}}
+
+        def run(name, compute):
+            try:
+                out[name]["value"] = self.cache.get_or_compute("e", None, compute)
+            except BaseException as exc:  # noqa: BLE001 - recorded and asserted by the caller
+                out[name]["error"] = exc
+
+        def leader():
+            entered.set()
+            self.assertTrue(release.wait(5))
+            return leader_compute()
+
+        with mock.patch.object(cache, "threading", fake_threading):
+            first = threading.Thread(target=run, args=("leader", leader))
+            first.start()
+            self.assertTrue(entered.wait(5))
+            self.assertIn(self.cache.key("e", None), self.cache._inflight)
+            second = threading.Thread(target=run, args=("waiter", waiter_compute))
+            second.start()
+            self.assertTrue(in_wait.wait(5), "the second caller never reached the in-flight wait")
+            release.set()
+            first.join(5)
+            second.join(5)
+        self.assertFalse(first.is_alive() or second.is_alive())
+        return out["leader"], out["waiter"]
+
+    def test_concurrent_callers_of_one_key_share_one_compute(self):
+        calls = []
+
+        def compute():
+            calls.append("leader")
+            return "value"
+
+        def waiter_compute():
+            calls.append("waiter")
+            return "waiter's own"
+
+        leader, waiter = self.flight_pair(compute, waiter_compute)
+        self.assertEqual((leader, waiter), ({"value": "value"}, {"value": "value"}))
+        self.assertEqual(calls, ["leader"])  # the waiter never computed
+        self.assertEqual(self.cache._inflight, {})
+
+    def test_waiter_recomputes_when_the_leader_fails_and_the_leader_sees_the_error(self):
+        def boom():
+            raise RuntimeError("bq down")
+
+        leader, waiter = self.flight_pair(boom, lambda: "recovered")
+        self.assertEqual(waiter, {"value": "recovered"})
+        self.assertEqual(list(leader), ["error"])
+        self.assertIsInstance(leader["error"], RuntimeError)
+        self.assertEqual(self.cache._inflight, {})
+        self.assertEqual(self.cache.get_or_compute("e", None, lambda: "not called"), "recovered")  # cached by the waiter
+
+    def test_a_failed_compute_is_not_cached_or_shared_and_clears_the_flight(self):
+        def boom():
+            raise RuntimeError("bq down")
+
+        with self.assertRaises(RuntimeError):
+            self.cache.get_or_compute("e", None, boom)
+        self.assertEqual(self.get(), 1)  # the next caller computes afresh
+        self.assertEqual(self.cache._inflight, {})
 
     def test_clear(self):
         self.get()

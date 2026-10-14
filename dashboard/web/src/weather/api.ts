@@ -75,4 +75,5 @@ export function getRain(days: number, siteId?: string) {
   return getJson<RainResponse>(`/api/rain?${q}`);
 }
 
-export const getSites = () => getJson<SiteInfo[]>("/api/sites");
+// The shared, cached site list (one /api/sites request for the whole app); a Site is a SiteInfo.
+export { getSites } from "../map/api";

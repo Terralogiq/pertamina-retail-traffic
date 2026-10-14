@@ -20,6 +20,11 @@ RAIN_ROW = {"site_id": "34.121.03", "leg": "approach",
             "demo_rain_mean_delay_s": 38.0, "demo_rain_n": 20, "demo_dry_mean_delay_s": 19.0, "demo_dry_n": 292}
 
 
+def rain_queries(scatter):
+    """Stands in for bq.query on /api/rain, whose two queries run concurrently: answer by SQL, not by call order."""
+    return lambda sql, params=None: scatter if "w.precipitation_mm" in sql else [RAIN_ROW]
+
+
 class WeatherTest(unittest.TestCase):
     def setUp(self):
         patcher = mock.patch.dict(os.environ, {"DASHBOARD_PASSWORD": "pw"})
@@ -88,7 +93,7 @@ class WeatherTest(unittest.TestCase):
 
     def test_rain_all_sites_splits_core_and_demo(self):
         scatter = [{"site_id": "34.121.03", "leg": "approach", "precipitation_mm": 1.2, "congestion_index": 1.4}]
-        with mock.patch("dashboard.api.bq.query", side_effect=[[RAIN_ROW], scatter]) as q:
+        with mock.patch("dashboard.api.bq.query", side_effect=rain_queries(scatter)) as q:
             res = self.client.get("/api/rain")
         self.assertEqual(res.status_code, 200)
         body = res.json()
@@ -110,7 +115,7 @@ class WeatherTest(unittest.TestCase):
             self.assertEqual(params, {"start": NOW - timedelta(days=28)})
 
     def test_rain_one_site_adds_a_parameterised_filter(self):
-        with mock.patch("dashboard.api.bq.query", side_effect=[[RAIN_ROW], []]) as q:
+        with mock.patch("dashboard.api.bq.query", side_effect=rain_queries([])) as q:
             res = self.client.get("/api/rain?site_id=34.121.03&days=7")
         self.assertEqual(res.json()["site_id"], "34.121.03")
         for call in q.call_args_list:

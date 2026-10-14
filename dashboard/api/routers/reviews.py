@@ -65,9 +65,9 @@ def themes(site_id, counts, rows, since):
 
 def _themes(site_id):
     since = cache.utc_now() - timedelta(days=RECENT_DAYS)
-    counts = bq.query(COUNTS_SQL, {"site_id": site_id})[0]  # an aggregate without GROUP BY always returns a row
-    rows = bq.query(LABELS_SQL, {"site_id": site_id})
-    return themes(site_id, counts, rows, since)
+    params = {"site_id": site_id}
+    counts, rows = bq.query_all((COUNTS_SQL, params), (LABELS_SQL, params))
+    return themes(site_id, counts[0], rows, since)  # an aggregate without GROUP BY always returns a row
 
 
 @router.get("/sites/{site_id}/review-themes")
