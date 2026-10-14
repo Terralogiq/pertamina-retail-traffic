@@ -7,10 +7,11 @@ Bead `.10.4` (Track F of `docs/plans/remaining-2026-10-14.md`). Design only plus
 | Topic | Choice | Why |
 |---|---|---|
 | Model and hosting | Gemini 3.8 Flash on the **Gemini API** now (same key, model and request shape as `reviews_job/gemini.py`); move to **Vertex AI Gemini, global endpoint, same price** for a production build | Cheapest option measured, 3–5 s per call, and the labeller already runs on it. No option can process in Jakarta (see Residency), so Vertex buys IAM and billing control, not residency. |
-| Cadence | A scheduled batch, **hourly from 06:00 to 22:00 WIB, 10 sites, about 5,100 summaries a month**, stored in BigQuery | The summary is a briefing; the map already shows live numbers. Stored text is instant to display, can be validated before it is shown, and leaves an audit trail. About $13 a month now, $26 from 1 January 2027. |
+| Cadence | **Decision (user, 2026-10-14): on demand**, generated the first time a site page is opened in a 30-minute slot and stored in BigQuery for the rest of that slot; up to 1,500 summaries a month at about 50 views a day | Cost follows use (up to about $4 a month now, $8 from 1 January 2027) and the text is never more than one slot old. The first view per slot waits for facts and generation. The earlier recommendation was an hourly batch (about $13 / $26); see "Cadence and storage". |
+| Display | **Decision (user, 2026-10-14): one card at the top of each of four site-page sections**, Traffic, Weather, Places and Review themes, instead of one block | One Gemini call per site and slot still writes all the sentences; each sentence's topic decides its card, so cost does not change. Each card sits next to the chart that backs it. |
 | Grounding | SQL builds a facts JSON, Gemini only phrases it, and a pure-function validator rejects any number, time, weekday or direction word that is not in the facts | The model never queries data and never sees review text. |
 
-The cadence is a cost-versus-freshness choice for you; the alternatives and their cost are in the table below.
+The alternatives to the cadence decision and their cost are in the table below.
 
 ## What the prototype does
 
@@ -164,12 +165,13 @@ About 2–3 days.
 | Item | Note |
 |---|---|
 | `traffic.ai_summaries` DDL in `sql/ddl.sql`, `data-schema.md` section | Schema above |
-| A Cloud Run job `summaries-job` and a Scheduler entry (`0 6-22 * * *`, Asia/Jakarta) | Same pattern as `reviews_job`; reuses the key mount or Vertex service account |
+| On-demand generation in the dashboard API: when no valid row exists for the site's current slot, build facts, call Gemini, validate, MERGE, return; concurrent first views share one generation (single-flight, as in `dashboard/api/cache.py`) | Replaces the job and Scheduler entry of the hourly design. The `traffic-dashboard` service needs the `gemini-api-key` secret mounted (or the Vertex service account). While generating, each card shows the previous valid summary with its older time, or a skeleton if there is none; on failure it keeps the previous one |
+| Prompt and schema: split topic `site_profile` into `places` and `review_themes`, and require at least one sentence per topic | One card per section: `traffic` on Traffic (covers Typical day), `weather`, `places`, `review_themes`. The validator's 3–5 sentence rule becomes 4–6 |
 | Facts builder inside the job image | The job image cannot import `dashboard/` or `scripts/` (same constraint as `review_labels.py`). Move the busy-hour rules to a shared module, or copy them with a test that pins both to the same fixtures |
 | Parallel or cached fact queries | Cuts 10–12 s to about 3 s |
-| `GET /api/sites/{site_id}/summary` and a card on the site page with the labels above | Reads the latest valid row |
+| `GET /api/sites/{site_id}/summary` and a summary card at the top of the four sections, with the labels above | Returns the current slot's valid row, generating it if missing |
 | Tests | Port the prototype tests; add a frozen-facts set with expected validation results |
-| Decisions needed first | Cadence (above), seconds-under-a-minute wording, and whether the free-tier key is acceptable |
+| Decisions needed first | Seconds-under-a-minute wording, and whether the free-tier key is acceptable (cadence and display are decided) |
 
 ## Not done
 

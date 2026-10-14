@@ -161,11 +161,30 @@ Script `out/complaints/baseline.py` (not in the repo): one regex per category, I
 
 Micro precision 0.67, micro recall 0.92; the exact label-set matches in 57 of 127 reviews. Categories with a single-digit true count (`bbm_kosong`, `kualitas_bbm`, `takaran`, `keamanan_lalu_lintas`, `lainnya`, `harga`) carry no percentage meaning beyond "the rule is noisy".
 
+Against the reviewer-checked sample (2026-10-14, bead `.10.23`): the same rules, unchanged, scored on the 100 reviews of "Validation against a human reviewer" next to Gemini p3 on the same reviews. Both columns are optimistic, for different reasons. The rules were written after reading these reviews, in the same reading as the draft the reference is anchored on. Gemini p3's `bbm_kosong` rule came from corrections on these same 100 reviews. The rules' bias is the larger, so Gemini's lead is if anything understated; the comparison between them is the useful part.
+
+| Category | n true | Rules TP / FP / FN | Rules P / R | Gemini p3 P / R |
+|---|---|---|---|---|
+| `antrian` | 34 | 30 / 5 / 4 | 0.86 / 0.88 | 0.94 / 0.94 |
+| `pelayanan_petugas` | 44 | 42 / 16 / 2 | 0.72 / 0.95 | 0.91 / 0.98 |
+| `bbm_kosong` | 4 | 3 / 15 / 1 | 0.17 / 0.75 | 0.60 / 0.75 |
+| `kualitas_bbm` | 2 | 1 / 1 / 1 | 0.50 / 0.50 | 1.00 / 0.50 |
+| `takaran` | 4 | 4 / 7 / 0 | 0.36 / 1.00 | 1.00 / 1.00 |
+| `pembayaran` | 20 | 20 / 6 / 0 | 0.77 / 1.00 | 1.00 / 1.00 |
+| `harga` | 0 | 0 / 1 / 0 | 0.00 / n/a | n/a / n/a |
+| `kebersihan` | 9 | 9 / 1 / 0 | 0.90 / 1.00 | 1.00 / 1.00 |
+| `toilet` | 11 | 11 / 1 / 0 | 0.92 / 1.00 | 0.92 / 1.00 |
+| `fasilitas` | 17 | 14 / 1 / 3 | 0.93 / 0.82 | 1.00 / 0.88 |
+| `keamanan_lalu_lintas` | 7 | 6 / 11 / 1 | 0.35 / 0.86 | 0.78 / 1.00 |
+| `lainnya` | 6 | 5 / 13 / 1 | 0.28 / 0.83 | 0.75 / 1.00 |
+
+Rules: micro precision 0.65, recall 0.92, exact label set 41 of 100 (Gemini p3: 0.92, 0.96, 83 of 100). On the five clean categories together (`antrian`, `pembayaran`, `kebersihan`, `toilet`, `fasilitas`) the rules reach precision 0.86 and recall 0.92 against Gemini's 0.97 and 0.96. The human check did not change the picture from the first-pass table: recall holds, precision is the rules' weakness, and Gemini is at least as good in every category with a non-zero count.
+
 What this implies:
 
 - Rules work on concrete, rarely ambiguous vocabulary: `toilet`, `kebersihan`, `fasilitas`, `antrian`, `pembayaran` (high recall; the false positives are praise or generic "uang"/"bayar"). They fail where meaning depends on context: `bbm_kosong` (the word "solar" or "tutup" appears in unrelated sentences), `keamanan_lalu_lintas` ("jalan"), `lainnya`.
 - Rules cannot see sentiment: "ramah" (friendly) counts as `pelayanan_petugas` in a compliment. Every table that matters here filters on complaint, so a sentiment-aware method is needed.
-- Production path: Gemini zero-shot on Vertex AI with the fixed taxonomy, JSON schema output, temperature 0 and a pinned model version (as in the feasibility doc), with sentiment as a required field. Keep these rules only as a cheap sanity check and fallback for those five clean categories. A stratified 100 has since been human-reviewed (see "Validation against a human reviewer"); re-scoring this baseline against that set is bead `.10.23`.
+- Production path: Gemini zero-shot on Vertex AI with the fixed taxonomy, JSON schema output, temperature 0 and a pinned model version (as in the feasibility doc), with sentiment as a required field. Keep these rules only as a cheap sanity check and fallback for those five clean categories. The re-score against the human-reviewed 100 (above) confirms this.
 
 ## Gemini labels versus manual (2026-10-14, bead `.10.5.7`)
 
