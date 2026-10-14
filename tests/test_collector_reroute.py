@@ -1,4 +1,4 @@
-"""Pure reroute check: distance >10% or geometry outside a 30 m buffer."""
+"""Pure reroute check: distance more than 10% longer or shorter, or geometry outside a 30 m buffer."""
 import unittest
 
 from collector import reroute
@@ -17,6 +17,16 @@ class RerouteTest(unittest.TestCase):
 
     def test_reroute_over_10_percent(self):
         self.assertTrue(reroute.is_rerouted(500, 551, EXPECTED_LINE, EXPECTED_LINE))
+
+    def test_no_reroute_at_minus_10_percent(self):
+        self.assertFalse(reroute.is_rerouted(500, 450, EXPECTED_LINE, EXPECTED_LINE))
+
+    def test_reroute_when_shorter_than_10_percent(self):
+        self.assertTrue(reroute.is_rerouted(500, 449, EXPECTED_LINE, EXPECTED_LINE))
+
+    def test_no_reroute_within_10_percent_either_way(self):
+        for actual in (460, 499, 501, 540):
+            self.assertFalse(reroute.is_rerouted(500, actual, EXPECTED_LINE, EXPECTED_LINE))
 
     def test_reroute_when_polyline_leaves_buffer(self):
         actual = [(-5.41371, 105.32234), (-5.41400, 105.32300)]  # >30 m off the expected line

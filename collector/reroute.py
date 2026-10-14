@@ -1,5 +1,5 @@
-"""Pure reroute check. A leg is rerouted when the returned distance is >10% off the expected
-route distance, or the returned polyline leaves a 30 m buffer around the expected polyline.
+"""Pure reroute check. A leg is rerouted when the returned distance is more than 10% longer or shorter
+than the expected route distance, or the returned polyline leaves a 30 m buffer around the expected polyline.
 """
 import math
 
@@ -38,13 +38,13 @@ def _leaves_buffer(actual_pts, expected_pts, buffer_m=30.0):
 def is_rerouted(expected_distance_m, actual_distance_m, actual_polyline, expected_polyline, buffer_m=30.0):
     """
     A leg is rerouted when:
-      - actual_distance_m deviates >10% from expected_distance_m, or
+      - actual_distance_m is more than 10% longer or shorter than expected_distance_m, or
       - actual_polyline leaves a `buffer_m` corridor around expected_polyline.
     Missing values never flag a reroute.
     """
     if expected_distance_m is None or expected_distance_m <= 0:
         return False
-    if actual_distance_m is not None and actual_distance_m > expected_distance_m * 1.1:
+    if actual_distance_m is not None and abs(actual_distance_m - expected_distance_m) > 0.1 * expected_distance_m:
         return True
     if not actual_polyline or not expected_polyline:
         return False

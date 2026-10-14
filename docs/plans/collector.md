@@ -138,7 +138,7 @@ Tests go in `tests/test_collector_*.py`, cover the pure functions only and make 
 ### Phase 2: refine (after collecting has started)
 
 - **`v_leg_baseline` and `v_traffic`:** created in 1a (`sql/ddl.sql`), meaningful after about 7 days of data.
-- **Reroute check** (bead `.7.6`): `demo_rerouted` on every leg (distance more than 10% off, or the geometry leaves a 30 m buffer around `expected_polyline`). Computed at ingest and backfilled from `route_geometry`.
+- **Reroute check** (bead `.7.6`): `demo_rerouted` on every leg (`collector/reroute.py`). True when `abs(demo_distance_m - expected_distance_m) > 0.1 * expected_distance_m` (more than 10% longer or shorter), or when any point of the returned polyline is more than 30 m from `expected_polyline`. False when `expected_distance_m` is missing or not positive; a missing returned distance or polyline skips its own check. NULL when the call failed. Computed at ingest; `scripts/backfill_rerouted.py` fills the earlier NULL rows from `route_geometry` with the same function.
 - **Optional: speed intervals** on the legs, at Enterprise pricing ($15/1k instead of $10/1k).
 
 ## Later (not in this plan)
