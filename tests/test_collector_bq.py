@@ -113,6 +113,30 @@ class TestCheckUnique(unittest.TestCase):
         bq.check_unique([], self.KEYS)
 
 
+class TestLinePoints(unittest.TestCase):
+    def test_geojson_lng_lat_becomes_lat_lng(self):
+        g = '{"type":"LineString","coordinates":[[105.32234,-5.41371],[105.3198296,-5.4101864]]}'
+        self.assertEqual(bq.line_points(g), [(-5.41371, 105.32234), (-5.4101864, 105.3198296)])
+
+    def test_not_a_line_is_empty(self):
+        self.assertEqual(bq.line_points(None), [])
+        self.assertEqual(bq.line_points('{"type":"Point","coordinates":[105.3,-5.4]}'), [])
+
+    def test_routes_sql_returns_geojson(self):
+        self.assertIn("ST_ASGEOJSON(expected_polyline) AS expected_geojson", bq.ROUTES_SQL)
+
+
+class TestLoadRoutesCsv(unittest.TestCase):
+    def test_expected_points_decoded_from_csv(self):
+        routes = main.load_routes_csv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                   "data", "routes.csv"))
+        self.assertTrue(routes)
+        for r in routes:
+            self.assertGreaterEqual(len(r["expected_points"]), 2)
+            for lat, lng in r["expected_points"]:
+                self.assertTrue(-11 < lat < 6 and 95 < lng < 141, (lat, lng))
+
+
 class TestExitCode(unittest.TestCase):
     def test_no_calls_is_failure(self):
         self.assertEqual(main.exit_code(0, 0), 1)

@@ -115,7 +115,7 @@ def route(leg_index, **kw):
         "display_name": "SPBU 24.351.97 · SPBU side · " + ("Approach", "Departure")[leg_index],
         "site_id": "24.351.97", "side": "spbu_side", "call_id": "spbu-2435197-spbuside",
         "leg_index": leg_index, "expected_distance_m": 500,
-        "expected_polyline": encode_polyline(APPROACH_LINE if leg_index == 0 else DEPARTURE_LINE),
+        "expected_points": APPROACH_LINE if leg_index == 0 else DEPARTURE_LINE,
         **dict(zip(("origin_lat", "origin_lng", "origin_heading", "dest_lat", "dest_lng", "dest_heading"), points)),
     }
     base.update(kw)

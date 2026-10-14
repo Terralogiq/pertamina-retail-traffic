@@ -66,7 +66,7 @@ def load_routes_csv(path):
                 "dest_lat": float(r["dest_lat"]), "dest_lng": float(r["dest_lng"]),
                 "dest_heading": _opt(r, "dest_heading", int),
                 "expected_distance_m": _opt(r, "expected_distance_m", int),
-                "expected_polyline": r.get("expected_polyline", ""),
+                "expected_points": traffic.decode_polyline(r.get("expected_polyline", "")),
             })
     return out
 

@@ -6,7 +6,7 @@ Pure functions plus one HTTP wrapper (`fetch_call`); no google.cloud import.
 
 A "route" below is a dict with: selected_route_id, display_name, site_id, side, call_id,
 leg_index, origin_lat, origin_lng, origin_heading, dest_lat, dest_lng, dest_heading,
-expected_distance_m (headings and distance may be None).
+expected_distance_m (headings and distance may be None), expected_points ([(lat, lng), ...], may be empty).
 """
 import json
 from collections import defaultdict
@@ -124,12 +124,11 @@ def leg_row(route, leg, slot, fetched_at, request, error=None):
     expected = route.get("expected_distance_m")
     actual_distance = leg.get("distanceMeters")
     actual_polyline = decode_polyline((leg.get("polyline") or {}).get("encodedPolyline", ""))
-    expected_polyline = decode_polyline(route.get("expected_polyline") or "")
     rerouted = None if error else is_rerouted(
         expected,
         int(actual_distance) if actual_distance is not None else None,
         actual_polyline,
-        expected_polyline,
+        route.get("expected_points") or [],
     )
     raw = {"request": request, "error": error} if error else {"request": request, "leg": leg}
     return {

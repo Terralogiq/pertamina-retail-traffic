@@ -4,6 +4,7 @@ Reads the active routes; writes each table with ONE MERGE per run. The rows are 
 into a per-run staging table (geometry as WKT text, raw as JSON text), then merged, so a
 retried run overwrites its own rows instead of duplicating them.
 """
+import json
 import uuid
 from datetime import timedelta
 
@@ -54,7 +55,7 @@ SELECT selected_route_id, display_name, site_id, side, call_id, leg_index,
        ST_Y(destination) AS dest_lat, ST_X(destination) AS dest_lng,
        demo_origin_heading AS origin_heading, demo_dest_heading AS dest_heading,
        expected_distance_m,
-       ST_ASGEOJSON(expected_polyline) AS expected_polyline
+       ST_ASGEOJSON(expected_polyline) AS expected_geojson
 FROM `{project}.{dataset}.routes`
 WHERE active
 ORDER BY call_id, leg_index
@@ -96,11 +97,22 @@ def _client(project, location):
     return bigquery.Client(project=project, location=location)
 
 
+def line_points(geojson):
+    """ST_ASGEOJSON text -> [(lat, lng), ...]. Anything but a LineString gives []."""
+    g = json.loads(geojson) if geojson else {}
+    return [(lat, lng) for lng, lat in g["coordinates"]] if g.get("type") == "LineString" else []
+
+
 def read_active_routes(project, dataset, location):
     """Active routes as dicts in the shape traffic.group_calls expects."""
     client = _client(project, location)
     rows = client.query(ROUTES_SQL.format(project=project, dataset=dataset)).result()
-    return [dict(r.items()) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r.items())
+        d["expected_points"] = line_points(d.pop("expected_geojson"))
+        out.append(d)
+    return out
 
 
 def _merge_table(client, project, dataset, table, stage, keys, insert_only, guard, rows, slot):
