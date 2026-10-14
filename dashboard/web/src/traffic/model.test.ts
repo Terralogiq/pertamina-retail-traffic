@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getTrafficPattern, getTrafficSeries, TrafficPoint, PatternCell } from "./api";
+import { getTrafficPattern, getTrafficSeries, getTypicalDay, TrafficPoint } from "./api";
 import type { WeatherSeriesPoint } from "../weather/api";
 import {
-  emptyCells, formatDelay, hadRain, heatmapData, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes,
+  delaySeries, delayTooltipText, formatDelay, hadRain, legSeries, precipitationSeries, tzLabel, utcOffsetMinutes,
   windowStart,
 } from "./model";
 
@@ -80,25 +80,31 @@ describe("precipitationSeries", () => {
   });
 });
 
-describe("heatmapData", () => {
-  it("keeps one leg as [hour, dow - 1, mean] and drops empty cells", () => {
-    const cell = (leg: string, mean: number | null): PatternCell =>
-      ({ dow: 7, hour: 8, leg, mean_congestion: mean, mean_speed_kmh: null, n: 3 });
-    expect(heatmapData([cell("approach", 1.5), cell("departure", 2), cell("approach", null)], "approach")).toEqual([
-      [8, 6, 1.5],
-    ]);
+describe("delaySeries", () => {
+  it("keeps speed and the usual-time multiple beside the plotted delay", () => {
+    const lines = delaySeries([
+      pt("approach", "2026-10-07T00:30:00Z", { delay_s: 20, speed_kmh: 28, congestion_index: 1.5 }),
+      pt("approach", "2026-10-07T01:00:00Z", { delay_s: null, speed_kmh: null, congestion_index: null }),
+    ], 480);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].data[0]).toEqual({
+      value: [Date.parse("2026-10-07T08:30:00Z"), 20],
+      speed_kmh: 28,
+      congestion_index: 1.5,
+    });
+    expect(lines[0].data[1].value[1]).toBeNull();
   });
 });
 
-describe("heatmap and rain helpers", () => {
-  it("lists every day x hour without a sample as an empty cell", () => {
-    const cells: PatternCell[] = [{ dow: 1, hour: 0, leg: "approach", mean_congestion: 1.2, mean_speed_kmh: null, n: 1 }];
-    const empty = emptyCells(cells, "approach");
-    expect(empty).toHaveLength(7 * 24 - 1);
-    expect(empty).not.toContainEqual([0, 0]);
-    expect(emptyCells([], "approach")).toHaveLength(168);
+describe("delay tooltip", () => {
+  it("names the delay, the speed and how many times the usual travel time", () => {
+    expect(delayTooltipText("Approach", 20, 28, 1.5)).toBe("Approach: +20 s · 28 km/h · 1.50× usual time");
+    expect(delayTooltipText("Departure", -4, null, null)).toBe("Departure: no delay · n/a · n/a");
+    expect(delayTooltipText("Approach", null, 30, 1.2)).toBe("Approach: n/a · 30 km/h · 1.20× usual time");
   });
+});
 
+describe("rain helpers", () => {
   it("hadRain is false for a window of zeros", () => {
     expect(hadRain([[1, 0], [2, 0]])).toBe(false);
     expect(hadRain([[1, 0], [2, 0.4]])).toBe(true);
@@ -108,18 +114,20 @@ describe("heatmap and rain helpers", () => {
   it("formats delay with sign and minutes", () => {
     expect(formatDelay(16.4)).toBe("+16 s");
     expect(formatDelay(75)).toBe("+1.3 min");
-    expect(formatDelay(-4)).toBe("-4 s");
+    expect(formatDelay(-4)).toBe("no delay");
     expect(formatDelay(null)).toBe("-");
   });
 });
 
 describe("api client", () => {
-  it("builds the series and pattern URLs", async () => {
+  it("builds the series, pattern and typical-day URLs", async () => {
     const f = vi.fn().mockImplementation(() => Promise.resolve(Response.json([])));
     vi.stubGlobal("fetch", f);
     await getTrafficSeries("74.902.22", "2026-10-06T10:30:00.000Z");
     await getTrafficPattern("74.902.22");
+    await getTypicalDay("74.902.22");
     expect(f.mock.calls[0][0]).toBe("/api/traffic/series?site_id=74.902.22&from=2026-10-06T10%3A30%3A00.000Z");
     expect(f.mock.calls[1][0]).toBe("/api/traffic/pattern?site_id=74.902.22&days=28");
+    expect(f.mock.calls[2][0]).toBe("/api/traffic/typical-day?site_id=74.902.22");
   });
 });

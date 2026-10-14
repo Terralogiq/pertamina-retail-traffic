@@ -48,6 +48,7 @@ CREATE TABLE traffic.sites (
   location     GEOGRAPHY,         -- from Place Details
   road_name    STRING,
   city         STRING,
+  road_type    STRING,            -- text from data/sites.csv; road_class is toll when this contains "toll"
   timezone     STRING             -- IANA zone: Asia/Jakarta (WIB) or Asia/Makassar (WITA)
 );
 ```

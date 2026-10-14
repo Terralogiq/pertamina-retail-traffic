@@ -222,6 +222,8 @@ Approach is slowest 07:00–09:00 and around 17:00 — usually 2–4 min slower 
 
 ## Decision (user sign-off, 2026-10-08)
 
+Implementation plan: `docs/plans/traffic-presentation.md` (beads `pertamina-retail-traffic-907.11` and children).
+
 - **Bands:** 1.5 / 2.0 / 3.0 × the leg's free-flow time, with a delay gate (Heavy/Jammed only when also ≥ 20 s slower urban, ≥ 30 s toll). Provisional free-flow while the baseline builds: urban 45 km/h, toll 80 km/h.
 - **Colours:** Google-familiar `#1e8e3e` / `#f29900` / `#e8452c` / `#9a1a1a`; band shape and label stay mandatory, amber keeps a dark casing.
 - **Busy hours:** all 24 h; Indonesian public holidays count as weekend days.

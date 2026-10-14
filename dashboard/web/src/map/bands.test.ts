@@ -3,18 +3,19 @@ import type { LatestLeg, Site } from "./api";
 import {
   BASELINE_FULL,
   GREY,
+  bandOf,
   baselineProgress,
   boundsOf,
-  congestionColor,
   formatDelay,
   formatSlot,
   indexLatest,
   legBand,
   legColor,
   lineToPath,
+  roadClassOf,
   sitePoints,
-  speedColor,
 } from "./bands";
+import { BANDS } from "../theme/palette";
 
 const row = (over: Partial<LatestLeg> = {}): LatestLeg => ({
   selected_route_id: "r1",
@@ -35,6 +36,8 @@ const site: Site = {
   place_id: "p",
   road_name: null,
   city: "Makassar",
+  road_type: "arterial",
+  road_class: "urban",
   timezone: "Asia/Makassar",
   location: { lat: -5.1, lng: 119.4 },
   legs: [
@@ -59,51 +62,58 @@ const site: Site = {
   ],
 };
 
-describe("congestion bands", () => {
-  it("switches colour at 1.2, 1.6 and 2.2", () => {
-    const [green, amber, orange, red] = [1.19, 1.2, 1.6, 2.2].map(congestionColor);
-    expect(new Set([green, amber, orange, red]).size).toBe(4);
-    expect(congestionColor(1.0)).toBe(green);
-    expect(congestionColor(1.59)).toBe(amber);
-    expect(congestionColor(2.19)).toBe(orange);
-    expect(congestionColor(5)).toBe(red);
-  });
-});
+const urban = { roadClass: "urban" as const, expectedDistanceM: 500 };
+const toll = { roadClass: "toll" as const, expectedDistanceM: 500 };
 
-describe("speed bands", () => {
-  it("switches colour at 15, 25 and 35 km/h, slow is red", () => {
-    expect(speedColor(14.9)).toBe(congestionColor(3));
-    expect(speedColor(15)).toBe(congestionColor(1.7));
-    expect(speedColor(25)).toBe(congestionColor(1.3));
-    expect(speedColor(35)).toBe(congestionColor(1.0));
+describe("band rule", () => {
+  const examples: [number, number, "urban" | "toll", string][] = [
+    [1.4, 40, "urban", "free"],
+    [1.6, 15, "urban", "free"],
+    [1.6, 25, "urban", "moderate"],
+    [2.2, 25, "urban", "heavy"],
+    [3.1, 40, "urban", "jam"],
+    [2.5, 15, "urban", "free"],
+    [1.8, 25, "toll", "free"],
+    [1.8, 35, "toll", "moderate"],
+  ];
+  it.each(examples)("index %s, delay %ss, %s → %s", (index, delay, road, band) => {
+    expect(bandOf(index, delay, road)).toBe(band);
+  });
+
+  it("treats a toll mention as toll and every other label as urban", () => {
+    expect(roadClassOf("toll rest area")).toBe("toll");
+    expect(roadClassOf("congested arterial")).toBe("urban");
+    expect(roadClassOf(null)).toBe("urban");
   });
 });
 
 describe("legColor", () => {
   it("uses congestion with a full baseline", () => {
-    expect(legColor(row({ congestion_index: 2.5, speed_kmh: 50 }))).toEqual({ color: congestionColor(3), basis: "congestion" });
+    expect(legColor(row({ congestion_index: 2.5, delay_s: 40 }), urban)).toEqual({ color: BANDS.heavy.color, basis: "congestion" });
   });
-  it("falls back to speed while the baseline builds", () => {
-    expect(legColor(row({ baseline_samples: BASELINE_FULL - 1, congestion_index: 1.0, speed_kmh: 10 }))).toEqual({
-      color: speedColor(10),
+  it("uses the provisional speed while the baseline builds", () => {
+    // 500 m at 45 km/h is 40 s. 60 s is 1.5× and 20 s over, so moderate.
+    expect(legColor(row({ baseline_samples: BASELINE_FULL - 1, duration_s: 60 }), urban)).toEqual({
+      color: BANDS.moderate.color,
       basis: "speed",
     });
-    expect(legColor(row({ baseline_samples: null, speed_kmh: 10 })).basis).toBe("speed");
+    // 500 m at 80 km/h is 22.5 s. 50 s is 2.2× but only 27.5 s over, under the 30 s toll gate, so free.
+    expect(legBand(row({ baseline_samples: null, duration_s: 50 }), toll)).toEqual({ band: "free", basis: "speed" });
   });
   it("is grey without a row or without numbers", () => {
     expect(legColor(undefined)).toEqual({ color: GREY, basis: "none" });
     expect(legColor(row({ congestion_index: null, speed_kmh: null }))).toEqual({ color: GREY, basis: "none" });
-    expect(legColor(row({ baseline_samples: 5, speed_kmh: null }))).toEqual({ color: GREY, basis: "none" });
+    expect(legColor(row({ baseline_samples: 5, duration_s: null }), urban)).toEqual({ color: GREY, basis: "none" });
   });
 });
 
 describe("legBand", () => {
   it("names the band and its basis", () => {
-    expect(legBand(row({ congestion_index: 1.0 }))).toEqual({ band: "free", basis: "congestion" });
-    expect(legBand(row({ congestion_index: 1.3 }))).toEqual({ band: "moderate", basis: "congestion" });
-    expect(legBand(row({ congestion_index: 2.2 }))).toEqual({ band: "jam", basis: "congestion" });
-    expect(legBand(row({ baseline_samples: 10, speed_kmh: 20 }))).toEqual({ band: "heavy", basis: "speed" });
-    expect(legBand(row({ baseline_samples: 10, speed_kmh: 40 }))).toEqual({ band: "free", basis: "speed" });
+    expect(legBand(row({ congestion_index: 1.0, delay_s: 40 }))).toEqual({ band: "free", basis: "congestion" });
+    expect(legBand(row({ congestion_index: 1.6, delay_s: 25 }))).toEqual({ band: "moderate", basis: "congestion" });
+    expect(legBand(row({ congestion_index: 3.1, delay_s: 40 }))).toEqual({ band: "jam", basis: "congestion" });
+    expect(legBand(row({ baseline_samples: 10, duration_s: 90 }), urban)).toEqual({ band: "heavy", basis: "speed" });
+    expect(legBand(row({ baseline_samples: 10, duration_s: 45 }), urban)).toEqual({ band: "free", basis: "speed" });
     expect(legBand(undefined)).toEqual({ band: "none", basis: "none" });
   });
 });
@@ -148,7 +158,9 @@ describe("formatting", () => {
     expect(formatDelay(null)).toBe("-");
     expect(formatDelay(45)).toBe("+45 s");
     expect(formatDelay(90)).toBe("+1.5 min");
-    expect(formatDelay(-20)).toBe("-20 s");
+    expect(formatDelay(-2)).toBe("no delay");
+    expect(formatDelay(-20)).toBe("no delay");
+    expect(formatDelay(0)).toBe("no delay");
   });
   it("shows slot time in the site's local time with a zone label", () => {
     expect(formatSlot("2026-10-07T07:30:00Z", "Asia/Jakarta")).toBe("14:30 WIB");

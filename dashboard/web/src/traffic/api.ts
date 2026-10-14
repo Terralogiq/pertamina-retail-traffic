@@ -31,3 +31,41 @@ export const getTrafficSeries = (siteId: string, from: string, to?: string) => {
 
 export const getTrafficPattern = (siteId: string, days = 28) =>
   getJson<PatternCell[]>(`/api/traffic/pattern?${new URLSearchParams({ site_id: siteId, days: String(days) })}`);
+
+export type DayKind = "weekday" | "weekend";
+
+/** One local hour of GET /api/traffic/typical-day. `faded` is n < 4. `busy` uses the map band rule. */
+export interface TypicalHour {
+  hour: number;
+  median_delay_s: number | null;
+  p25_delay_s: number | null;
+  p75_delay_s: number | null;
+  n: number;
+  faded: boolean;
+  busy: boolean;
+}
+
+/** Consecutive busy hours. `end_hour` is exclusive; a midnight wrap has end_hour < start_hour. A full day is 0–24. */
+export interface BusyWindow {
+  start_hour: number;
+  end_hour: number;
+  median_delay_s: number | null;
+}
+
+/** One leg and day kind, with hours 0–23. `windows` is empty until the profile is ready. */
+export interface TypicalLeg {
+  leg: string;
+  day_kind: DayKind;
+  hours: TypicalHour[];
+  windows: BusyWindow[];
+}
+
+/** Median delay by local hour over the last 28 days. `ready` is days >= 7. */
+export interface TypicalDayResponse {
+  days: number;
+  ready: boolean;
+  legs: TypicalLeg[];
+}
+
+export const getTypicalDay = (siteId: string) =>
+  getJson<TypicalDayResponse>(`/api/traffic/typical-day?${new URLSearchParams({ site_id: siteId })}`);

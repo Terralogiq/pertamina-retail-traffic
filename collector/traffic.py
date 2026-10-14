@@ -12,6 +12,7 @@ import json
 from collections import defaultdict
 
 import httpjson
+from reroute import is_rerouted
 from slots import iso, utc_now
 
 API_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
@@ -121,6 +122,15 @@ def leg_row(route, leg, slot, fetched_at, request, error=None):
     duration = parse_duration_s(leg.get("duration"))
     static = parse_duration_s(leg.get("staticDuration"))
     expected = route.get("expected_distance_m")
+    actual_distance = leg.get("distanceMeters")
+    actual_polyline = decode_polyline((leg.get("polyline") or {}).get("encodedPolyline", ""))
+    expected_polyline = decode_polyline(route.get("expected_polyline") or "")
+    rerouted = None if error else is_rerouted(
+        expected,
+        int(actual_distance) if actual_distance is not None else None,
+        actual_polyline,
+        expected_polyline,
+    )
     raw = {"request": request, "error": error} if error else {"request": request, "leg": leg}
     return {
         "selected_route_id": route["selected_route_id"],
@@ -134,8 +144,8 @@ def leg_row(route, leg, slot, fetched_at, request, error=None):
         "slot_time": iso(slot),
         "static_ratio": duration / static if duration is not None and static else None,
         "speed_kmh": expected / duration * 3.6 if expected is not None and duration else None,
-        "demo_distance_m": int(leg["distanceMeters"]) if leg.get("distanceMeters") is not None else None,
-        "demo_rerouted": None,  # phase 2 (bead .7.6)
+        "demo_distance_m": int(actual_distance) if actual_distance is not None else None,
+        "demo_rerouted": rerouted,
         "demo_routing_preference": ROUTING_PREFERENCE,
         "raw": json.dumps(raw, ensure_ascii=False, separators=(",", ":")),
         "fetched_at": iso(fetched_at),

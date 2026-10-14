@@ -1,7 +1,7 @@
 // Pure helpers for the overview: per-site severity, ranking, the "now" summary and marker clustering.
 import type { BandId } from "../theme/palette";
 import type { LatestLeg, Site } from "./api";
-import { BAND_RANK, BASELINE_FULL, Basis, isSlowed, legBand } from "./bands";
+import { BAND_RANK, BASELINE_FULL, Basis, isSlowed, legBand, legContext } from "./bands";
 
 export interface SiteState {
   site: Site;
@@ -20,7 +20,7 @@ export function siteState(site: Site, latest: Map<string, LatestLeg>): SiteState
   let worstDelay: number | null = null;
   for (const leg of site.legs) {
     const row = latest.get(leg.selected_route_id);
-    const b = legBand(row);
+    const b = legBand(row, legContext(site, leg.selected_route_id));
     if (BAND_RANK[b.band] > BAND_RANK[band]) {
       band = b.band;
       basis = b.basis;
@@ -31,6 +31,15 @@ export function siteState(site: Site, latest: Map<string, LatestLeg>): SiteState
     }
   }
   return { site, band, basis, worstLeg, worstDelay };
+}
+
+/**
+ * Busy-hour delay must not reorder the overview until the typical-day profile is ready.
+ * While `ready` is false the current-state order is returned unchanged.
+ */
+export function guardBusyRank<T>(ranked: T[], ready: boolean, busyDelay: (item: T) => number | null): T[] {
+  if (!ready) return ranked;
+  return [...ranked].sort((a, b) => (busyDelay(b) ?? -Infinity) - (busyDelay(a) ?? -Infinity));
 }
 
 /** Worst first: band, then the larger delay (unknown last), then name, so the order is stable between refreshes. */

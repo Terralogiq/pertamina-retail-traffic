@@ -16,6 +16,8 @@ export interface Site {
   place_id: string;
   road_name: string | null;
   city: string | null;
+  road_type: string | null;
+  road_class: "urban" | "toll";
   timezone: string; // IANA, e.g. Asia/Jakarta
   location: { lat: number; lng: number };
   legs: Leg[];

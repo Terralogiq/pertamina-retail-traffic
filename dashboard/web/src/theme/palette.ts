@@ -8,10 +8,10 @@ export type BandId = "free" | "moderate" | "heavy" | "jam" | "none";
 
 /** Traffic state of a leg, worst last. `none` = no reading or no basis yet. */
 export const BANDS: Record<BandId, { color: string; label: string }> = {
-  free: { color: "#1a9e8f", label: "Free flow" },
-  moderate: { color: "#e9a400", label: "Moderate" },
-  heavy: { color: "#e0602a", label: "Heavy" },
-  jam: { color: "#a51d2d", label: "Jammed" },
+  free: { color: "#1e8e3e", label: "Free flow" },
+  moderate: { color: "#f29900", label: "Moderate" },
+  heavy: { color: "#e8452c", label: "Heavy" },
+  jam: { color: "#9a1a1a", label: "Jammed" },
   none: { color: "#a8a69f", label: "No data" },
 };
 

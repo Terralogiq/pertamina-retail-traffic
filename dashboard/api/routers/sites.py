@@ -8,9 +8,15 @@ from .. import bq, cache
 
 router = APIRouter()
 
+
+def road_class(road_type):
+    """Toll when the site's road type mentions a toll road; every other label is urban."""
+    return "toll" if road_type and "toll" in road_type.lower() else "urban"
+
+
 SITES_SQL = f"""
 SELECT
-  s.site_id, s.name, s.place_id, s.road_name, s.city, s.timezone,
+  s.site_id, s.name, s.place_id, s.road_name, s.city, s.road_type, s.timezone,
   ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
   r.selected_route_id, r.display_name, r.side, r.leg, r.leg_index, r.expected_distance_m,
   ST_ASGEOJSON(r.expected_polyline) AS expected_polyline
@@ -26,7 +32,9 @@ def group_sites(rows):
     for row in rows:
         site = sites.setdefault(row["site_id"], {
             "site_id": row["site_id"], "name": row["name"], "place_id": row["place_id"],
-            "road_name": row["road_name"], "city": row["city"], "timezone": row["timezone"],
+            "road_name": row["road_name"], "city": row["city"],
+            "road_type": row.get("road_type"), "road_class": road_class(row.get("road_type")),
+            "timezone": row["timezone"],
             "location": {"lat": row["lat"], "lng": row["lng"]}, "legs": [],
         })
         if row["selected_route_id"] is not None:

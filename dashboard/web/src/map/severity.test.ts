@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "./api";
 import { BASELINE_FULL, indexLatest } from "./bands";
-import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, orderSites, rankSites, summarize } from "./severity";
+import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
 
 const mkSite = (id: string, name: string, lat: number, lng: number): Site => ({
   site_id: id,
@@ -9,6 +9,8 @@ const mkSite = (id: string, name: string, lat: number, lng: number): Site => ({
   place_id: id,
   road_name: null,
   city: null,
+  road_type: "arterial",
+  road_class: "urban",
   timezone: "Asia/Jakarta",
   location: { lat, lng },
   legs: ["approach", "departure"].map((leg, i) => ({
@@ -41,9 +43,9 @@ const c = mkSite("c", "Charlie", -5.1, 119.4);
 
 describe("rankSites", () => {
   const latest = indexLatest([
-    reading("a-approach", { speed_kmh: 40, delay_s: 5 }),
-    reading("b-approach", { speed_kmh: 12, delay_s: 50 }), // jammed by speed
-    reading("b-departure", { speed_kmh: 30, delay_s: 20 }),
+    reading("a-approach", { duration_s: 45, speed_kmh: 40, delay_s: 5 }),
+    reading("b-approach", { duration_s: 150, speed_kmh: 12, delay_s: 50 }), // 12 km/h over 500 m: jammed
+    reading("b-departure", { duration_s: 60, speed_kmh: 30, delay_s: 20 }),
   ]);
 
   it("puts the worst band first, then the larger delay, then name; no data last", () => {
@@ -67,8 +69,8 @@ describe("rankSites", () => {
   it("names the head of the ranking as worst, even when another site has a larger delay", () => {
     // b: jam by speed (rank first) with a delay of 50 s; a: lighter band but 90 s.
     const mixed = indexLatest([
-      reading("a-approach", { speed_kmh: 40, delay_s: 90 }),
-      reading("b-approach", { speed_kmh: 12, delay_s: 50 }),
+      reading("a-approach", { duration_s: 45, speed_kmh: 40, delay_s: 90 }),
+      reading("b-approach", { duration_s: 150, speed_kmh: 12, delay_s: 50 }),
     ]);
     const ranked = rankSites([a, b], mixed);
     expect(summarize(ranked, mixed).worst).toBe(ranked.find((s) => s.worstDelay !== null));
@@ -81,8 +83,20 @@ describe("rankSites", () => {
   });
 });
 
+describe("guardBusyRank", () => {
+  it("leaves the current order alone until the typical-day profile is ready", () => {
+    const ranked = [{ id: "quiet" }, { id: "busy" }];
+    const delay = (row: { id: string }) => (row.id === "busy" ? 90 : 10);
+    expect(guardBusyRank(ranked, false, delay).map((row) => row.id)).toEqual(["quiet", "busy"]);
+    expect(guardBusyRank(ranked, true, delay).map((row) => row.id)).toEqual(["busy", "quiet"]);
+  });
+});
+
 describe("orderSites", () => {
-  const latest = indexLatest([reading("a-approach", { speed_kmh: 40 }), reading("b-approach", { speed_kmh: 12 })]);
+  const latest = indexLatest([
+    reading("a-approach", { duration_s: 45, speed_kmh: 40 }),
+    reading("b-approach", { duration_s: 150, speed_kmh: 12 }),
+  ]);
   const withCity = (s: Site, city: string): Site => ({ ...s, city });
   const ranked = rankSites([withCity(a, "Zeta"), withCity(b, "Beta"), withCity(c, "Beta")], latest); // b, a, c
 

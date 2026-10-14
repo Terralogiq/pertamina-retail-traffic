@@ -78,6 +78,8 @@ const site = (site_id: string, name: string, city: string | null): Site => ({
   place_id: "p",
   road_name: null,
   city,
+  road_type: null,
+  road_class: "urban",
   timezone: "Asia/Jakarta",
   location: { lat: 0, lng: 0 },
   legs: [],

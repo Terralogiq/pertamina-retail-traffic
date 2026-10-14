@@ -8,42 +8,70 @@ export const BASELINE_FULL = 302;
 export const GREY = BANDS.none.color;
 
 export type Basis = "congestion" | "speed" | "none";
+export type RoadClass = "urban" | "toll";
 
-/** Congestion index (duration / baseline): <1.2 free, 1.2-1.6 moderate, 1.6-2.2 heavy, >=2.2 jammed. */
-export const CONGESTION_BANDS: { max: number; band: BandId; label: string }[] = [
-  { max: 1.2, band: "free", label: "under 1.2" },
-  { max: 1.6, band: "moderate", label: "1.2 to 1.6" },
-  { max: 2.2, band: "heavy", label: "1.6 to 2.2" },
-  { max: Infinity, band: "jam", label: "2.2 and over" },
+/** A reading stays Free flow unless it is both at least this multiple of usual time and over the delay gate. */
+export const BAND_CUTS = { moderate: 1.5, heavy: 2, jam: 3 } as const;
+export const DELAY_GATE_S: Record<RoadClass, number> = { urban: 20, toll: 30 };
+/** Usual speed while the 7-day baseline is still building. */
+export const PROVISIONAL_KMH: Record<RoadClass, number> = { urban: 45, toll: 80 };
+
+/** Toll when the CSV road type mentions a toll road; every other label is urban. */
+export const roadClassOf = (roadType: string | null | undefined): RoadClass =>
+  (roadType ?? "").toLowerCase().includes("toll") ? "toll" : "urban";
+
+export interface LegContext {
+  roadClass: RoadClass;
+  expectedDistanceM: number | null;
+}
+
+export function legContext(site: Site, routeId: string): LegContext {
+  const leg = site.legs.find((l) => l.selected_route_id === routeId);
+  return { roadClass: site.road_class, expectedDistanceM: leg?.expected_distance_m ?? null };
+}
+
+/** Free flow under 1.5× or under the delay gate; then 1.5–2 moderate, 2–3 heavy, 3 and over jammed. */
+export function bandOf(index: number, delayS: number, roadClass: RoadClass): BandId {
+  if (!(index >= BAND_CUTS.moderate && delayS >= DELAY_GATE_S[roadClass])) return "free";
+  if (index < BAND_CUTS.heavy) return "moderate";
+  if (index < BAND_CUTS.jam) return "heavy";
+  return "jam";
+}
+
+export const CONGESTION_BANDS: { band: BandId; label: string }[] = [
+  { band: "free", label: "under 1.5×, or under the delay gate" },
+  { band: "moderate", label: "1.5 to 2×" },
+  { band: "heavy", label: "2 to 3×" },
+  { band: "jam", label: "3× and over" },
 ];
 
-/** Speed fallback while the baseline is pending (urban roads, km/h): >=35 free, 25-35 moderate, 15-25 heavy, <15 jammed. */
-export const SPEED_BANDS: { max: number; band: BandId; label: string }[] = [
-  { max: 15, band: "jam", label: "under 15 km/h" },
-  { max: 25, band: "heavy", label: "15 to 25 km/h" },
-  { max: 35, band: "moderate", label: "25 to 35 km/h" },
-  { max: Infinity, band: "free", label: "35 km/h and over" },
-];
+function provisional(durationS: number, distanceM: number, roadClass: RoadClass): { index: number; delayS: number } {
+  const freeS = distanceM / ((PROVISIONAL_KMH[roadClass] * 1000) / 3600);
+  return { index: durationS / freeS, delayS: durationS - freeS };
+}
 
-export const congestionBand = (index: number): BandId => CONGESTION_BANDS.find((b) => index < b.max)!.band;
-export const speedBand = (kmh: number): BandId => SPEED_BANDS.find((b) => kmh < b.max)!.band;
-export const congestionColor = (index: number): string => BANDS[congestionBand(index)].color;
-export const speedColor = (kmh: number): string => BANDS[speedBand(kmh)].color;
-
-/** Band of a leg and what it is based on. Congestion only with a full baseline; else speed; else no data. */
-export function legBand(latest: LatestLeg | undefined): { band: BandId; basis: Basis } {
-  if (latest) {
-    if (latest.congestion_index != null && (latest.baseline_samples ?? 0) >= BASELINE_FULL) {
-      return { band: congestionBand(latest.congestion_index), basis: "congestion" };
-    }
-    if (latest.speed_kmh != null) return { band: speedBand(latest.speed_kmh), basis: "speed" };
+/**
+ * Band of a leg and what it is based on. A full baseline uses congestion_index and delay_s.
+ * While the baseline builds, the same cuts apply to duration against the road class's provisional speed.
+ */
+export function legBand(latest: LatestLeg | undefined, ctx?: LegContext): { band: BandId; basis: Basis } {
+  if (!latest) return { band: "none", basis: "none" };
+  const road = ctx?.roadClass ?? "urban";
+  const full = (latest.baseline_samples ?? 0) >= BASELINE_FULL;
+  if (full && latest.congestion_index != null && latest.delay_s != null) {
+    return { band: bandOf(latest.congestion_index, latest.delay_s, road), basis: "congestion" };
+  }
+  const distance = ctx?.expectedDistanceM;
+  if (!full && latest.duration_s != null && distance != null && distance > 0) {
+    const { index, delayS } = provisional(latest.duration_s, distance, road);
+    return { band: bandOf(index, delayS, road), basis: "speed" };
   }
   return { band: "none", basis: "none" };
 }
 
 /** Colour of a leg and its basis (the map's polylines). */
-export function legColor(latest: LatestLeg | undefined): { color: string; basis: Basis } {
-  const { band, basis } = legBand(latest);
+export function legColor(latest: LatestLeg | undefined, ctx?: LegContext): { color: string; basis: Basis } {
+  const { band, basis } = legBand(latest, ctx);
   return { color: BANDS[band].color, basis };
 }
 
@@ -99,12 +127,11 @@ export function boundsOf(points: LatLng[]): Bounds | null {
   return { north: Math.max(...lats), south: Math.min(...lats), east: Math.max(...lngs), west: Math.min(...lngs) };
 }
 
-/** "+1.5 min", "+45 s", "-20 s"; "-" when unknown. */
+/** "+1.5 min", "+45 s", "no delay" at or below zero; "-" when unknown. */
 export function formatDelay(delayS: number | null | undefined): string {
   if (delayS == null) return "-";
-  const sign = delayS < 0 ? "-" : "+";
-  const abs = Math.abs(delayS);
-  return abs < 60 ? `${sign}${Math.round(abs)} s` : `${sign}${(abs / 60).toFixed(1)} min`;
+  if (delayS <= 0) return "no delay";
+  return delayS < 60 ? `+${Math.round(delayS)} s` : `+${(delayS / 60).toFixed(1)} min`;
 }
 
 export const formatSpeed = (kmh: number | null | undefined): string => (kmh == null ? "-" : `${Math.round(kmh)} km/h`);

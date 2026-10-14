@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { BANDS, SEQUENTIAL, SERIES, applyDataPalette } from "./palette";
 
+describe("band colours", () => {
+  it("uses the signed-off Google-familiar colours", () => {
+    expect(BANDS.free.color).toBe("#1e8e3e");
+    expect(BANDS.moderate.color).toBe("#f29900");
+    expect(BANDS.heavy.color).toBe("#e8452c");
+    expect(BANDS.jam.color).toBe("#9a1a1a");
+  });
+});
+
 describe("applyDataPalette", () => {
   it("mirrors every band, series and sequential colour into a custom property", () => {
     const setProperty = vi.fn();

@@ -115,6 +115,7 @@ def route(leg_index, **kw):
         "display_name": "SPBU 24.351.97 · SPBU side · " + ("Approach", "Departure")[leg_index],
         "site_id": "24.351.97", "side": "spbu_side", "call_id": "spbu-2435197-spbuside",
         "leg_index": leg_index, "expected_distance_m": 500,
+        "expected_polyline": encode_polyline(APPROACH_LINE if leg_index == 0 else DEPARTURE_LINE),
         **dict(zip(("origin_lat", "origin_lng", "origin_heading", "dest_lat", "dest_lng", "dest_heading"), points)),
     }
     base.update(kw)
@@ -201,7 +202,7 @@ class LegRows(unittest.TestCase):
         self.assertEqual(r0["road_segment_ids"], [])
         self.assertEqual(r0["speed_reading_intervals"], [])
         self.assertEqual(r0["demo_distance_m"], 500)
-        self.assertIsNone(r0["demo_rerouted"])
+        self.assertFalse(r0["demo_rerouted"])
         self.assertEqual(r0["demo_routing_preference"], "TRAFFIC_AWARE")
         self.assertEqual(r1["selected_route_id"], "spbu-2435197-spbuside-departure")
         self.assertEqual(r1["duration_in_seconds"], 63.0)
@@ -282,6 +283,29 @@ class LegRows(unittest.TestCase):
     def test_rows_are_json_serialisable(self):
         rows, _ = self.rows()
         json.dumps(rows)
+
+    def test_rerouted_when_distance_exceeds_expected(self):
+        (r0, r1), error = self.rows(resp=response(approach_dur="89s"), legs=[route(0, expected_distance_m=400), route(1)])
+        self.assertIsNone(error)
+        self.assertTrue(r0["demo_rerouted"])
+        self.assertFalse(r1["demo_rerouted"])
+
+    def test_rerouted_when_polyline_leaves_buffer(self):
+        bad = [(-5.41371, 105.32234), (-5.41400, 105.32300)]
+        resp = {
+            "routes": [{
+                "legs": [
+                    {"distanceMeters": 500, "duration": "89s", "staticDuration": "100s",
+                     "polyline": {"encodedPolyline": encode_polyline(bad)}},
+                    {"distanceMeters": 497, "duration": "63s", "staticDuration": "70s",
+                     "polyline": {"encodedPolyline": encode_polyline(DEPARTURE_LINE)}},
+                ]
+            }]
+        }
+        (r0, r1), error = self.rows(resp=resp)
+        self.assertIsNone(error)
+        self.assertTrue(r0["demo_rerouted"])
+        self.assertFalse(r1["demo_rerouted"])
 
 
 class FetchCall(unittest.TestCase):

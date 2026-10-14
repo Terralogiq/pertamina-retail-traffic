@@ -1,22 +1,20 @@
 import { errorText } from "../api";
 import { useEffect, useMemo, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
-import { CHART_INK, SEQUENTIAL, SERIES } from "../theme/palette";
+import { CHART_INK, SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
-import { PatternCell, TrafficPoint, getTrafficPattern, getTrafficSeries } from "./api";
+import { TrafficPoint, TypicalDayResponse, getTrafficSeries, getTypicalDay } from "./api";
 import Chart from "./Chart";
+import { TrafficTable, ViewToggle } from "./ChartTable";
+import { trafficHeadline } from "./headlines";
+import type { Site } from "../map/api";
 import {
-  DAYS,
-  HEATMAP_SCALE,
-  METRICS,
-  MetricField,
+  DelayDatum,
   Range,
-  emptyCells,
+  delaySeries,
+  delayTooltipText,
   hadRain,
-  heatmapData,
   legLabel,
-  legSeries,
-  patternLegs,
   precipitationSeries,
   tzLabel,
   utcOffsetMinutes,
@@ -26,8 +24,7 @@ import "./TrafficCharts.css";
 
 const LINE_HEIGHT = 200;
 const RAIN_HEIGHT = 96;
-const HEATMAP_HEIGHT = 216;
-// Same plot inset on every time chart, so the rain strip lines up under the traffic lines.
+// Same plot inset on every time chart, so the rain strip lines up under the traffic line.
 const GRID = { left: 52, right: 16, top: 12, bottom: 24 };
 const RANGES: { id: Range; label: string }[] = [
   { id: "24h", label: "24 h" },
@@ -39,37 +36,46 @@ const legColor = (leg: string) => SERIES[leg as "approach" | "departure"] ?? CHA
 /** Midnight reads "7 Oct" instead of a bare day number; other ticks are clock times. */
 const TIME_LABELS = { day: "{d} {MMM}", hour: "{HH}:{mm}", minute: "{HH}:{mm}" };
 
-function lineOption(points: TrafficPoint[], field: MetricField, unit: string, offsetMin: number, x: { min: number; max: number }) {
-  const lines = legSeries(points, field, offsetMin).map(({ leg, data }) => ({
+interface DelayTip {
+  seriesName?: string;
+  value?: [number, number | null] | DelayDatum;
+  data?: DelayDatum;
+}
+
+/** One delay line per leg. Speed and × usual time stay in the tooltip; they are not their own charts. */
+export function delayOption(
+  points: TrafficPoint[],
+  offsetMin: number,
+  x: { min: number; max: number },
+) {
+  const lines = delaySeries(points, offsetMin).map(({ leg, data }) => ({
     name: legLabel(leg),
-    type: "line",
+    type: "line" as const,
     showSymbol: false,
     connectNulls: false,
     data,
     color: legColor(leg),
     lineStyle: { width: 2 },
-    // The congestion index reads against free flow: a quiet reference line at 1.0.
-    markLine:
-      field === "congestion_index"
-        ? {
-            silent: true,
-            symbol: "none",
-            lineStyle: { color: CHART_INK.axis, type: "dashed", width: 1 },
-            label: { formatter: "free flow", color: CHART_INK.muted, fontSize: 12, position: "insideEndTop" },
-            data: [{ yAxis: 1 }],
-          }
-        : undefined,
   }));
   return {
-    useUTC: true, // timestamps are pre-shifted to site-local time (see legSeries)
+    useUTC: true, // timestamps are pre-shifted to site-local time (see delaySeries)
     animation: false,
     tooltip: {
-      trigger: "axis",
-      valueFormatter: (v: number | null) => (v == null ? "n/a" : `${field === "congestion_index" ? v.toFixed(2) : Math.round(v)}${unit ? ` ${unit}` : ""}`),
+      trigger: "axis" as const,
+      formatter: (raw: unknown) => {
+        const items = (Array.isArray(raw) ? raw : [raw]) as DelayTip[];
+        return items
+          .map((item) => {
+            const data = item.data ?? (item.value && "speed_kmh" in item.value ? item.value : undefined);
+            const plotted = Array.isArray(item.value) ? item.value[1] : data?.value[1];
+            return delayTooltipText(item.seriesName ?? "", plotted ?? null, data?.speed_kmh ?? null, data?.congestion_index ?? null);
+          })
+          .join("<br/>");
+      },
     },
     grid: GRID,
-    xAxis: { type: "time", min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
-    yAxis: { type: "value", scale: true, splitNumber: 3 },
+    xAxis: { type: "time" as const, min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
+    yAxis: { type: "value" as const, scale: true, splitNumber: 3 },
     series: lines,
   };
 }
@@ -78,56 +84,15 @@ function rainOption(rain: [number, number][], x: { min: number; max: number }) {
   return {
     useUTC: true,
     animation: false,
-    tooltip: { trigger: "axis", valueFormatter: (v: number) => `${v.toFixed(1)} mm` },
+    tooltip: { trigger: "axis" as const, valueFormatter: (v: number) => `${v.toFixed(1)} mm` },
     grid: GRID,
-    xAxis: { type: "time", min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
-    yAxis: { type: "value", min: 0, splitNumber: 2 },
-    series: [{ name: "Rain", type: "bar", data: rain, barMaxWidth: 6, itemStyle: { color: SERIES.rain } }],
+    xAxis: { type: "time" as const, min: x.min, max: x.max, axisLabel: { formatter: TIME_LABELS } },
+    yAxis: { type: "value" as const, min: 0, splitNumber: 2 },
+    series: [{ name: "Rain", type: "bar" as const, data: rain, barMaxWidth: 6, itemStyle: { color: SERIES.rain } }],
   };
 }
 
-export function heatmapOption(cells: PatternCell[], leg: string) {
-  const clamp = (v: number) => Math.min(HEATMAP_SCALE.max, Math.max(HEATMAP_SCALE.min, v));
-  // [hour, day, colour value, real value]: colour clamps to the fixed scale, the tooltip keeps the real mean.
-  const data = heatmapData(cells, leg).map(([h, d, v]) => [h, d, clamp(v), v]);
-  const empty = emptyCells(cells, leg).map(([h, d]) => [h, d, 0]);
-  const cell = { borderColor: CHART_INK.surface, borderWidth: 2 };
-  const hh = (h: number) => String(h).padStart(2, "0");
-  return {
-    animation: false,
-    tooltip: {
-      formatter: (p: { seriesIndex: number; value: number[] }) =>
-        `${DAYS[p.value[1]]} ${hh(p.value[0])}:00 · ${p.seriesIndex === 0 ? p.value[3].toFixed(2) : "no data"}`,
-    },
-    grid: { left: 40, right: 8, top: 4, bottom: 24 },
-    xAxis: {
-      type: "category",
-      data: Array.from({ length: 24 }, (_, h) => hh(h)),
-      axisLabel: { interval: 2 },
-      axisTick: { show: false },
-      splitArea: { show: false },
-    },
-    yAxis: { type: "category", data: DAYS, inverse: true, axisTick: { show: false }, splitArea: { show: false } },
-    // ECharts requires every heatmap series to sit under a visualMap: the second one paints the "no data" cells flat.
-    visualMap: [
-      {
-        show: false,
-        seriesIndex: 0,
-        dimension: 2,
-        min: HEATMAP_SCALE.min,
-        max: HEATMAP_SCALE.max,
-        inRange: { color: [...SEQUENTIAL] },
-      },
-      { show: false, seriesIndex: 1, dimension: 2, min: 0, max: 1, inRange: { color: [CHART_INK.grid, CHART_INK.grid] } },
-    ],
-    series: [
-      { type: "heatmap", data, itemStyle: cell, emphasis: { itemStyle: { borderColor: CHART_INK.text } } },
-      { type: "heatmap", data: empty, itemStyle: cell, emphasis: { disabled: true } },
-    ],
-  };
-}
-
-/** Approach and departure, shown once for all three charts instead of a legend inside each. */
+/** Approach and departure, shown once for the delay chart instead of a legend inside the plot. */
 function LegLegend({ legs }: { legs: string[] }) {
   return (
     <ul className="leg-legend" aria-label="Legend">
@@ -154,19 +119,23 @@ function RangeControl({ value, onChange }: { value: Range; onChange: (r: Range) 
   );
 }
 
-/** Per-leg traffic series with a rain strip on the same time axis (no dual axis). Core columns only. */
+/** Recent delay, one chart, with a rain strip on the same time axis. Core columns only. */
 export default function TrafficCharts({
   siteId,
   timezone,
   baselineNote,
+  site,
 }: {
   siteId: string;
   timezone: string | null | undefined;
   baselineNote?: string | null;
+  site?: import("../map/api").Site;
 }) {
   const [range, setRange] = useState<Range>("24h");
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
+  const [profile, setProfile] = useState<TypicalDayResponse | null>(null);
   const [weather, setWeather] = useState<WeatherSeriesPoint[] | null>(null);
+  const [view, setView] = useState<"chart" | "table">("chart");
   const [error, setError] = useState("");
   const [rainError, setRainError] = useState("");
   const [now] = useState(() => new Date());
@@ -181,7 +150,7 @@ export default function TrafficCharts({
     getTrafficSeries(siteId, from)
       .then((rows) => live && setPoints(rows))
       .catch((e) => live && setError(errorText(e)));
-    // The rain strip is optional: a failed weather fetch shows an error in its block, the traffic charts still render.
+    // The rain strip is optional: a failed weather fetch shows an error in its block, the delay chart still renders.
     getWeatherSeries(siteId, from)
       .then((rows) => live && setWeather(rows))
       .catch((e) => live && setRainError(errorText(e)));
@@ -189,6 +158,18 @@ export default function TrafficCharts({
       live = false;
     };
   }, [siteId, from]);
+
+  useEffect(() => {
+    let live = true;
+    getTypicalDay(siteId)
+      .then((body) => live && setProfile(body))
+      .catch(() => live && setProfile(null));
+    return () => {
+      live = false;
+    };
+  }, [siteId]);
+
+  const weekdayHeadline = trafficHeadline(profile);
 
   const tz = tzLabel(timezone);
   const offsetMin = utcOffsetMinutes(timezone, now);
@@ -198,8 +179,8 @@ export default function TrafficCharts({
     return { min: Date.parse(from) + shift, max: end + shift };
   }, [from, now, offsetMin]);
   const rain = useMemo(() => precipitationSeries(weather ?? [], offsetMin), [weather, offsetMin]);
-  const charts = useMemo(
-    () => (points && points.length ? METRICS.map((m) => ({ ...m, option: lineOption(points, m.field, m.unit, offsetMin, x) })) : []),
+  const delay = useMemo(
+    () => (points && points.length ? delayOption(points, offsetMin, x) : null),
     [points, offsetMin, x],
   );
   const rainChart = useMemo(() => (hadRain(rain) ? rainOption(rain, x) : null), [rain, x]);
@@ -215,96 +196,91 @@ export default function TrafficCharts({
       actions={<RangeControl value={range} onChange={setRange} />}
     >
       {baselineNote && <p className="traffic-provisional">{baselineNote}</p>}
+      {weekdayHeadline && <p className="traffic-headline">{weekdayHeadline}</p>}
       {error && <Notice tone="error">Couldn't load traffic. {error}</Notice>}
       {!error && points === null && (
         <div className="traffic-stack" aria-busy="true">
-          {METRICS.map((m) => (
-            <Skeleton key={m.field} height={LINE_HEIGHT} label={`Loading ${m.title.toLowerCase()}`} />
-          ))}
+          <Skeleton height={LINE_HEIGHT} label="Loading delay" />
           <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
         </div>
       )}
       {points !== null && points.length === 0 && <Notice>No traffic readings in the {windowLabel}.</Notice>}
-      {charts.length > 0 && (
-        <div className="traffic-stack">
-          <LegLegend legs={legs} />
-          {charts.map((m) => (
-            <Block key={m.field} title={m.title + (m.unit ? ` (${m.unit})` : "")} aside={m.hint}>
-              <Chart option={m.option} height={LINE_HEIGHT} group={group} label={`${m.title}, ${windowLabel}`} />
-            </Block>
-          ))}
-          <Block title="Rain (mm)" aside="measured, per half hour">
-            {rainError ? (
-              <Notice tone="error">Couldn't load rain. {rainError}</Notice>
-            ) : weather === null ? (
-              <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
-            ) : rainChart ? (
-              <Chart option={rainChart} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
-            ) : (
-              <Notice>No rain in the {windowLabel}.</Notice>
-            )}
-          </Block>
-        </div>
+      {delay && (
+        <TrafficChartsBody
+          delay={delay}
+          rainChart={rainChart}
+          points={points ?? []}
+          weather={weather}
+          rainError={rainError}
+          legs={legs}
+          site={site}
+          timezone={timezone}
+          group={group}
+          windowLabel={windowLabel}
+          view={view}
+          onViewChange={setView}
+        />
       )}
     </Section>
   );
 }
 
-/** Mean congestion by weekday and local hour, one fixed scale for both legs. Blank cells have no sample yet. */
-export function TrafficPattern({ siteId, timezone }: { siteId: string; timezone: string | null | undefined }) {
-  const [pattern, setPattern] = useState<PatternCell[] | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let live = true;
-    setPattern(null);
-    setError("");
-    getTrafficPattern(siteId)
-      .then((cells) => live && setPattern(cells))
-      .catch((e) => live && setError(errorText(e)));
-    return () => {
-      live = false;
-    };
-  }, [siteId]);
-
-  const legs = useMemo(() => patternLegs(pattern ?? []), [pattern]);
-  const heatmaps = useMemo(() => legs.map((leg) => ({ leg, option: heatmapOption(pattern ?? [], leg) })), [legs, pattern]);
-  const tz = tzLabel(timezone);
-
-  return (
-    <Section
-      id="pattern"
-      title="Weekly pattern"
-      note={`Mean congestion index by day and hour, last 28 days, ${tz}`}
-      actions={<HeatmapLegend />}
-    >
-      {error && <Notice tone="error">Couldn't load the pattern. {error}</Notice>}
-      {!error && pattern === null && <Skeleton height={HEATMAP_HEIGHT} label="Loading weekly pattern" />}
-      {pattern !== null && legs.length === 0 && <Notice>No readings in the last 28 days.</Notice>}
-      {legs.length > 0 && (
-        <div className="pattern-grid">
-          {heatmaps.map(({ leg, option }) => (
-            <Block key={leg} title={legLabel(leg)}>
-              <Chart option={option} height={HEATMAP_HEIGHT} label={`${legLabel(leg)} weekly pattern`} />
-            </Block>
-          ))}
-        </div>
-      )}
-    </Section>
-  );
+interface TrafficChartsBodyProps {
+  delay: ReturnType<typeof delayOption>;
+  rainChart: ReturnType<typeof rainOption> | null;
+  points: TrafficPoint[];
+  weather: WeatherSeriesPoint[] | null;
+  rainError: string;
+  legs: string[];
+  site?: Site;
+  timezone: string | null | undefined;
+  group: string;
+  windowLabel: string;
+  view: "chart" | "table";
+  onViewChange: (mode: "chart" | "table") => void;
 }
 
-/** Scale outside the plot (F11): what 1.0 and 2.0 mean, plus the "no data" swatch. */
-function HeatmapLegend() {
+/** Loaded state of the traffic card: chart/table toggle, delay block, rain block. */
+export function TrafficChartsBody({
+  delay,
+  rainChart,
+  points,
+  weather,
+  rainError,
+  legs,
+  site,
+  timezone,
+  group,
+  windowLabel,
+  view,
+  onViewChange,
+}: TrafficChartsBodyProps) {
   return (
-    <div className="heatmap-legend">
-      <span className="heatmap-legend-end">1.0 free flow</span>
-      <span className="heatmap-ramp" aria-hidden="true" />
-      <span className="heatmap-legend-end">2.0+ twice as slow</span>
-      <span className="heatmap-nodata">
-        <span className="heatmap-nodata-swatch" aria-hidden="true" />
-        no data yet
-      </span>
+    <div className="traffic-stack">
+      <LegLegend legs={legs} />
+      <Block title="Delay (s)" aside="versus free flow">
+        {view === "chart" ? (
+          <Chart option={delay} height={LINE_HEIGHT} group={group} label={`Delay, ${windowLabel}`} />
+        ) : (
+          <div className="chart-table-wrap">
+            <TrafficTable points={points} timezone={timezone} site={site} />
+          </div>
+        )}
+      </Block>
+      <div className="site-section-actions">
+        <ViewToggle mode={view} onChange={onViewChange} />
+      </div>
+      <Block title="Rain (mm)" aside="measured, per half hour">
+        {rainError ? (
+          <Notice tone="error">Couldn't load rain. {rainError}</Notice>
+        ) : weather === null ? (
+          <Skeleton height={RAIN_HEIGHT} label="Loading rain" />
+        ) : rainChart ? (
+          <Chart option={rainChart} height={RAIN_HEIGHT} group={group} label={`Rain, ${windowLabel}`} />
+        ) : (
+          <Notice>No rain in the {windowLabel}.</Notice>
+        )}
+      </Block>
     </div>
   );
 }
