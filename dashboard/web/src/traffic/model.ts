@@ -20,6 +20,23 @@ export function windowStart(range: Range, now: Date): string {
 
 const TZ_LABELS: Record<string, string> = { "Asia/Jakarta": "WIB", "Asia/Makassar": "WITA" };
 
+/** Local date and clock time in the site's timezone, e.g. "7 Oct 14:30 WIB". */
+export function localDateTime(slotTime: string, timezone: string): string {
+  const date = new Date(slotTime);
+  const datePart = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: timezone,
+  }).format(date);
+  return `${datePart} ${timePart} ${TZ_LABELS[timezone] ?? timezone}`;
+}
+
 /** WIB / WITA for the two Indonesian zones this app uses; the IANA name otherwise; UTC when unknown. */
 export function tzLabel(timezone: string | null | undefined): string {
   if (!timezone) return "UTC";

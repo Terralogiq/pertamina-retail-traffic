@@ -174,13 +174,22 @@ function DayKindControl({ value, onChange }: { value: DayKind; onChange: (kind: 
 }
 
 /** Weekday or weekend profile: readiness, the median chart, and the per-hour counts. */
-export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; dayKind: DayKind }) {
+export function TypicalDayBody({
+  data,
+  dayKind,
+  view,
+  onViewChange,
+}: {
+  data: TypicalDayResponse;
+  dayKind: DayKind;
+  view: "chart" | "table";
+  onViewChange: (view: "chart" | "table") => void;
+}) {
   const legs = useMemo(
     () => data.legs.filter((leg) => leg.day_kind === dayKind).sort((a, b) => a.leg.localeCompare(b.leg)),
     [data, dayKind],
   );
   const option = useMemo(() => (legs.length ? typicalChartOption(legs) : null), [legs]);
-  const [view, setView] = useState<"chart" | "table">("chart");
   const kindLabel = dayKind === "weekday" ? "weekday" : "weekend";
 
   return (
@@ -201,7 +210,7 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
             )}
           </Block>
           <div className="site-section-actions">
-            <ViewToggle mode={view} onChange={setView} />
+            <ViewToggle mode={view} onChange={onViewChange} />
           </div>
           <p className="typical-caption">Count under each hour. Faded hours have fewer than 4 readings.</p>
           {legs.map((leg) => (
@@ -218,6 +227,7 @@ export function TypicalDayBody({ data, dayKind }: { data: TypicalDayResponse; da
 /** Replaces the day × hour heatmap. Id stays `pattern` so existing section links keep working. */
 export default function TypicalDay({ siteId, timezone }: { siteId: string; timezone: string | null | undefined }) {
   const [dayKind, setDayKind] = useState<DayKind>("weekday");
+  const [view, setView] = useState<"chart" | "table">("chart");
   const [data, setData] = useState<TypicalDayResponse | null>(null);
   const [error, setError] = useState("");
 
@@ -242,7 +252,7 @@ export default function TypicalDay({ siteId, timezone }: { siteId: string; timez
     >
       {error && <Notice tone="error">Couldn't load the typical day. {error}</Notice>}
       {!error && data === null && <Skeleton height={CHART_HEIGHT} label="Loading typical day" />}
-      {data && <TypicalDayBody data={data} dayKind={dayKind} />}
+      {data && <TypicalDayBody data={data} dayKind={dayKind} view={view} onViewChange={setView} />}
     </Section>
   );
 }

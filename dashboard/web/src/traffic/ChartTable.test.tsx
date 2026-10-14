@@ -51,7 +51,7 @@ describe("ChartTable", () => {
         selected_route_id: "r-departure",
         site_id: "s",
         leg: "departure",
-        slot_time: "2026-10-07T12:30:00Z",
+        slot_time: "2026-10-08T12:30:00Z",
         duration_s: 80,
         delay_s: 10,
         congestion_index: 1.2,
@@ -67,6 +67,9 @@ describe("ChartTable", () => {
     expect(html).toContain("+20 s");
     expect(html).toContain("Moderate");
     expect(html).toContain("28 km/h");
+    // 7 Oct vs 8 Oct in Asia/Jakarta (UTC+7)
+    expect(html).toContain("7 Oct");
+    expect(html).toContain("8 Oct");
   });
 
   it("uses the toll delay gate for a toll site", () => {

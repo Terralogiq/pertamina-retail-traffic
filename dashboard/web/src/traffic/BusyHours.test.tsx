@@ -55,6 +55,8 @@ describe("busy hours", () => {
       <TypicalDayBody
         data={{ days: 6, ready: false, legs: [leg([7], [])] }}
         dayKind="weekday"
+        view="chart"
+        onViewChange={() => undefined}
       />,
     );
     expect(waiting).toContain("Needs 1 more day");

@@ -1,8 +1,8 @@
 import type { Site } from "../map/api";
 import { BANDS } from "../theme/palette";
 import type { TrafficPoint, TypicalLeg } from "./api";
-import { formatSlot, legBand, legContext } from "../map/bands";
-import { formatDelay, legLabel } from "./model";
+import { legBand, legContext } from "../map/bands";
+import { formatDelay, legLabel, localDateTime } from "./model";
 import "./TrafficCharts.css";
 
 type TableMode = "chart" | "table";
@@ -49,7 +49,7 @@ export function TrafficTable({
       <tbody>
         {rows.map((p) => (
           <tr key={`${p.selected_route_id}-${p.slot_time}`}>
-            <td>{timezone ? formatSlot(p.slot_time, timezone) : p.slot_time}</td>
+            <td>{timezone ? localDateTime(p.slot_time, timezone) : p.slot_time}</td>
             <td>{legLabel(p.leg)}</td>
             <td className="num">{formatDelay(p.delay_s)}</td>
             <td>{trafficBand(p, site)}</td>

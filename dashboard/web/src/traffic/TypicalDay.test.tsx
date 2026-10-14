@@ -62,7 +62,7 @@ describe("typical day", () => {
   });
 
   it("shows the readiness note and both day kinds", () => {
-    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" />);
+    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" view="chart" onViewChange={() => undefined} />);
     expect(html).toContain("Based on 6 days. Needs 1 more day.");
     expect(html).toContain("Not enough days yet.");
     expect(html).not.toContain("is slowest");
@@ -79,12 +79,17 @@ describe("typical day", () => {
   });
 
   it("renders the table with one row per hour when the view is table", () => {
-    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" />).replace(
-      'aria-pressed="false"',
-      'aria-pressed="true"',
-    );
-    // The default view is chart; simulate table by checking the toggle is present.
-    expect(html).toContain("Table");
+    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" view="table" onViewChange={() => undefined} />);
+    const rows = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
+    expect(rows.match(/<tr\b/g)?.length).toBe(4);
+    expect(html).toContain("08:00");
+    expect(html).toContain("09:00");
+    expect(html).toContain("Approach");
+    expect(html).toContain("Departure");
+    expect(html).toContain("+40 s");
+    expect(html).toContain("+1.3 min");
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-pressed="false"');
   });
 
   it("names the busiest window once the profile is ready", () => {
@@ -102,7 +107,7 @@ describe("typical day", () => {
         },
       ],
     };
-    const html = renderToStaticMarkup(<TypicalDayBody data={ready} dayKind="weekday" />);
+    const html = renderToStaticMarkup(<TypicalDayBody data={ready} dayKind="weekday" view="chart" onViewChange={() => undefined} />);
     expect(html).toContain("Approach is slowest 07:00–09:00, about 3 min slower than usual.");
   });
 });
