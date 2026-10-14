@@ -66,6 +66,7 @@ def load_routes_csv(path):
                 "dest_lat": float(r["dest_lat"]), "dest_lng": float(r["dest_lng"]),
                 "dest_heading": _opt(r, "dest_heading", int),
                 "expected_distance_m": _opt(r, "expected_distance_m", int),
+                "expected_polyline": r.get("expected_polyline", ""),
             })
     return out
 
@@ -88,7 +89,7 @@ def print_summary(slot, t_rows, w_rows, t_errors, w_errors):
         print(f"  {r['selected_route_id']:36} dur {f(r['duration_in_seconds'], '6.0f')} s  "
               f"static {f(r['static_duration_in_seconds'], '6.0f')} s  ratio {f(r['static_ratio'], '5.2f')}  "
               f"{f(r['speed_kmh'], '5.1f')} km/h  dist {f(r['demo_distance_m'], '5.0f')} m  "
-              f"geom {'yes' if r['route_geometry'] else 'NO'}")
+              f"rerouted {r['demo_rerouted']}  geom {'yes' if r['route_geometry'] else 'NO'}")
     print(f"weather: {len(w_rows)} rows, {sum(r['temperature_c'] is not None for r in w_rows)} with values; "
           f"{len(w_errors)} failed calls")
     for r in w_rows:

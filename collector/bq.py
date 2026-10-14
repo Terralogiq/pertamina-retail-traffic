@@ -53,7 +53,8 @@ SELECT selected_route_id, display_name, site_id, side, call_id, leg_index,
        ST_Y(origin) AS origin_lat, ST_X(origin) AS origin_lng,
        ST_Y(destination) AS dest_lat, ST_X(destination) AS dest_lng,
        demo_origin_heading AS origin_heading, demo_dest_heading AS dest_heading,
-       expected_distance_m
+       expected_distance_m,
+       ST_ASGEOJSON(expected_polyline) AS expected_polyline
 FROM `{project}.{dataset}.routes`
 WHERE active
 ORDER BY call_id, leg_index
