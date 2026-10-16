@@ -1,5 +1,7 @@
 # Overview station table: queue risk and complaints across all stations
 
+Superseded: the shipped overview is [overview-potential-queues.md](overview-potential-queues.md).
+
 Beads: `.10.25` (table and endpoints), `.9.14` (Review themes placement). Related: `.10.18` (site-page queue-risk card, absorbs `.10.26`, waits for the Street View check `.10.16`), `.9.15` (Maps key referrer, a console or `gcloud` change, no code).
 
 ## Why

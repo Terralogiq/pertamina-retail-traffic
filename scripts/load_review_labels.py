@@ -56,6 +56,7 @@ def label_rows(items, site_by_key, labeled_at):
         "sentiment": i["sentiment"],
         "praise_only": i["praise_only"],
         "gist": i["gist"],
+        "road_queue": None,   # the flag comes from Gemini prompt p4; manual rows stay NULL
         "method": METHOD,
         "model_version": MODEL_VERSION,
         "labeled_at": labeled_at,

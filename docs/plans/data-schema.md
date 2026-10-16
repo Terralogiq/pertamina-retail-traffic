@@ -275,6 +275,7 @@ Derived table (bead `.10.5.1`): labels per review for the complaints analysis an
 | `sentiment` | STRING | `neg`, `mixed` or `pos` |
 | `praise_only` | BOOL | true when `sentiment` is `pos` |
 | `gist` | STRING | one-line English gist, masked |
+| `road_queue` | BOOL, nullable | `gemini` rows from prompt p4 on: true only when the review says the queue reaches the road or roadside (spills onto or blocks the road, or drivers wait on the shoulder); false for forecourt queues, slow service and jams not tied to the station's queue. `manual` rows and rows from older prompts are NULL. Added with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`; no backfill beyond the relabel. Readers treat NULL as false |
 | `method` | STRING | `manual` or `gemini`; MERGE key with `review_key` |
 | `model_version` | STRING | `taxonomy_v1` for `manual`; `gemini-3.8-flash/p1` (pinned model id + prompt version) for `gemini`. The model id and prompt version are constants in `reviews_job/gemini.py`; `PROMPT_VERSION` is bumped by hand (a test pins the prompt hash). A new `model_version` makes every text review unlabelled again, so the MERGE replaces the `gemini` rows |
 | `labeled_at` | TIMESTAMP | when the row was written |

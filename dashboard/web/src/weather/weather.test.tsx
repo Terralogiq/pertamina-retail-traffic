@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SiteWeatherCell } from "../map/Overview";
+import { SiteWeatherCell } from "../overview/StationList";
 import { DEMO_ONLY_FIELDS, WIDGET_DEMO_FIELDS } from "./fields";
 import { CoreConditions, DemoConditions, PrecipProbabilityChart, WeatherChart } from "./WeatherPanel";
 import { RainBars, RainScatter, RainToggle } from "./RainView";

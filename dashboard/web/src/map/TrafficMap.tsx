@@ -1,15 +1,16 @@
 import { ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { GROUP_LABELS, GROUP_MARKER_TEXT, GROUP_ORDER, QueueGroup } from "../overview/model";
 import { BANDS, CHART_INK } from "../theme/palette";
 import { LatestLeg, Site } from "./api";
 import { boundsOf, formatDelay, legColor, legContext, lineToPath, sitePoints } from "./bands";
-import Legend from "./Legend";
+import Legend, { QueueLegend } from "./Legend";
 import { GroupPopup, LegPopup, SitePopup, buildGroupPopup, buildLegPopup, buildSitePopup } from "./LegPopup";
 import { loadMaps } from "./maps";
-import { MapMarker } from "./MapMarker";
+import { MapMarker, QueueMarker } from "./MapMarker";
 import { useMapPopup } from "./useMapPopup";
-import { MARKER_BOX, MARKER_BOX_COMPACT, clusterPoints, rankSites } from "./severity";
+import { MARKER_BOX, MARKER_BOX_COMPACT, MARKER_BOX_WIDE, Point, SiteState, clusterPoints, rankSites, zoomToSeparate } from "./severity";
 
 type Libs = Awaited<ReturnType<typeof loadMaps>>;
 
@@ -37,8 +38,10 @@ function useCompact(): boolean {
 
 /** A marker pill sits above its point; a hover card is raised by about its height (pill, tail and hover lift) to clear it. */
 const MARKER_CARD_LIFT_PX = 48;
+/** The selected marker draws over its neighbours. */
+const SELECTED_Z = 1000;
 
-/** Pointer-enter handler for hover cards: a touch tap fires it too, but there a tap acts (navigate, zoom, pin) and has no hover. */
+/** Pointer-enter handler for hover cards: a touch tap fires it too, but there a tap acts (select, zoom, pin) and has no hover. */
 const hoverOnly = (show: () => void) => (e: Event) => {
   if ((e as PointerEvent).pointerType !== "touch") show();
 };
@@ -68,12 +71,25 @@ function reactMarker(
 interface Props {
   sites: Site[];
   latest: Map<string, LatestLeg>;
-  /** Overview shows every site (grouped when they overlap) and navigates on click; the site map passes one site's id. */
+  /** Overview shows every site (grouped when they overlap) and selects one on click; the site map passes one site's id. */
   siteId?: string;
   onSelectSite?: (siteId: string) => void;
+  /**
+   * Overview "Potential queues" mode: each site's group sets its marker, and the group key replaces the band key
+   * (no legs, no hover cards). null while the groups load (no markers yet); undefined for live traffic.
+   */
+  queueGroups?: Map<string, QueueGroup> | null;
+  /** Overview: the selected site's marker is raised and ringed, and the map pans (zooming out of a group marker) to it. */
+  selectedId?: string | null;
 }
 
-export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Props) {
+/** Sites in group order (list order), keeping the ranking within a group, so a cluster's first member is its highest group. */
+const byGroup = (ranked: SiteState[], groups: Map<string, QueueGroup>) => {
+  const rank = (s: SiteState) => GROUP_ORDER.indexOf(groups.get(s.site.site_id) ?? "none");
+  return [...ranked].sort((a, b) => rank(a) - rank(b));
+};
+
+export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueGroups, selectedId = null }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const [libs, setLibs] = useState<Libs | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -88,8 +104,13 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   // Handlers read the callback through a ref so a new function identity does not redraw the overlays.
   const select = useRef(onSelectSite);
   select.current = onSelectSite;
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  // The marker effect's last clustering input, so a selection can work out the zoom that separates its marker.
+  const clusterInput = useRef<{ points: Point[]; box: typeof MARKER_BOX } | null>(null);
   const clickable = !!onSelectSite;
-  const showLegs = !!siteId || zoom >= LEGS_MIN_ZOOM;
+  const potential = queueGroups !== undefined;
+  const showLegs = !potential && (!!siteId || zoom >= LEGS_MIN_ZOOM);
   // Group markers depend on the zoom on the overview only; the site map never regroups.
   const groupZoom = siteId ? 0 : zoom;
 
@@ -132,7 +153,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
   }, [map, shown, fitPadding]);
 
   // Legs: a light casing under each coloured line so it holds against any basemap; redraw on new data.
-  // Hover shows the leg card. Where a click does not navigate (the site map), a click or tap pins it with a
+  // Hover shows the leg card. Where a click does not select (the site map), a click or tap pins it with a
   // close button (Escape or a click on the map closes it; see useMapPopup).
   useEffect(() => {
     if (!map || !libs || !showLegs) return;
@@ -186,28 +207,53 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
     };
   }, [map, libs, shown, latest, clickable, showLegs, popup]);
 
-  // Markers: one per site showing its worst band and delay; on the overview, sites that would overlap at
-  // this zoom share one group marker (its worst member's band) that zooms in on click.
+  // Markers: one per site; on the overview, sites that would overlap at this zoom share one group marker that
+  // zooms in on click. Live traffic shows each site's worst band and delay (a group: its worst member's band);
+  // "Potential queues" shows each site's group (a group marker: its highest group).
   useEffect(() => {
-    if (!map || !libs) return;
+    if (!map || !libs || queueGroups === null) return;
     const ranked = rankSites(shown, latest);
-    const byId = new Map(ranked.map((s) => [s.site.site_id, s]));
-    const groups = siteId
-      ? ranked.map((s) => ({ ids: [s.site.site_id], ...s.site.location }))
-      : clusterPoints(ranked.map((s) => ({ id: s.site.site_id, ...s.site.location })), groupZoom, compact ? MARKER_BOX_COMPACT : MARKER_BOX);
+    const ordered = queueGroups ? byGroup(ranked, queueGroups) : ranked;
+    const byId = new Map(ordered.map((s) => [s.site.site_id, s]));
+    const box = compact ? MARKER_BOX_COMPACT : queueGroups ? MARKER_BOX_WIDE : MARKER_BOX;
+    const points = ordered.map((s) => ({ id: s.site.site_id, ...s.site.location }));
+    clusterInput.current = { points, box };
+    const groups = siteId ? ordered.map((s) => ({ ids: [s.site.site_id], ...s.site.location })) : clusterPoints(points, groupZoom, box);
     const cleanups: (() => void)[] = [];
 
     for (const group of groups) {
       const members = group.ids.map((id) => byId.get(id)!);
-      const lead = members[0]; // ranked order: the worst site leads its group
+      const lead = members[0]; // ordered: the worst site (or highest group) leads its group
       if (members.length === 1) {
         const { site, band, worstDelay } = lead;
+        const selected = site.site_id === selectedId;
+        if (queueGroups) {
+          const g = queueGroups.get(site.site_id) ?? "none";
+          const { marker, remove } = reactMarker(
+            libs,
+            map,
+            site.location,
+            `${site.name}: ${GROUP_LABELS[g]}`,
+            <QueueMarker queueGroup={g} text={GROUP_MARKER_TEXT[g]} compact={compact} selected={selected} />,
+          );
+          if (selected) marker.zIndex = SELECTED_Z;
+          marker.addEventListener("gmp-click", () => select.current?.(site.site_id));
+          cleanups.push(remove);
+          continue;
+        }
         const text = worstDelay === null ? BANDS.none.label : formatDelay(worstDelay);
-        const { marker, remove } = reactMarker(libs, map, site.location, `${site.name}: ${BANDS[band].label}, ${text}`, <MapMarker band={band} text={text} compact={compact} />);
+        const { marker, remove } = reactMarker(
+          libs,
+          map,
+          site.location,
+          `${site.name}: ${BANDS[band].label}, ${text}`,
+          <MapMarker band={band} text={text} compact={compact} selected={selected} />,
+        );
+        if (selected) marker.zIndex = SELECTED_Z;
         const model = buildSitePopup(site, latest);
         marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(site.location, <SitePopup model={model} />, MARKER_CARD_LIFT_PX)));
         marker.addEventListener("pointerleave", popup.hideSoon);
-        // Where a click does not navigate (the site map) a tap pins the card, as on the legs.
+        // Where a click does not select (the site map) a tap pins the card, as on the legs.
         marker.addEventListener("gmp-click", () =>
           clickable
             ? select.current?.(site.site_id)
@@ -216,18 +262,23 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         cleanups.push(remove);
       } else {
         const names = members.map((m) => m.site.name);
-        const title = `${members.length} sites, worst ${BANDS[lead.band].label}: ${names.join(", ")}`;
-        const { marker, remove } = reactMarker(
-          libs,
-          map,
-          { lat: group.lat, lng: group.lng },
-          title,
-          <MapMarker band={lead.band} text={compact ? String(members.length) : `${members.length} sites`} group compact={compact} />,
-        );
-        const model = buildGroupPopup(members);
         const at = { lat: group.lat, lng: group.lng };
-        marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(at, <GroupPopup model={model} />, MARKER_CARD_LIFT_PX)));
-        marker.addEventListener("pointerleave", popup.hideSoon);
+        const countText = compact ? String(members.length) : `${members.length} sites`;
+        const leadGroup = queueGroups?.get(lead.site.site_id);
+        const { marker, remove } = leadGroup
+          ? reactMarker(libs, map, at, `${members.length} sites: ${names.join(", ")}`, <QueueMarker queueGroup={leadGroup} text={countText} group compact={compact} />)
+          : reactMarker(
+              libs,
+              map,
+              at,
+              `${members.length} sites, worst ${BANDS[lead.band].label}: ${names.join(", ")}`,
+              <MapMarker band={lead.band} text={countText} group compact={compact} />,
+            );
+        if (!queueGroups) {
+          const model = buildGroupPopup(members);
+          marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(at, <GroupPopup model={model} />, MARKER_CARD_LIFT_PX)));
+          marker.addEventListener("pointerleave", popup.hideSoon);
+        }
         marker.addEventListener("gmp-click", () => {
           const bounds = boundsOf(sitePoints(members.map((m) => m.site)));
           if (bounds) map.fitBounds(bounds, fitPadding);
@@ -239,7 +290,20 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
       popup.hide();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup, compact, fitPadding]);
+  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup, compact, fitPadding, queueGroups, selectedId]);
+
+  // Selection: pan to the site, zooming in first when its marker sits inside a group marker at this zoom.
+  useEffect(() => {
+    if (!map || !selectedId || siteId) return;
+    const site = shownRef.current.find((s) => s.site_id === selectedId);
+    if (!site) return;
+    // The zoom the markers were grouped at (see the idle listener), so "already separate" matches what is drawn.
+    const zoom = Math.floor((map.getZoom() ?? START.zoom) * 4) / 4;
+    const input = clusterInput.current;
+    const next = input ? zoomToSeparate(input.points, selectedId, zoom, input.box) : zoom;
+    if (next > zoom || window.matchMedia("(prefers-reduced-motion: reduce)").matches) map.moveCamera({ center: site.location, zoom: next });
+    else map.panTo(site.location);
+  }, [map, selectedId, siteId]);
 
   return (
     <>
@@ -249,7 +313,8 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite }: Prop
         </div>
       )}
       <div ref={el} className="map-canvas" />
-      {legendEl && createPortal(<Legend sites={shown} latest={latest} compact={!!siteId} />, legendEl)}
+      {legendEl &&
+        createPortal(potential ? <QueueLegend /> : <Legend sites={shown} latest={latest} compact={!!siteId} />, legendEl)}
     </>
   );
 }

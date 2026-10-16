@@ -241,8 +241,12 @@ CREATE TABLE IF NOT EXISTS traffic.place_review_labels (
   sentiment     STRING,                     -- neg | mixed | pos
   praise_only   BOOL,                       -- true when sentiment is pos
   gist          STRING,                     -- one-line English gist, masked; no text, no author
+  road_queue    BOOL,                       -- gemini p4+: true only when the review says the queue reaches the road or roadside; NULL for manual rows and older prompts
   method        STRING NOT NULL,            -- manual | gemini
   model_version STRING,                     -- taxonomy_v1 (manual) | gemini-<ver>/<prompt version>
   labeled_at    TIMESTAMP NOT NULL
 )
 CLUSTER BY site_id;
+
+-- CREATE ... IF NOT EXISTS leaves an old table as it was: bring it up to date.
+ALTER TABLE traffic.place_review_labels ADD COLUMN IF NOT EXISTS road_queue BOOL;

@@ -11,7 +11,7 @@ export interface MapPopup {
   /** Hide shortly, unless a card is pinned. */
   hideSoon(): void;
   hide(): void;
-  /** Pin the card for `owner` (touch, or a click where a click does not navigate); a second call for the same owner closes it. */
+  /** Pin the card for `owner` (touch, or a click where a click does not select a site); a second call for the same owner closes it. */
   togglePin(owner: unknown, at: google.maps.LatLngLiteral, body: (onClose: () => void) => ReactElement, liftPx?: number): void;
   /**
    * Close on Escape and on a click on the map. The returned cleanup clears the timer and the pin, removes the

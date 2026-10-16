@@ -40,7 +40,7 @@ QUALIFY ROW_NUMBER() OVER (
 
 # The same one-label-per-review rule over every site: no gist, no text.
 ALL_LABELS_SQL = f"""
-SELECT l.site_id, r.published_at, l.labels, l.sentiment
+SELECT l.site_id, r.published_at, l.labels, l.sentiment, l.road_queue
 FROM {bq.table("place_review_labels")} AS l
 JOIN {bq.table("v_place_reviews")} AS r ON r.review_key = l.review_key AND r.site_id = l.site_id
 QUALIFY ROW_NUMBER() OVER (
@@ -101,10 +101,19 @@ def summary_entry(site_id, rows, since):
     if counted:
         best = counted[0]["count"]  # sorted by count descending
         top = {"categories": sorted(c["category"] for c in counted if c["count"] == best), "count": best}
+    queue_recent = sum(
+        1 for row in rows
+        if row["sentiment"] in NEGATIVE and QUEUE_CATEGORY in (row["labels"] or [])
+        and row["published_at"] is not None and row["published_at"] >= since)
+    road_queue_recent = sum(
+        1 for row in rows
+        if row.get("road_queue") is True and row["published_at"] is not None and row["published_at"] >= since)
     return {
         "site_id": site_id,
         "n_labelled": len(rows),
         "queue_complaints": next((c["count"] for c in counted if c["category"] == QUEUE_CATEGORY), 0),
+        "queue_recent": queue_recent,
+        "road_queue_recent": road_queue_recent,
         "top": top,
         "categories": counted,
     }

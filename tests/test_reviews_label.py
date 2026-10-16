@@ -47,8 +47,8 @@ def review(n, site="24.351.34"):
     return {"review_key": f"key{n:03}", "site_id": site, "text": f"TEXTMARKER{n} antrian panjang banget"}
 
 
-def item(i, labels=("antrian",), sentiment="neg", gist=GIST):
-    return {"id": i, "labels": list(labels), "sentiment": sentiment, "gist": gist}
+def item(i, labels=("antrian",), sentiment="neg", gist=GIST, road_queue=False):
+    return {"id": i, "labels": list(labels), "sentiment": sentiment, "gist": gist, "road_queue": road_queue}
 
 
 def ok_response(items):
@@ -82,7 +82,7 @@ class TestPromptPin(unittest.TestCase):
         digest = hashlib.sha256(
             (gemini.SYSTEM_PROMPT + json.dumps(gemini.response_schema(), sort_keys=True)).encode()
         ).hexdigest()[:16]
-        self.assertEqual((digest, gemini.PROMPT_VERSION), ("79b4f0fc4d8547d8", "p3"),
+        self.assertEqual((digest, gemini.PROMPT_VERSION), ("814011d8546de235", "p4"),
                          "prompt changed: bump PROMPT_VERSION")
 
 
@@ -93,6 +93,33 @@ class TestLainnyaRule(unittest.TestCase):
         self.assertIn("Never add lainnya next to other labels", p)
         self.assertIn("sentiment is judged as before", p)
         self.assertNotIn("site size, operating hours", p)   # the p1 table row that invited lainnya on praise
+
+
+class TestRoadQueueRule(unittest.TestCase):
+    def test_p4_rule_text_is_in_the_prompt(self):
+        p = gemini.SYSTEM_PROMPT
+        self.assertIn("Also return road_queue (true or false) for every review:", p)
+        self.assertIn("- true only when the review says vehicles waiting for this station queue out of the site onto "
+                      "the road or the roadside: the queue spills onto or blocks the main road, or drivers wait on "
+                      "the road shoulder for the station.", p)
+        self.assertIn("- false for queues or long waits inside the forecourt, slow or understaffed service, and "
+                      "traffic jams that the review does not tie to this station's queue. A queue that is only "
+                      "\"long\" is false unless it says it reaches the road.", p)
+
+    def test_check_label_accepts_bool_and_null_and_rejects_the_rest(self):
+        base = {"review_key": "k", "labels": [], "sentiment": "pos", "praise_only": True, "gist": "g"}
+        for ok in (True, False, None):
+            review_labels.check_label(dict(base, road_queue=ok))
+        review_labels.check_label(base)   # missing key = None
+        for bad in ("yes", "true", 1, 0, [], {}):
+            with self.assertRaises(ValueError, msg=bad):
+                review_labels.check_label(dict(base, road_queue=bad))
+
+    def test_merge_sql_writes_road_queue(self):
+        sql = review_labels.merge_sql("p.d.place_review_labels", "p.d._stg")
+        self.assertIn("road_queue = S.road_queue", sql)
+        self.assertIn("road_queue, method", sql)
+        self.assertIn(("road_queue", "BOOL"), review_labels.STAGE)
 
 
 class TestBbmKosongRule(unittest.TestCase):
@@ -121,7 +148,7 @@ class TestRequest(unittest.TestCase):
 
     def test_model_is_pinned_and_in_the_url(self):
         self.assertEqual(gemini.MODEL, "gemini-3.8-flash")
-        self.assertEqual(gemini.MODEL_VERSION, "gemini-3.8-flash/p3")
+        self.assertEqual(gemini.MODEL_VERSION, "gemini-3.8-flash/p4")
         self.assertEqual(self.call["method"], "POST")
         self.assertEqual(self.call["url"],
                          "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent")
@@ -146,7 +173,10 @@ class TestRequest(unittest.TestCase):
         self.assertEqual(props["gist"]["type"], "STRING")
         self.assertNotIn("praise_only", props)   # derived in code, not asked of the model
         required = schema["properties"]["items"]["items"]["required"]
-        self.assertEqual(sorted(required), ["gist", "id", "labels", "sentiment"])
+        self.assertEqual(sorted(required), ["gist", "id", "labels", "road_queue", "sentiment"])
+        self.assertEqual(props["road_queue"], {"type": "BOOLEAN"})
+        ordering = schema["properties"]["items"]["items"]["propertyOrdering"]
+        self.assertEqual(ordering, ["id", "labels", "sentiment", "gist", "road_queue"])
 
     def test_reviews_are_sent_with_local_ids_not_review_keys(self):
         user = self.body["contents"][0]["parts"][0]["text"]
@@ -215,8 +245,8 @@ class TestRows(unittest.TestCase):
         rows, counts = self.label(labels=["antrian", "pelayanan_petugas"], sentiment="mixed")
         self.assertEqual(rows, [{
             "review_key": "key000", "site_id": "24.351.34", "labels": ["antrian", "pelayanan_petugas"],
-            "sentiment": "mixed", "praise_only": False, "gist": GIST, "method": "gemini",
-            "model_version": "gemini-3.8-flash/p3", "labeled_at": NOW_ISO}])
+            "sentiment": "mixed", "praise_only": False, "gist": GIST, "road_queue": False, "method": "gemini",
+            "model_version": "gemini-3.8-flash/p4", "labeled_at": NOW_ISO}])
         self.assertEqual(list(rows[0]), [c for c, _ in review_labels.STAGE])
         self.assertEqual(counts, {"failed_calls": 0, "invalid": 0, "missing": 0})
 
@@ -233,6 +263,24 @@ class TestRows(unittest.TestCase):
         rows, _ = self.label(labels=["toilet", "antrian", "toilet"], gist="line one\n  line   two ")
         self.assertEqual(rows[0]["labels"], ["antrian", "toilet"])
         self.assertEqual(rows[0]["gist"], "line one line two")
+
+    def test_road_queue_is_carried_into_the_row(self):
+        for flag in (True, False):
+            rows, counts = self.label(road_queue=flag)
+            self.assertIs(rows[0]["road_queue"], flag)
+            self.assertEqual(counts["invalid"], 0)
+
+    def test_missing_road_queue_is_stored_as_null(self):
+        stub = StubGemini(answer=lambda i: {k: v for k, v in item(i).items() if k != "road_queue"})
+        with patched(stub):
+            rows, counts = gemini.label_batch(KEY, [review(0)], NOW_ISO)
+        self.assertIsNone(rows[0]["road_queue"])
+        self.assertEqual(counts["invalid"], 0)
+
+    def test_non_bool_road_queue_is_invalid(self):
+        for bad in ("yes", "true", 1, 0, [], {}):
+            rows, counts = self.label(road_queue=bad)
+            self.assertEqual((rows, counts["invalid"]), ([], 1), bad)
 
     def test_empty_labels_are_valid(self):
         rows, _ = self.label(labels=[], sentiment="pos", gist="Short praise.")
@@ -389,7 +437,7 @@ class TestSql(unittest.TestCase):
         sql = client.query.call_args.args[0]
         self.assertIn("`p.d.v_place_reviews`", sql)
         params = client.query.call_args.kwargs["job_config"].query_parameters
-        self.assertEqual([(p.name, p.type_, p.value) for p in params], [("model_version", "STRING", "gemini-3.8-flash/p3")])
+        self.assertEqual([(p.name, p.type_, p.value) for p in params], [("model_version", "STRING", "gemini-3.8-flash/p4")])
         self.assertEqual(out, [{"review_key": "k1", "site_id": "s", "text": "t"}])
 
     def test_labels_stage_matches_ddl(self):
@@ -401,7 +449,7 @@ class TestSql(unittest.TestCase):
         self.assertIn("MERGE `p.d.place_review_labels` T\nUSING `p.d._stg` S\nON T.review_key = S.review_key AND T.method = S.method\n", sql)
         matched = sql.split("UPDATE SET", 1)[1].split("\nWHEN NOT MATCHED")[0]
         self.assertEqual(re.findall(r"(\w+) = ", matched),
-                         ["site_id", "labels", "sentiment", "praise_only", "gist", "model_version", "labeled_at"])
+                         ["site_id", "labels", "sentiment", "praise_only", "gist", "road_queue", "model_version", "labeled_at"])
         self.assertNotIn("method =", matched)   # the other method's row is never touched
 
     def test_write_labels_is_one_merge_with_the_labels_merge_sql(self):
@@ -470,8 +518,8 @@ class TestMainLabel(unittest.TestCase):
         self.assertEqual((project, dataset, location), ("gcp-coe-sandbox", "traffic", "asia-southeast2"))
         self.assertEqual(len(rows), 23)
         self.assertEqual({(r["method"], r["model_version"], r["labeled_at"]) for r in rows},
-                         {("gemini", "gemini-3.8-flash/p3", labeled_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))})
-        self.assertEqual(fake.reads, [("gcp-coe-sandbox", "traffic", "asia-southeast2", "gemini-3.8-flash/p3")])
+                         {("gemini", "gemini-3.8-flash/p4", labeled_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))})
+        self.assertEqual(fake.reads, [("gcp-coe-sandbox", "traffic", "asia-southeast2", "gemini-3.8-flash/p4")])
         self.assertIn("23 text reviews without a gemini label", logs)
         self.assertIn("3 Gemini calls, 0 failed; 23 rows labelled, 0 invalid and 0 missing skipped", logs)
         self.assert_no_secrets(out + logs)
@@ -491,10 +539,10 @@ class TestMainLabel(unittest.TestCase):
         fake = FakeBq([review(n) for n in range(3)])
         self.run_main(fake, StubGemini())
         stub2 = StubGemini()
-        with mock.patch.object(gemini, "MODEL_VERSION", "gemini-3.8-flash/p4"):
+        with mock.patch.object(gemini, "MODEL_VERSION", "gemini-3.8-flash/p5"):
             self.run_main(fake, stub2)
         self.assertEqual(len(stub2.calls), 1)
-        self.assertEqual(len(fake.labelled), 6)   # p3 and p4 rows (the real MERGE replaces on (review_key, method))
+        self.assertEqual(len(fake.labelled), 6)   # p4 and p5 rows (the real MERGE replaces on (review_key, method))
 
     def test_dry_run_calls_gemini_but_writes_nothing_and_prints_counts_only(self):
         fake, stub = FakeBq([review(n) for n in range(4)]), StubGemini()

@@ -1,61 +1,30 @@
-import { useCallback, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { StationTable } from "../overview/StationTable";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { Link } from "react-router-dom";
+import { StationList } from "../overview/StationList";
+import {
+  MapMode,
+  Selection,
+  SelectionAction,
+  StationRow,
+  buildRows,
+  effectiveMode,
+  groupSummary,
+  orderByGroup,
+  orderByRank,
+  selectionReducer,
+} from "../overview/model";
+import { StationData, useStationData } from "../overview/useStationData";
 import { Page } from "../shell/AppShell";
-import { BandIndicator } from "../theme/BandIndicator";
-import { DemoMarker, DemoNote } from "../weather/DemoBadge";
+import { Notice } from "../site/Section";
+import { isReady } from "../site/useSiteData";
 import type { WeatherLatest } from "../weather/api";
-import { LatestLeg } from "./api";
-import { BASELINE_FULL, formatDelay, formatSlot, formatSpeed, legBand, legContext, legLabel } from "./bands";
-import { SiteFilter, SiteSort, SiteState, Summary, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
+import { LatestLeg, Site } from "./api";
+import { BASELINE_FULL, formatDelay, formatSlot, legLabel } from "./bands";
+import { Summary, guardBusyRank, rankSites, summarize } from "./severity";
 import { Segmented } from "./Segmented";
 import TrafficMap from "./TrafficMap";
 import { useTrafficData } from "./useTrafficData";
 import "./Overview.css";
-
-/** Core temperature, plus the condition icon (a demo-only field, so it carries the section's marker). */
-export function SiteWeatherCell({ now }: { now: WeatherLatest | undefined }) {
-  if (!now) return null;
-  return (
-    <span className="site-weather">
-      {now.demo_icon_uri && (
-        <span className="site-weather-icon">
-          <img src={`${now.demo_icon_uri}.svg`} alt={now.demo_condition_text ?? "Weather condition"} />
-          <DemoMarker />
-        </span>
-      )}
-      <span className="num">{now.temperature_c == null ? "n/a" : `${now.temperature_c.toFixed(0)} °C`}</span>
-    </span>
-  );
-}
-
-export function SiteRow({ state, latest, weather }: { state: SiteState; latest: Map<string, LatestLeg>; weather: WeatherLatest | undefined }) {
-  const { site } = state;
-  return (
-    <li className="site-row" data-band={state.band}>
-      <Link to={`/site/${site.site_id}`} className="site-row-link">
-        <span className="site-row-head">
-          <span className="site-name">{site.name}</span>
-          <SiteWeatherCell now={weather} />
-        </span>
-        <span className="site-row-meta">{[site.city, site.road_name].filter(Boolean).join(" · ")}</span>
-        <span className="site-legs">
-          {site.legs.map((leg) => {
-            const row = latest.get(leg.selected_route_id);
-            return (
-              <span key={leg.selected_route_id} className="site-leg">
-                <span className="site-leg-name">{legLabel(leg.leg)}</span>
-                <BandIndicator band={legBand(row, legContext(site, leg.selected_route_id)).band} />
-                <span className="site-leg-delay num">{formatDelay(row?.delay_s)}</span>
-                <span className="site-leg-speed num">{formatSpeed(row?.speed_kmh)}</span>
-              </span>
-            );
-          })}
-        </span>
-      </Link>
-    </li>
-  );
-}
 
 /** The "now" line under the page title: how many sites are slowed, the worst one, and the slot it reflects. */
 export function NowSummary({ summary }: { summary: Summary }) {
@@ -81,6 +50,17 @@ export function NowSummary({ summary }: { summary: Summary }) {
   );
 }
 
+/** The "Potential queues" line under the page title: stations per group, and the windows the two signals cover. */
+export function GroupSummary({ rows, windowDays }: { rows: StationRow[] | null; windowDays: number | null }) {
+  if (rows === null) return <p className="now-line">Loading stations…</p>;
+  return (
+    <p className="now-line">
+      <strong className="num">{groupSummary(rows)}</strong>
+      {windowDays !== null && <span className="now-slot">Traffic from the last {windowDays} days, reviews from the last 12 months</span>}
+    </p>
+  );
+}
+
 /** One page-level notice while any leg's baseline is still building, instead of a badge on every site. */
 export function BaselineNotice({ samples }: { samples: number | null }) {
   if (samples === null || samples >= BASELINE_FULL) return null;
@@ -91,44 +71,65 @@ export function BaselineNotice({ samples }: { samples: number | null }) {
   );
 }
 
-const SORTS: { value: SiteSort; label: string; heading: string }[] = [
-  { value: "worst", label: "Worst first", heading: "Sites, worst first" },
-  { value: "name", label: "Name", heading: "Sites, by name" },
-  { value: "city", label: "City", heading: "Sites, by city" },
-];
-const FILTERS: { value: SiteFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "slowed", label: "Slowed only" },
+const MODES: { value: MapMode; label: string }[] = [
+  { value: "potential", label: "Potential queues" },
+  { value: "now", label: "Traffic now" },
 ];
 
-export default function Overview() {
-  const { sites, latest, weatherBySite, error } = useTrafficData();
-  const navigate = useNavigate();
-  const select = useCallback((id: string) => navigate(`/site/${id}`), [navigate]);
+const HEADINGS: Record<MapMode, string> = {
+  potential: "Stations, potential queues first",
+  now: "Stations, worst traffic first",
+};
+
+export interface OverviewViewProps {
+  sites: Site[] | null;
+  latest: Map<string, LatestLeg>;
+  weatherBySite: Map<string, WeatherLatest>;
+  /** Live traffic or site list failure. */
+  error: string;
+  station: StationData;
+  /** The mode picked in the toggle; the page shows "Traffic now" whatever it is when queue risk failed. */
+  mode: MapMode;
+  onMode: (m: MapMode) => void;
+  selected: Selection;
+  dispatch: (a: SelectionAction) => void;
+}
+
+/** The overview for given data and state, apart from fetching, so a test can render every state. */
+export function OverviewView({ sites, latest, weatherBySite, error, station, mode: chosen, onMode, selected, dispatch }: OverviewViewProps) {
+  const riskFailed = station.risk instanceof Error;
+  const themesFailed = station.themes instanceof Error;
+  const risk = isReady(station.risk) ? station.risk : null;
+  const themes = isReady(station.themes) ? station.themes : null;
+  const mode = effectiveMode(chosen, station.risk);
   // Current-state order. Busy-hour delay is not a sort key until a site profile is ready.
   const ranked = useMemo(
     () => (sites ? guardBusyRank(rankSites(sites, latest), false, () => null) : []),
     [sites, latest],
   );
   const summary = useMemo(() => summarize(ranked, latest), [ranked, latest]);
-  const [sort, setSort] = useState<SiteSort>("worst");
-  const [filter, setFilter] = useState<SiteFilter>("all");
-  const listed = useMemo(() => orderSites(ranked, sort, filter), [ranked, sort, filter]);
-  const anyDemoIcon = listed.some((s) => weatherBySite.get(s.site.site_id)?.demo_icon_uri);
+  const settled = sites !== null && station.risk !== undefined && station.themes !== undefined;
+  const rows = useMemo(
+    () => (settled && sites ? buildRows(sites, risk?.sites ?? null, themes?.sites ?? null) : null),
+    [settled, sites, risk, themes],
+  );
+  const listed = useMemo(() => rows && (mode === "potential" ? orderByGroup(rows) : orderByRank(rows, ranked)), [rows, mode, ranked]);
+  const queueGroups = useMemo(
+    () => (mode === "now" ? undefined : rows ? new Map(rows.map((r) => [r.site.site_id, r.group])) : null),
+    [mode, rows],
+  );
+  const selectSite = useCallback((siteId: string) => dispatch({ type: "select", siteId }), [dispatch]);
+  const toggleSite = useCallback((siteId: string) => dispatch({ type: "toggle", siteId }), [dispatch]);
+  const windowDays = risk?.window_days ?? null;
 
   return (
     <Page
       title="Overview"
-      actions={
-        <>
-          <Segmented label="Sort sites" options={SORTS} value={sort} onChange={setSort} />
-          <Segmented label="Show sites" options={FILTERS} value={filter} onChange={setFilter} />
-        </>
-      }
+      actions={!riskFailed && <Segmented label="Map and list show" options={MODES} value={mode} onChange={onMode} />}
       context={
         sites && (
           <>
-            <NowSummary summary={summary} />
+            {mode === "potential" ? <GroupSummary rows={rows} windowDays={windowDays} /> : <NowSummary summary={summary} />}
             <BaselineNotice samples={summary.baseline} />
           </>
         )
@@ -139,26 +140,61 @@ export default function Overview() {
           Some data couldn't load. {error}
         </p>
       )}
+      {(riskFailed || themesFailed) && (
+        <div className="overview-notices">
+          {station.risk instanceof Error && (
+            <Notice tone="error">Couldn't load the slowdown comparison, so the map shows traffic now. {station.risk.message}</Notice>
+          )}
+          {station.themes instanceof Error && (
+            <Notice tone="error">Couldn't load review counts, so stations are grouped by traffic only. {station.themes.message}</Notice>
+          )}
+        </div>
+      )}
       <div className="overview">
         <div className="map-frame">
-          {sites ? <TrafficMap sites={sites} latest={latest} onSelectSite={select} /> : <div className="map-canvas map-placeholder" />}
+          {sites ? (
+            <TrafficMap sites={sites} latest={latest} onSelectSite={selectSite} queueGroups={queueGroups} selectedId={selected} />
+          ) : (
+            <div className="map-canvas map-placeholder" />
+          )}
         </div>
-        <section className="site-list" aria-labelledby="site-list-title">
-          <h2 id="site-list-title" className="site-list-title">
-            {SORTS.find((o) => o.value === sort)!.heading}
-            {filter === "slowed" && ", slowed only"}
-          </h2>
-          {!sites && !error && <p className="site-list-empty">Loading sites…</p>}
-          {sites && listed.length === 0 && <p className="site-list-empty">No sites are slowed right now.</p>}
-          <ol className="site-rows">
-            {listed.map((state) => (
-              <SiteRow key={state.site.site_id} state={state} latest={latest} weather={weatherBySite.get(state.site.site_id)} />
-            ))}
-          </ol>
-          {anyDemoIcon && <DemoNote>Weather icons come from Google's condition field, which only the demo source has.</DemoNote>}
-        </section>
+        <StationList
+          rows={!sites && error ? [] : listed}
+          latest={latest}
+          weatherBySite={weatherBySite}
+          heading={HEADINGS[mode]}
+          selectedId={selected}
+          showGroup={!riskFailed}
+          windowDays={windowDays}
+          onToggle={toggleSite}
+        />
       </div>
-      {(sites || !error) && <StationTable sites={sites} />}
     </Page>
+  );
+}
+
+export default function Overview() {
+  const { sites, latest, weatherBySite, error } = useTrafficData();
+  const station = useStationData();
+  const [mode, setMode] = useState<MapMode>("potential");
+  const [selected, dispatch] = useReducer(selectionReducer, null);
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dispatch({ type: "clear" });
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected]);
+  return (
+    <OverviewView
+      sites={sites}
+      latest={latest}
+      weatherBySite={weatherBySite}
+      error={error}
+      station={station}
+      mode={mode}
+      onMode={setMode}
+      selected={selected}
+      dispatch={dispatch}
+    />
   );
 }

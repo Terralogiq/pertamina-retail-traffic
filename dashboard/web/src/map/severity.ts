@@ -54,17 +54,6 @@ export function rankSites(sites: Site[], latest: Map<string, LatestLeg>): SiteSt
     );
 }
 
-export type SiteSort = "worst" | "name" | "city";
-export type SiteFilter = "all" | "slowed";
-
-/** The list as shown: `ranked` is already worst first; filter to slowed sites, then re-sort by name or city (name breaks ties). */
-export function orderSites(ranked: SiteState[], sort: SiteSort, filter: SiteFilter): SiteState[] {
-  const rows = filter === "slowed" ? ranked.filter((s) => isSlowed(s.band)) : ranked;
-  if (sort === "worst") return rows;
-  const city = (s: SiteState) => s.site.city ?? "";
-  return [...rows].sort((a, b) => (sort === "city" ? city(a).localeCompare(city(b)) : 0) || a.site.name.localeCompare(b.site.name));
-}
-
 export interface Summary {
   total: number;
   /** Sites with at least one reading. */
@@ -118,6 +107,8 @@ export interface Cluster {
 
 /** Screen footprint of a marker pill (largest label, "+3.4 min" / "N sites"), used to keep markers from overlapping. */
 export const MARKER_BOX = { width: 96, height: 32 };
+/** "Potential queues" pills carry a group's short name ("No signal", "Potential"), a little wider than a delay. */
+export const MARKER_BOX_WIDE = { width: 108, height: 32 };
 /** Phone footprint: the pill shows only the band shape (or a group count), see MapMarker `compact`. */
 export const MARKER_BOX_COMPACT = { width: 48, height: 30 }; // widest compact pill: a group with a 2-digit count
 
@@ -153,4 +144,15 @@ export function clusterPoints(points: Point[], zoom: number, box = MARKER_BOX): 
     lat: g.members.reduce((s, m) => s + m.lat, 0) / g.members.length,
     lng: g.members.reduce((s, m) => s + m.lng, 0) / g.members.length,
   }));
+}
+
+/**
+ * The lowest zoom, from `zoom` up, at which point `id` has a marker of its own (not inside a group); `zoom`
+ * itself when it already does, `maxZoom` when no lower zoom separates it. Steps to the next whole zoom.
+ */
+export function zoomToSeparate(points: Point[], id: string, zoom: number, box = MARKER_BOX, maxZoom = 16): number {
+  for (let z = zoom; z < maxZoom; z = Math.floor(z) + 1) {
+    if (clusterPoints(points, z, box).some((c) => c.ids.length === 1 && c.ids[0] === id)) return z;
+  }
+  return maxZoom;
 }

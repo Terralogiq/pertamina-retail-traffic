@@ -16,8 +16,8 @@ TAXONOMY = (
 # (column, type). "X[]" = REPEATED. Staging columns and target columns share names and order.
 STAGE = [
     ("review_key", "STRING"), ("site_id", "STRING"), ("labels", "STRING[]"), ("sentiment", "STRING"),
-    ("praise_only", "BOOL"), ("gist", "STRING"), ("method", "STRING"), ("model_version", "STRING"),
-    ("labeled_at", "TIMESTAMP"),
+    ("praise_only", "BOOL"), ("gist", "STRING"), ("road_queue", "BOOL"), ("method", "STRING"),
+    ("model_version", "STRING"), ("labeled_at", "TIMESTAMP"),
 ]
 
 
@@ -49,6 +49,8 @@ def check_label(item):
         raise ValueError(f"{key}: praise_only must be true exactly when sentiment is pos")
     if not isinstance(item.get("gist"), str):
         raise ValueError(f"{key}: gist must be a string")
+    if item.get("road_queue") is not None and not isinstance(item["road_queue"], bool):
+        raise ValueError(f"{key}: road_queue must be a boolean or null")
 
 
 def merge_sql(target, source):

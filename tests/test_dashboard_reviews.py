@@ -179,11 +179,12 @@ class ReviewSummaryTest(unittest.TestCase):
         self.assertEqual(set(body), {"sites"})
         self.assertEqual([s["site_id"] for s in body["sites"]], SITE_IDS)
         for site in body["sites"]:
-            self.assertEqual(set(site), {"site_id", "n_labelled", "queue_complaints", "top", "categories"})
+            self.assertEqual(set(site), {"site_id", "n_labelled", "queue_complaints", "queue_recent",
+                                         "road_queue_recent", "top", "categories"})
         self.assertEqual(q.call_count, 1)  # one job for all sites
         empty = body["sites"][2]
         self.assertEqual(empty, {"site_id": "74.902.22", "n_labelled": 0, "queue_complaints": 0,
-                                 "top": None, "categories": []})
+                                 "queue_recent": 0, "road_queue_recent": 0, "top": None, "categories": []})
 
     def test_counts_equal_the_per_site_endpoint(self):
         other = [label(day(2026, 9, 1), ["harga", "toilet"], "neg"), label(day(2025, 1, 1), ["harga"], "mixed"),
@@ -238,6 +239,48 @@ class ReviewSummaryTest(unittest.TestCase):
         self.assertIn("PARTITION BY l.review_key ORDER BY IF(l.method = 'gemini', 0, 1), l.labeled_at DESC) = 1", sql)
         for forbidden in ("r.text", "gist", "author", "raw"):
             self.assertNotIn(forbidden, sql)
+
+    def test_queue_recent_counts_recent_negative_or_mixed_antrian_only(self):
+        entry = self.summary(summary_rows("34.121.03", ROWS))[0].json()["sites"][0]
+        self.assertEqual(entry["queue_complaints"], 3)
+        self.assertEqual(entry["queue_recent"], 2)  # the 2024 complaint is older; the pos review is never counted
+
+    def test_queue_recent_cut_off_is_the_365_day_boundary(self):
+        rows = summary_rows("34.121.03", [
+            label(day(2025, 10, 11), ["antrian"], "neg"),    # inside
+            label(day(2025, 10, 9), ["antrian"], "neg"),     # outside
+            label(None, ["antrian"], "neg"),                 # undated
+            label(day(2026, 9, 1), ["antrian"], "pos"),      # not negative
+            label(day(2026, 9, 1), ["harga"], "neg")])       # other topic
+        self.assertEqual(self.summary(rows)[0].json()["sites"][0]["queue_recent"], 1)
+
+    def test_road_queue_recent_counts_any_sentiment_and_treats_null_as_false(self):
+        def rq(published, flag, sentiment="neg"):
+            return dict(label(published, ["antrian"], sentiment), road_queue=flag)
+        rows = summary_rows("34.121.03", [
+            rq(day(2026, 9, 1), True), rq(day(2026, 8, 1), True, "pos"), rq(day(2026, 8, 2), True, "mixed"),
+            rq(day(2025, 10, 9), True),                       # older than 365 days
+            rq(None, True),                                   # undated
+            rq(day(2026, 9, 2), False), rq(day(2026, 9, 3), None),
+            label(day(2026, 9, 4), ["antrian"], "neg")])      # a row without the column at all
+        body = self.summary(rows + summary_rows("54.801.17", [rq(day(2026, 9, 5), True)]))[0].json()["sites"]
+        self.assertEqual([(s["site_id"], s["road_queue_recent"]) for s in body],
+                         [("34.121.03", 3), ("54.801.17", 1), ("74.902.22", 0)])
+
+    def test_road_queue_does_not_change_the_other_counts(self):
+        flagged = [dict(r, road_queue=True) for r in ROWS]
+        a = self.summary(summary_rows("34.121.03", ROWS))[0].json()["sites"][0]
+        cache.default.clear()
+        b = self.summary(summary_rows("34.121.03", flagged))[0].json()["sites"][0]
+        for k in ("n_labelled", "queue_complaints", "queue_recent", "top", "categories"):
+            self.assertEqual(a[k], b[k])
+
+    def test_sql_selects_road_queue_and_prefers_gemini_over_manual(self):
+        sql = self.summary([])[1].call_args.args[0]
+        self.assertIn("l.road_queue", sql)
+        # the flag comes from the one chosen row per review: gemini before manual, then the latest label
+        self.assertIn("ORDER BY IF(l.method = 'gemini', 0, 1), l.labeled_at DESC) = 1", sql)
+        self.assertNotIn("road_queue = TRUE", sql)   # filtering before QUALIFY would let a manual row win
 
     def test_cached(self):
         with mock.patch("dashboard.api.bq.query", return_value=[]) as q:

@@ -27,13 +27,17 @@ class RowMappingTest(unittest.TestCase):
         self.assertEqual(rows[0], {
             "review_key": "k1", "site_id": "34.121.03", "labels": ["antrian", "pelayanan_petugas"],
             "sentiment": "neg", "praise_only": False, "gist": "Long queue, rude attendant.",
-            "method": "manual", "model_version": "taxonomy_v1", "labeled_at": NOW})
+            "road_queue": None, "method": "manual", "model_version": "taxonomy_v1", "labeled_at": NOW})
         self.assertEqual(rows[1]["site_id"], "34.000.01")
         self.assertEqual(rows[1]["labels"], [])
 
     def test_rows_match_staging_columns(self):
         row = lrl.label_rows([item()], {"k1": "s"}, NOW)[0]
         self.assertEqual(list(row), [c for c, _ in lrl.STAGE])
+
+    def test_manual_rows_never_carry_road_queue(self):
+        rows = lrl.label_rows([item("k1"), item("k2", road_queue=True)], {"k1": "s", "k2": "s"}, NOW)
+        self.assertEqual([r["road_queue"] for r in rows], [None, None])
 
     def test_unknown_review_key_fails_loudly(self):
         with self.assertRaises(ValueError) as cm:
@@ -47,7 +51,8 @@ class RowMappingTest(unittest.TestCase):
 
     def test_bad_entries(self):
         for bad in (item(labels=["nonsense"]), item(sentiment="neutral"), item(praise_only="no"),
-                    item(labels="antrian"), item(praise_only=True), item(sentiment="pos", praise_only=False), item(gist=None), item(key="")):
+                    item(labels="antrian"), item(praise_only=True), item(sentiment="pos", praise_only=False), item(gist=None), item(key=""),
+                    item(road_queue="yes")):
             with self.assertRaises(ValueError, msg=bad):
                 lrl.label_rows([bad], {"k1": "s", "": "s"}, NOW)
 
@@ -94,7 +99,7 @@ class MergeSqlTest(unittest.TestCase):
     def test_matched_overwrites_non_key_columns_only(self):
         update = self.sql.split("WHEN MATCHED THEN UPDATE SET ")[1].split("\nWHEN NOT MATCHED")[0]
         assigned = [a.split(" = ")[0] for a in update.split(", ")]
-        self.assertEqual(assigned, ["site_id", "labels", "sentiment", "praise_only", "gist", "model_version", "labeled_at"])
+        self.assertEqual(assigned, ["site_id", "labels", "sentiment", "praise_only", "gist", "road_queue", "model_version", "labeled_at"])
 
     def test_insert_lists_every_column(self):
         insert = self.sql.split("WHEN NOT MATCHED THEN INSERT ")[1]

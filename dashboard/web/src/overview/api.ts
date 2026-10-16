@@ -1,4 +1,4 @@
-// Clients for the overview station table: /api/traffic/queue-risk and /api/review-themes (all sites at once).
+// Clients for the overview station list: /api/traffic/queue-risk and /api/review-themes (all sites at once).
 import { getJson } from "../api";
 
 export type Tier = "strong" | "moderate" | "weak" | "none" | "cannot_tell";
@@ -37,6 +37,10 @@ export interface StationThemes {
   queue_complaints: number;
   top: { categories: string[]; count: number } | null;
   categories: { category: string; count: number }[];
+  /** Negative or mixed reviews from the last 12 months labelled `antrian`. */
+  queue_recent: number;
+  /** Reviews from the last 12 months that say the queue reaches the road. */
+  road_queue_recent: number;
 }
 
 export interface StationThemesResponse {

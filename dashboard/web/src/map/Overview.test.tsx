@@ -2,15 +2,11 @@ import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import type { WeatherLatest } from "../weather/api";
 import { BASELINE_FULL } from "./bands";
-import { BaselineNotice, NowSummary, SiteWeatherCell } from "./Overview";
+import { BaselineNotice, NowSummary } from "./Overview";
 import type { SiteState, Summary } from "./severity";
 
 const html = (node: ReactElement) => renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter>);
-
-const weather = (over: Partial<WeatherLatest> = {}) =>
-  ({ site_id: "a", slot_time: "2026-10-07T07:30:00Z", temperature_c: 30.4, demo_icon_uri: null, demo_condition_text: null, ...over }) as WeatherLatest;
 
 describe("BaselineNotice", () => {
   it("shows the reading count and no calendar date while the usual time is provisional", () => {
@@ -22,19 +18,6 @@ describe("BaselineNotice", () => {
   it("is hidden when full or without data", () => {
     expect(html(<BaselineNotice samples={BASELINE_FULL} />)).toBe("");
     expect(html(<BaselineNotice samples={null} />)).toBe("");
-  });
-});
-
-describe("SiteWeatherCell", () => {
-  it("shows temperature without any demo mark when there is no icon", () => {
-    const out = html(<SiteWeatherCell now={weather()} />);
-    expect(out).toContain("30 °C");
-    expect(out).not.toContain("demo");
-  });
-  it("marks the condition icon (demo-only) and never the temperature", () => {
-    const out = html(<SiteWeatherCell now={weather({ demo_icon_uri: "https://x/sunny", demo_condition_text: "Sunny" })} />);
-    expect(out).toContain('alt="Sunny"');
-    expect(out).toMatch(/site-weather-icon.*demo-marker/);
   });
 });
 

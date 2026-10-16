@@ -1,7 +1,7 @@
-/* Overview (map + ranked site list) and the site map. Colours and type from tokens.css; the only
+/* Overview (map + station list) and the site map. Colours and type from tokens.css; the only
    literals are this screen's layout dimensions, named below, and the shared breakpoints. */
 
-/* The sort and filter controls sit in the page header, outside .overview, so their dimensions are on :root. */
+/* The mode toggle sits in the page header, outside .overview, so its dimensions are on :root. */
 :root {
   --segmented-pad: 2px;
   --segment-height: 2.25rem;
@@ -11,7 +11,7 @@
   --site-list-width: 23rem;
   --map-legend-compact-width: calc(100vw - 7rem);
   --map-compact-height: 45vh;
-  /* The map and list fill the first screen; the station table below scrolls into view. 10rem is the page heading, context line and spacing above. */
+  /* The map and list fill the first screen. 10rem is the page heading, context line and spacing above. */
   --overview-height: max(28rem, calc(100vh - var(--shell-header-height) - var(--shell-footer-height) - 10rem));
 
   display: grid;
@@ -50,6 +50,12 @@
 }
 
 .overview-error {
+  margin-bottom: var(--space-3);
+}
+
+.overview-notices {
+  display: grid;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
@@ -113,6 +119,31 @@
 .map-marker[data-band="heavy"] { --band-color: var(--band-heavy); }
 .map-marker[data-band="jam"] { --band-color: var(--band-jam); }
 .map-marker[data-band="none"] { --band-color: var(--band-none); }
+
+/* "Potential queues": the same accent as the group chips. Both signals is the one filled pill. */
+.map-marker[data-queue-group="potential"] {
+  --band-color: var(--brand-primary);
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+
+.map-marker[data-queue-group="traffic_only"],
+.map-marker[data-queue-group="reviews_only"] {
+  --band-color: var(--brand-secondary);
+  color: var(--brand-secondary);
+}
+
+.map-marker[data-queue-group="none"] {
+  --band-color: var(--border-strong);
+  color: var(--ink-2);
+}
+
+/* Selected station: raised (the marker's z-index is set too) and ringed, with a surface gap so the ring reads on any fill. */
+.map-marker-selected,
+.map-marker-selected:hover {
+  box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--ink-1), var(--shadow-2);
+  transform: translateY(calc(-1 * var(--space-3)));
+}
 
 /* A Google map control: LEFT_BOTTOM on the overview (stacked above the logo and Terms), TOP_LEFT on the site map. */
 .map-legend {
@@ -211,7 +242,7 @@
   color: var(--state-warning);
 }
 
-/* Sort and filter controls in the page header */
+/* Mode toggle in the page header */
 
 .segmented {
   display: inline-flex;
@@ -269,12 +300,6 @@
   letter-spacing: 0.02em;
 }
 
-.site-list-empty {
-  padding: var(--space-4);
-  color: var(--ink-3);
-  font-size: var(--text-sm);
-}
-
 .site-rows {
   position: relative; /* contains the visually hidden demo-marker text, which otherwise extends the page scroll */
   flex: 1;
@@ -283,101 +308,6 @@
   padding: 0;
   overflow-y: auto;
   list-style: none;
-}
-
-.site-row + .site-row {
-  border-top: 1px solid var(--border);
-}
-
-.site-row-link {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  color: inherit;
-  text-decoration: none;
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-
-.site-row-link:hover {
-  background: var(--surface-2);
-  color: inherit;
-}
-
-.site-row-link:focus-visible {
-  outline-offset: -2px;
-}
-
-.site-row-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.site-name {
-  min-width: 0;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-1);
-}
-
-.site-row-meta {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-}
-
-.site-weather {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--ink-2);
-  font-size: var(--text-xs);
-}
-
-.site-weather-icon {
-  display: inline-flex;
-  align-items: center;
-}
-
-.site-weather-icon img {
-  width: var(--space-5);
-  height: var(--space-5);
-}
-
-.site-legs {
-  display: grid;
-  grid-template-columns: max-content max-content 1fr max-content;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  margin-top: var(--space-1);
-}
-
-.site-leg {
-  display: contents;
-}
-
-.site-leg-name {
-  color: var(--ink-2);
-  font-size: var(--text-xs);
-}
-
-.site-leg-delay {
-  justify-self: end;
-  color: var(--ink-1);
-  font-size: var(--text-base);
-  font-weight: var(--weight-semibold);
-}
-
-.site-leg-speed {
-  justify-self: end;
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-}
-
-.site-list .demo-note {
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border);
 }
 
 /* Site page map */

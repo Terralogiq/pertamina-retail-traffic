@@ -1,0 +1,180 @@
+/* Overview station list rows. The list frame (.site-list, .site-rows) is in map/Overview.css. */
+
+.station-row + .station-row {
+  border-top: 1px solid var(--border);
+}
+
+.station-row[data-selected] {
+  background: var(--state-info-surface);
+}
+
+.station-row-button {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.station-row-button:hover {
+  background: var(--surface-2);
+}
+
+.station-row[data-selected] .station-row-button:hover {
+  background: transparent;
+}
+
+/* On the tint, secondary text steps up from ink-3 (under 4.5:1 there) to ink-2, and the one-signal chip (the same tint) turns white. */
+.station-row[data-selected] :is(.station-meta, .station-live-label, .station-details dt) {
+  color: var(--ink-2);
+}
+
+.station-row[data-selected] .queue-chip:is([data-group="traffic_only"], [data-group="reviews_only"]) {
+  background: var(--surface-1);
+}
+
+.station-row-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.station-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.station-name {
+  min-width: 0;
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.station-meta {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.station-lines {
+  display: grid;
+  gap: 0;
+  margin-top: var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.station-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--ink-1);
+  font-size: var(--text-xs);
+}
+
+.station-live-label {
+  color: var(--ink-3);
+}
+
+.station-details {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+  font-size: var(--text-xs);
+  animation: station-details-in var(--duration-fast) var(--ease-out);
+}
+
+.station-details[hidden] {
+  display: none;
+}
+
+.station-details dl {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.station-details dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.station-details dt {
+  color: var(--ink-3);
+}
+
+.station-details dd {
+  margin: 0;
+  color: var(--ink-1);
+  text-align: right;
+}
+
+.station-details .station-detail-text {
+  display: grid;
+  gap: 0;
+}
+
+.station-detail-text dd {
+  text-align: left;
+}
+
+.station-open {
+  justify-self: start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+@keyframes station-details-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}
+
+.station-skeleton {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.station-caption {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.site-weather {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.site-weather-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.site-weather-icon img {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.site-list .demo-note {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+}

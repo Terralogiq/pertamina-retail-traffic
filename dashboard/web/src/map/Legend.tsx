@@ -1,3 +1,5 @@
+import { GROUP_ORDER, QueueGroup } from "../overview/model";
+import { GroupChip } from "../overview/QueueGroup";
 import { BandIndicator } from "../theme/BandIndicator";
 import { LatestLeg, Site } from "./api";
 import { BAND_RANK, Basis, CONGESTION_BANDS, legBand, legContext } from "./bands";
@@ -32,6 +34,32 @@ function CompactScale() {
         </li>
       ))}
     </ul>
+  );
+}
+
+const GROUP_KEYS: Record<QueueGroup, string> = {
+  potential: "both signals",
+  traffic_only: "slower before the station than after",
+  reviews_only: "a review: queue reaches the road",
+  none: "neither",
+};
+
+/** Map key in "Potential queues" mode: one chip per group, in list order, with what puts a station in it. */
+export function QueueLegend() {
+  return (
+    <aside className="map-legend" aria-label="Map key">
+      <div className="map-legend-scale">
+        <p className="map-legend-title">Potential queues</p>
+        <ul className="map-legend-rows">
+          {GROUP_ORDER.map((g) => (
+            <li key={g}>
+              <GroupChip group={g} />
+              <span className="map-legend-range">{GROUP_KEYS[g]}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
   );
 }
 

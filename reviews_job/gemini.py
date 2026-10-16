@@ -20,7 +20,8 @@ import review_labels
 # (3.5-flash answered as modelVersion 3.6-flash, 3.7-flash as 3.8-flash), so a pin is not immutable: the response's
 # modelVersion is not stored, and a silent upgrade behind the id would not change MODEL_VERSION.
 MODEL = "gemini-3.8-flash"
-PROMPT_VERSION = "p3"   # p3 (2026-10-14): bbm_kosong = fuel really unavailable; turned away or early closure with fuel is pelayanan_petugas
+PROMPT_VERSION = "p4"   # p4 (2026-10-15): road_queue flag (queue reaches the road)
+# p3 (2026-10-14): bbm_kosong = fuel really unavailable; turned away or early closure with fuel is pelayanan_petugas
 # p2 (2026-10-14): lainnya no longer takes praise or descriptive remarks (p1 overused it)
 MODEL_VERSION = f"{MODEL}/{PROMPT_VERSION}"
 METHOD = "gemini"
@@ -37,6 +38,7 @@ For every review return:
 - labels: every category from the table below that the review is about (multi-label). An empty list when the review names no topic.
 - sentiment: neg, mixed or pos (rules below).
 - gist: one line of English that paraphrases what the review says (never quote it).
+- road_queue: true or false (rule at the end).
 
 Category table (use these exact values):
 | Category | Covers |
@@ -72,7 +74,11 @@ Decisions that apply to every review:
 
 Gist masking: the gist must contain no personal names, plate numbers, vehicle descriptors, phone numbers or exact dates. Refer to people by role (attendant, night-shift staff), not by name.
 
-Return one item per review id you are given, using the same id.\
+Return one item per review id you are given, using the same id.
+
+Also return road_queue (true or false) for every review:
+- true only when the review says vehicles waiting for this station queue out of the site onto the road or the roadside: the queue spills onto or blocks the main road, or drivers wait on the road shoulder for the station.
+- false for queues or long waits inside the forecourt, slow or understaffed service, and traffic jams that the review does not tie to this station's queue. A queue that is only "long" is false unless it says it reaches the road.\
 """
 
 
@@ -86,9 +92,10 @@ def response_schema():
                 "labels": {"type": "ARRAY", "items": {"type": "STRING", "enum": list(review_labels.TAXONOMY)}},
                 "sentiment": {"type": "STRING", "enum": list(review_labels.SENTIMENTS)},
                 "gist": {"type": "STRING"},
+                "road_queue": {"type": "BOOLEAN"},
             },
-            "required": ["id", "labels", "sentiment", "gist"],
-            "propertyOrdering": ["id", "labels", "sentiment", "gist"],
+            "required": ["id", "labels", "sentiment", "gist", "road_queue"],
+            "propertyOrdering": ["id", "labels", "sentiment", "gist", "road_queue"],
         }}},
         "required": ["items"],
     }
@@ -149,6 +156,7 @@ def build_row(review, item, labeled_iso):
         "sentiment": item.get("sentiment"),
         "praise_only": item.get("sentiment") == "pos",
         "gist": " ".join(gist.split()) if isinstance(gist, str) else gist,
+        "road_queue": item.get("road_queue"),
         "method": METHOD,
         "model_version": MODEL_VERSION,
         "labeled_at": labeled_iso,

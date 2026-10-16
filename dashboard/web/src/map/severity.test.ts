@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LatestLeg, Site } from "./api";
 import { BASELINE_FULL, indexLatest } from "./bands";
-import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, guardBusyRank, orderSites, rankSites, summarize } from "./severity";
+import { MARKER_BOX_COMPACT, baselineDaysLeft, clusterPoints, guardBusyRank, rankSites, summarize, zoomToSeparate } from "./severity";
 
 const mkSite = (id: string, name: string, lat: number, lng: number): Site => ({
   site_id: id,
@@ -92,24 +92,6 @@ describe("guardBusyRank", () => {
   });
 });
 
-describe("orderSites", () => {
-  const latest = indexLatest([
-    reading("a-approach", { duration_s: 45, speed_kmh: 40 }),
-    reading("b-approach", { duration_s: 150, speed_kmh: 12 }),
-  ]);
-  const withCity = (s: Site, city: string): Site => ({ ...s, city });
-  const ranked = rankSites([withCity(a, "Zeta"), withCity(b, "Beta"), withCity(c, "Beta")], latest); // b, a, c
-
-  it("keeps the ranking for worst first and filters to slowed sites", () => {
-    expect(orderSites(ranked, "worst", "all").map((s) => s.site.site_id)).toEqual(["b", "a", "c"]);
-    expect(orderSites(ranked, "worst", "slowed").map((s) => s.site.site_id)).toEqual(["b"]);
-  });
-  it("sorts by name, or by city then name", () => {
-    expect(orderSites(ranked, "name", "all").map((s) => s.site.name)).toEqual(["Alpha", "Bravo", "Charlie"]);
-    expect(orderSites(ranked, "city", "all").map((s) => s.site.name)).toEqual(["Bravo", "Charlie", "Alpha"]);
-  });
-});
-
 describe("baselineDaysLeft", () => {
   it("counts whole days at 48 readings a day", () => {
     expect(baselineDaysLeft(0)).toBe(7);
@@ -147,5 +129,30 @@ describe("clusterPoints", () => {
   });
   it("splits them once zoomed in", () => {
     expect(clusterPoints(pts, 12).map((g) => g.ids)).toEqual([["a"], ["b"], ["c"]]);
+  });
+});
+
+describe("zoomToSeparate", () => {
+  const pts = [
+    { id: "a", ...a.location },
+    { id: "b", ...b.location },
+    { id: "c", ...c.location },
+  ];
+  it("keeps the zoom when the site already has its own marker", () => {
+    expect(zoomToSeparate(pts, "c", 5)).toBe(5);
+  });
+  it("zooms in to the first whole zoom where a grouped site gets its own marker", () => {
+    const z = zoomToSeparate(pts, "a", 5.5);
+    expect(Number.isInteger(z)).toBe(true);
+    expect(z).toBeGreaterThan(5.5);
+    expect(clusterPoints(pts, z).some((g) => g.ids.length === 1 && g.ids[0] === "a")).toBe(true);
+    expect(clusterPoints(pts, z - 1).some((g) => g.ids.length === 1 && g.ids[0] === "a")).toBe(false);
+  });
+  it("stops at the maximum zoom for points that never separate", () => {
+    const same = [
+      { id: "x", lat: -6.2, lng: 106.8 },
+      { id: "y", lat: -6.2, lng: 106.8 },
+    ];
+    expect(zoomToSeparate(same, "x", 5, undefined, 12)).toBe(12);
   });
 });

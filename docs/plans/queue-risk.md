@@ -138,13 +138,13 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 - A masked state, for sites like Bandung and Daan Mogot: "The road past the station is slower than the road before it at these hours, so a station queue cannot be seen here." It shows no strip.
 - A link to the Review themes panel's `antrian` and `keamanan_lalu_lintas` counts, labelled "sampled reviews, weak evidence".
 
-**Overview.** Superseded 2026-10-14 by a user decision: the overview shows queue risk now, as a sortable column with neutral wording, before the gate below; see [overview-station-table.md](overview-station-table.md). Original proposal: no queue ranking yet. Once there are 14 days of data and at least one validation step agrees, add a "Queue risk" sort to the side list, showing rank and confidence chip with the masked sites at the end. The existing 7-day ranking gate is met, but a ranking reads as a finding, and that needs ground truth first.
+**Overview.** Current screen: [overview-potential-queues.md](overview-potential-queues.md) (the station table UI in [overview-station-table.md](overview-station-table.md) is superseded). Superseded 2026-10-14 by a user decision: the overview shows queue risk now, as a sortable column with neutral wording, before the gate below; see [overview-station-table.md](overview-station-table.md). Original proposal: no queue ranking yet. Once there are 14 days of data and at least one validation step agrees, add a "Queue risk" sort to the side list, showing rank and confidence chip with the masked sites at the end. The existing 7-day ranking gate is met, but a ranking reads as a finding, and that needs ground truth first.
 
 **Hidden until ready.**
 
 | Item | Until |
 |---|---|
-| Overview ranking | ~~14 days and one validation step agreeing~~ Superseded 2026-10-14, see [overview-station-table.md](overview-station-table.md) |
+| Overview ranking | ~~14 days and one validation step agreeing~~ Superseded 2026-10-14; current overview: [overview-potential-queues.md](overview-potential-queues.md) ([overview-station-table.md](overview-station-table.md) superseded) |
 | Weekend headline | 4 weekend days in the window. Until then the strip shows weekend hours faded and the headline uses weekdays |
 | Rain effect | 4 weeks, `.7.13` closed, and at least 8 hour-matched rain slots |
 | "Likely queue" wording | Validation steps 3 or 4 confirm |

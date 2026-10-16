@@ -15,7 +15,7 @@ export const DEMO_ONLY_FIELDS = [
 
 // The demo-only fields each weather widget shows. A widget listed here must render <DemoBadge />;
 // a widget with no entry shows core fields only and carries no badge. weather.test.tsx checks both.
-// SiteWeather is map/Overview.tsx's SiteWeatherCell (the live demo icon), which marks the icon with a <DemoMarker />
+// SiteWeather is overview/StationList.tsx's SiteWeatherCell (the live demo icon), which marks the icon with a <DemoMarker />
 // under the section's <DemoNote /> instead of a badge (contract item 5).
 // demo_icon_uri is not on the Labels list (it is demo_condition_* 's icon), so it is checked separately.
 export const WIDGET_DEMO_FIELDS = {
