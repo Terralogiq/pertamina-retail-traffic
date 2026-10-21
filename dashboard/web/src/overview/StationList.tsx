@@ -112,7 +112,7 @@ function StationDetails({ id, row, hidden }: { id: string; row: StationRow; hidd
   );
 }
 
-/** Row frame shared by both modes: the toggle button with the name and city, and the details under it. */
+/** Row frame shared by both modes: the toggle button with the name and city, the always-visible link to the station page, and the details under it. */
 function RowFrame({
   site,
   selected,
@@ -145,6 +145,10 @@ function RowFrame({
         {site.city && <span className="station-meta">{site.city}</span>}
         {children}
       </button>
+      {/* A sibling of the toggle, not inside it: a click opens the station page and leaves the row as it is. */}
+      <Link to={`/site/${encodeURIComponent(site.site_id)}`} className="station-row-open" aria-label={`Open ${site.name}`}>
+        Open {"\u2192"}
+      </Link>
       {details(detailsId)}
     </li>
   );

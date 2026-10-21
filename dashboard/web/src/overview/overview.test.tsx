@@ -338,6 +338,24 @@ describe("station row", () => {
     expect(out.indexOf("</button>")).toBeLessThan(out.indexOf("Open station"));
   });
 
+  it("has an always-visible Open link to the station page, a sibling after the toggle button (a click cannot toggle the row)", () => {
+    for (const selected of [false, true]) {
+      const out = renderRow(pemogan, selected);
+      const link = out.match(/<a class="station-row-open" aria-label="Open Pemogan" href="\/site\/54\.801\.17"[^>]*>Open \u2192<\/a>/);
+      expect(link, `selected=${selected}`).not.toBeNull();
+      // Not inside the toggle button: the button closes first, and holds no link.
+      expect(out.indexOf("</button>")).toBeLessThan(link!.index!);
+      expect(out.slice(0, out.indexOf("</button>"))).not.toContain("<a ");
+    }
+    // Hidden details do not hide it.
+    expect(renderRow(pemogan)).toMatch(/<div class="station-details"[^>]*hidden=""/);
+  });
+
+  it("encodes the site id in the Open link", () => {
+    const odd: StationRow = { ...pemogan, site: { ...pemogan.site, site_id: "a/b c" } };
+    expect(renderRow(odd)).toContain('class="station-row-open" aria-label="Open Pemogan" href="/site/a%2Fb%20c"');
+  });
+
   it("hides the chip when no level can be given", () => {
     expect(textOf(renderRow(pemogan, false, false))).not.toContain("Queue risk");
   });
@@ -379,6 +397,8 @@ describe("traffic now row", () => {
     expect(text).toContain("Approach Moderate +35 s 1.6× 28 km/h");
     expect(text).toContain("Departure Heavy +1.9 min 2.1× 20 km/h");
     expect(text).toContain("Open station");
+    expect(out).toContain('class="station-row-open" aria-label="Open Pemogan" href="/site/54.801.17"');
+    expect(out.indexOf("</button>")).toBeLessThan(out.indexOf("station-row-open"));
   });
 
   it("shows a dash for a missing delay, congestion index or speed, and No data without a reading", () => {

@@ -4,7 +4,7 @@ import "./QueueRisk.css";
 /**
  * Red: a diamond split in two, so the signals read without colour: the left half is filled when the traffic
  * signal is present, the right half when the review signal is. Yellow: a bar. Green: a circle (the shapes of
- * the "moderate" and "free flow" traffic bands). Drawn in the level's colour.
+ * the "moderate" and "free flow" traffic bands). Drawn in the level's ink, on the level's fill.
  */
 export function RiskIcon({ risk }: { risk: QueueRisk }) {
   const level = RISK_LEVEL[risk];
