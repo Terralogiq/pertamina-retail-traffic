@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { TypicalDayResponse, TypicalHour, TypicalLeg } from "./api";
-import TypicalDay, { HourStrip, TypicalDayBody, typicalChartOption, typicalNote } from "./TypicalDay";
+import TypicalDay, { HourStrip, TypicalDayBody, delayStep, maxMedian, typicalChartOption, typicalNote } from "./TypicalDay";
 
 function hour(hour: number, n: number, median: number | null): TypicalHour {
   return {
@@ -37,7 +37,7 @@ describe("typical day", () => {
   });
 
   it("fades an hour with fewer than 4 readings and keeps a full hour solid", () => {
-    const html = renderToStaticMarkup(<HourStrip leg="approach" hours={leg("approach", "weekday").hours} />);
+    const html = renderToStaticMarkup(<HourStrip leg="approach" hours={leg("approach", "weekday").hours} max={80} />);
     const tick = (hour: number) => html.match(new RegExp(`<li[^>]*data-hour="${hour}"[^>]*>`))?.[0] ?? "";
     expect(tick(8)).toContain('data-n="2"');
     expect(tick(8)).toContain('data-faded="true"');
@@ -45,6 +45,38 @@ describe("typical day", () => {
     expect(tick(9)).toContain('data-n="6"');
     expect(tick(9)).toContain('data-faded="false"');
     expect(tick(9)).not.toContain("is-faded");
+  });
+
+  it("draws 24 cells per leg, each with its hour and median delay as text and a label with the reading count", () => {
+    const html = renderToStaticMarkup(<HourStrip leg="approach" hours={leg("approach", "weekday").hours} max={80} />);
+    expect(html.match(/<li\b/g)?.length).toBe(24);
+    expect(html).toContain('aria-label="Approach median delay by hour"');
+    expect(html).toContain('<span class="hour-tick-label">08</span><span class="hour-tick-value num">+40 s</span>');
+    expect(html).toContain('<span class="hour-tick-label">09</span><span class="hour-tick-value num">+1.3 min</span>');
+    expect(html).toContain('aria-label="Approach, hour 08: median +40 s, 2 readings, thin sample"');
+    expect(html).toContain('aria-label="Approach, hour 09: median +1.3 min, 6 readings"');
+    expect(html).toContain('aria-label="Approach, hour 00: no data, 0 readings, thin sample"');
+    expect(html.match(/hour-tick-value num">-</g)?.length).toBe(22);
+  });
+
+  it("colours by one scale across both legs: the slowest hour is step 5, an empty hour has no step", () => {
+    expect(delayStep(80, 80)).toBe(5);
+    expect(delayStep(40, 80)).toBe(3);
+    expect(delayStep(1, 80)).toBe(1);
+    expect(delayStep(0, 80)).toBe(1);
+    expect(maxMedian([leg("approach", "weekday"), leg("departure", "weekday")])).toBe(80);
+    const html = renderToStaticMarkup(<HourStrip leg="departure" hours={leg("departure", "weekday").hours} max={160} />);
+    expect(html.match(/<li[^>]*data-hour="9"[^>]*>/)?.[0]).toContain('data-step="3"');
+    expect(html.match(/<li[^>]*data-hour="0"[^>]*>/)?.[0]).not.toContain("data-step");
+  });
+
+  it("explains the strips: median delay caption, the faded rule and the ramp", () => {
+    const html = renderToStaticMarkup(<TypicalDayBody data={data} dayKind="weekday" view="chart" onViewChange={() => undefined} />);
+    expect(html).toContain("Median delay by hour. Faded hours have fewer than 4 readings.");
+    expect(html).not.toContain("Count under each hour");
+    expect(html).toContain("no delay");
+    expect(html).toContain("+1.3 min");
+    expect(html.match(/class="hour-strip"/g)?.length).toBe(2);
   });
 
   it("draws the thin hour on the faded median series and the full hour on the solid one", () => {

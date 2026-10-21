@@ -30,6 +30,7 @@
 }
 
 .ai-summary-text {
+  max-width: 68ch;
   color: var(--ink-1);
   font-size: var(--text-sm);
 }

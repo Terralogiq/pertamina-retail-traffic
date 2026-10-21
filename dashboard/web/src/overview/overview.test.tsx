@@ -351,6 +351,17 @@ describe("station row", () => {
     expect(renderRow(pemogan)).toMatch(/<div class="station-details"[^>]*hidden=""/);
   });
 
+  it("stacks the name, then the chip, in the row head, with Open outside it in its own element", () => {
+    for (const row of [pemogan, { ...pemogan, site: { ...pemogan.site, name: "SPBU Pertamina 61.761.03 - MT Haryono Balikpapan" } }]) {
+      const out = renderRow(row);
+      const head = out.match(/<span class="station-row-head">(.*?)<\/span><span class="station-meta">/)?.[1] ?? "";
+      expect(head.indexOf('class="station-name"')).toBeGreaterThan(-1);
+      expect(head.indexOf('class="queue-chip"')).toBeGreaterThan(head.indexOf('class="station-name"'));
+      expect(head).not.toContain("station-row-open");
+      expect(out.indexOf('class="station-row-open"')).toBeGreaterThan(out.indexOf("</button>"));
+    }
+  });
+
   it("encodes the site id in the Open link", () => {
     const odd: StationRow = { ...pemogan, site: { ...pemogan.site, site_id: "a/b c" } };
     expect(renderRow(odd)).toContain('class="station-row-open" aria-label="Open Pemogan" href="/site/a%2Fb%20c"');
@@ -611,6 +622,20 @@ describe("map key and markers", () => {
     expect(out).toContain('class="queue-icon"');
     expect(out).toContain("Both");
     expect(renderToStaticMarkup(<QueueMarker risk="low" text="Low" compact />)).toContain('class="visually-hidden">Low');
+  });
+});
+
+describe("queue-risk colours", () => {
+  // The fills are in QueueRisk.css, keyed on data-risk (the two single-signal reds) and data-level (the rest);
+  // vitest stubs CSS, so what is checked here is that every surface emits both attributes for every variant.
+  it("a chip, a marker and a key row emit the variant and its level, so the three reds can take three fills", () => {
+    const attrs = (out: string) => [...out.matchAll(/data-risk="(\w+)" data-level="(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`);
+    const expected = RISK_ORDER.map((r) => `${r}:${RISK_LEVEL[r]}`);
+    expect(expected).toEqual(["both:red", "traffic:red", "reviews:red", "busy:yellow", "low:green"]);
+    expect(attrs(renderToStaticMarkup(<QueueLegend />))).toEqual(expected);
+    expect(RISK_ORDER.flatMap((r) => attrs(renderToStaticMarkup(<QueueMarker risk={r} text="x" />)))).toEqual(expected);
+    const rows = RISK_ORDER.flatMap((r) => attrs(renderRow({ ...rowOf(ROWS, "54.801.17"), queueRisk: r })));
+    expect(rows).toEqual(expected);
   });
 });
 

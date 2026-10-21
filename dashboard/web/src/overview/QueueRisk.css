@@ -3,11 +3,23 @@
    Text and icon take --risk-ink, chosen per level for 4.5:1 on the fill: white on red and green, which are
    darkened 10% toward black (#e8452c and #1e8e3e give only 3.95:1 and 4.21:1 with white; ink is 4.52:1 and
    4.24:1), ink on the amber (7.9:1). The icon shape (split diamond, bar, circle) and the label carry the level
-   without colour. */
+   without colour. The single-signal reds are two more shades of the family (deep for traffic, coral for reviews),
+   so the three read apart at a glance. */
 
 [data-level="red"] {
   --risk-fill: color-mix(in srgb, var(--band-heavy) 90%, black);
   --risk-ink: var(--surface-1);
+}
+
+/* The two single-signal reds (tokens.css); "both" keeps the red above. */
+[data-risk="traffic"] {
+  --risk-fill: var(--risk-traffic-fill);
+  --risk-ink: var(--risk-traffic-ink);
+}
+
+[data-risk="reviews"] {
+  --risk-fill: var(--risk-reviews-fill);
+  --risk-ink: var(--risk-reviews-ink);
 }
 
 [data-level="yellow"] {
@@ -31,6 +43,7 @@
   flex: none;
   align-items: center;
   gap: var(--space-1);
+  height: 1.5rem;
   padding: 0 var(--space-2);
   border: 1.5px solid var(--risk-fill);
   border-radius: var(--radius-pill);
@@ -38,6 +51,6 @@
   color: var(--risk-ink);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  line-height: var(--leading-normal);
+  line-height: 1;
   white-space: nowrap;
 }

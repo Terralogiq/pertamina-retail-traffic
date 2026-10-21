@@ -127,6 +127,7 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
   return (
     <Page
       title="Overview"
+      fullWidth
       actions={!riskFailed && <Segmented label="Map and list show" options={MODES} value={mode} onChange={onMode} />}
       context={
         sites && (

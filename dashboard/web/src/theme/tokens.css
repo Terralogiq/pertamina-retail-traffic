@@ -34,6 +34,12 @@
   --state-warning-border: #e0c36a;
   --state-info-surface: color-mix(in srgb, var(--brand-primary) 7%, white);
   --rating-star: #b87300; /* graphic-only, 3.8:1 on white */
+  /* Queue-risk reds beside the "traffic + reviews" red (from --band-heavy, see overview/QueueRisk.css). Fill and the
+     ink on it: white on the deep red 9.0:1, --ink-1 on the coral 7.4:1. */
+  --risk-traffic-fill: #8f1a1a;
+  --risk-traffic-ink: var(--surface-1);
+  --risk-reviews-fill: #f08c7e;
+  --risk-reviews-ink: var(--ink-1);
   --focus-ring: var(--brand-primary);
   --selection: color-mix(in srgb, var(--brand-primary) 16%, white);
 
@@ -73,7 +79,7 @@
   --shell-header-height: 3.5rem;
   --shell-footer-height: 2.25rem;
   --logo-height: 2rem;
-  --page-max-width: 90rem;
+  --page-max-width: 120rem;
   --page-gutter: var(--space-5);
 }
 

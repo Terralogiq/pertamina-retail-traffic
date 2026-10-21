@@ -89,9 +89,16 @@
   font-size: var(--text-sm);
 }
 
+/* Median delay by hour. The cells per row follow the width the strip has (4, 6, 8 or 12), so "+1.3 min" always fits
+   and nothing overflows on a phone. A cell's fill is a step of the sequential ramp (--seq-1 to --seq-5) with the ink
+   that keeps 4.5:1 on it; the value is always printed. */
+.hour-strip-wrap {
+  container-type: inline-size;
+}
+
 .hour-strip {
   display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
   margin: 0;
   padding: 0;
@@ -99,20 +106,80 @@
 }
 
 .hour-tick {
+  --tick-fill: var(--surface-sunken);
+  --tick-ink: var(--ink-1);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  min-width: 0;
+  padding: var(--space-1) 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--tick-fill);
+  color: var(--tick-ink);
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
+  white-space: nowrap;
+}
+
+.hour-tick[data-step="1"], .hour-scale-ramp [data-step="1"] { --tick-fill: var(--seq-1); }
+.hour-tick[data-step="2"], .hour-scale-ramp [data-step="2"] { --tick-fill: var(--seq-2); }
+.hour-tick[data-step="3"], .hour-scale-ramp [data-step="3"] { --tick-fill: var(--seq-3); }
+.hour-tick[data-step="4"] { --tick-fill: var(--seq-4); --tick-ink: var(--ink-inverse); }
+.hour-tick[data-step="5"] { --tick-fill: var(--seq-5); --tick-ink: var(--ink-inverse); }
+.hour-scale-ramp [data-step="4"] { --tick-fill: var(--seq-4); }
+.hour-scale-ramp [data-step="5"] { --tick-fill: var(--seq-5); }
+
+/* A thin sample: a pale fill and a dashed edge, with the ink back to dark, so it is not read as a solid hour. */
+.hour-tick.is-faded {
+  border: 1px dashed var(--border-strong);
+  background: color-mix(in srgb, var(--tick-fill) 35%, var(--surface-1));
+  color: var(--ink-1);
+}
+
+.hour-tick-value {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-scale {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
   color: var(--ink-2);
   font-size: var(--text-xs);
 }
 
-.hour-tick.is-faded {
-  opacity: 0.4;
+.hour-scale-ramp {
+  display: flex;
+  gap: 2px;
 }
 
-.hour-tick-n {
-  font-variant-numeric: tabular-nums;
+.hour-scale-ramp span {
+  width: 1.5rem;
+  height: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--tick-fill);
+}
+
+@container (min-width: 26rem) {
+  .hour-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 36rem) {
+  .hour-strip {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 48rem) {
+  .hour-strip {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
 }
 
 .busy-list {

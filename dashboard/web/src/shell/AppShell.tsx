@@ -57,21 +57,24 @@ export function usePageTitle(page: string) {
 
 /**
  * Page heading row: the page's only <h1>, an optional line of context, and optional actions.
+ * `fullWidth` drops the page max-width so the content spans wide screens (the overview map).
  */
 export function Page({
   title,
   context,
   actions,
+  fullWidth,
   children,
 }: {
   title: string;
   context?: ReactNode;
   actions?: ReactNode;
+  fullWidth?: boolean;
   children: ReactNode;
 }) {
   usePageTitle(title);
   return (
-    <div className="page">
+    <div className={fullWidth ? "page page--full" : "page"}>
       <div className="page-header">
         <div className="page-heading">
           <h1>{title}</h1>

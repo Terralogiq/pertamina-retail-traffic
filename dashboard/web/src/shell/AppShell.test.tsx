@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -22,6 +23,14 @@ function renderAt(path: string) {
     </MemoryRouter>,
   );
 }
+
+describe("Page", () => {
+  it("drops the max-width class only when fullWidth is set", () => {
+    const wrap = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
+    expect(wrap(<Page title="x" fullWidth>body</Page>)).toMatch(/^<div class="page page--full">/);
+    expect(wrap(<Page title="x">body</Page>)).toMatch(/^<div class="page">/);
+  });
+});
 
 describe("AppShell nav", () => {
   it("marks exactly one link as the current page on /", () => {

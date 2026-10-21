@@ -135,29 +135,64 @@ export function typicalChartOption(legs: TypicalLeg[]) {
   };
 }
 
-/** 24 local hours. A thin sample (n < 4) is faded and still shows its count. */
-export function HourStrip({ leg, hours }: { leg: string; hours: TypicalHour[] }) {
+const STEPS = [1, 2, 3, 4, 5] as const;
+
+/** Step 1-5 of the sequential ramp (--seq-1 to --seq-5) for a median delay, scaled to the day's slowest hour. */
+export function delayStep(delayS: number, max: number): number {
+  if (delayS <= 0 || max <= 0) return 1;
+  return Math.min(STEPS.length, Math.max(1, Math.ceil((delayS / max) * STEPS.length)));
+}
+
+/** The slowest median over the given legs, so the strips of both legs share one scale. */
+export function maxMedian(legs: TypicalLeg[]): number {
+  return Math.max(0, ...legs.flatMap((leg) => leg.hours.map((hour) => hour.median_delay_s ?? 0)));
+}
+
+/** 24 local hours, each a cell with the hour's median delay on the shared ramp. A thin sample (n < 4) is faded. */
+export function HourStrip({ leg, hours, max }: { leg: string; hours: TypicalHour[]; max: number }) {
   const byHour = new Map(hours.map((hour) => [hour.hour, hour]));
   return (
-    <ol className="hour-strip" aria-label={`${legLabel(leg)} readings per hour`}>
-      {HOURS.map((label, hour) => {
-        const item = byHour.get(hour);
-        const n = item?.n ?? 0;
-        const faded = item?.faded ?? true;
-        return (
-          <li
-            key={hour}
-            data-hour={hour}
-            data-n={n}
-            data-faded={faded ? "true" : "false"}
-            className={faded ? "hour-tick is-faded" : "hour-tick"}
-          >
-            <span className="hour-tick-label">{label}</span>
-            <span className="hour-tick-n num">{n}</span>
-          </li>
-        );
-      })}
-    </ol>
+    <div className="hour-strip-wrap">
+      <ol className="hour-strip" aria-label={`${legLabel(leg)} median delay by hour`}>
+        {HOURS.map((label, hour) => {
+          const item = byHour.get(hour);
+          const n = item?.n ?? 0;
+          const faded = item?.faded ?? true;
+          const median = item?.median_delay_s ?? null;
+          const text = `${legLabel(leg)}, hour ${label}: ${median == null ? "no data" : `median ${formatDelay(median)}`}, ${n} ${n === 1 ? "reading" : "readings"}${faded ? ", thin sample" : ""}`;
+          return (
+            <li
+              key={hour}
+              data-hour={hour}
+              data-n={n}
+              data-faded={faded ? "true" : "false"}
+              data-step={median == null ? undefined : delayStep(median, max)}
+              className={faded ? "hour-tick is-faded" : "hour-tick"}
+              title={text}
+              aria-label={text}
+            >
+              <span className="hour-tick-label">{label}</span>
+              <span className="hour-tick-value num">{formatDelay(median)}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/** The ramp the strips are coloured by, from no delay to the slowest hour shown. */
+function HourScale({ max }: { max: number }) {
+  return (
+    <p className="hour-scale">
+      <span>{formatDelay(0)}</span>
+      <span className="hour-scale-ramp" aria-hidden="true">
+        {STEPS.map((step) => (
+          <span key={step} data-step={step} />
+        ))}
+      </span>
+      <span>{formatDelay(max)}</span>
+    </p>
   );
 }
 
@@ -173,7 +208,7 @@ export function DayKindControl({ value, onChange }: { value: DayKind; onChange: 
   );
 }
 
-/** Weekday or weekend profile: readiness, the median chart, and the per-hour counts. */
+/** Weekday or weekend profile: readiness, the median chart, and the median delay hour by hour. */
 export function TypicalDayBody({
   data,
   dayKind,
@@ -190,6 +225,7 @@ export function TypicalDayBody({
     [data, dayKind],
   );
   const option = useMemo(() => (legs.length ? typicalChartOption(legs) : null), [legs]);
+  const max = useMemo(() => maxMedian(legs), [legs]);
   const kindLabel = dayKind === "weekday" ? "weekday" : "weekend";
 
   return (
@@ -212,10 +248,11 @@ export function TypicalDayBody({
           <div className="site-section-actions">
             <ViewToggle mode={view} onChange={onViewChange} />
           </div>
-          <p className="typical-caption">Count under each hour. Faded hours have fewer than 4 readings.</p>
+          <p className="typical-caption">Median delay by hour. Faded hours have fewer than 4 readings.</p>
+          {max > 0 && <HourScale max={max} />}
           {legs.map((leg) => (
             <Block key={leg.leg} title={legLabel(leg.leg)}>
-              <HourStrip leg={leg.leg} hours={leg.hours} />
+              <HourStrip leg={leg.leg} hours={leg.hours} max={max} />
             </Block>
           ))}
         </>
