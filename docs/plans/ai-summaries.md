@@ -1,6 +1,8 @@
 # AI summaries per SPBU: design and prototype
 
-Bead `.10.4` (Track F of `docs/plans/remaining-2026-10-14.md`). Design only plus one prototype; nothing is built into the dashboard, no BigQuery table exists, nothing is deployed. Prototype: `scripts/ai_summary_prototype.py` (tests: `tests/test_ai_summary_prototype.py`). Outputs of the runs below: `out/ai_summaries/final/` (git-ignored).
+Bead `.10.4` (Track F of `docs/plans/remaining-2026-10-14.md`). Outputs of the runs below: `out/ai_summaries/final/` (git-ignored).
+
+**Build status (2026-10-21).** On-demand generation is built, not deployed: facts, prompt `s5` and validator in `dashboard/api/ai_summary.py` (moved out of the prototype, which now imports it), endpoint `GET /api/sites/{site_id}/ai-summary` in `dashboard/api/routers/summary.py`, the four cards in `dashboard/web/src/summary/`, tests in `tests/test_ai_summary.py` (frozen facts set: `tests/fixtures/ai_summary_frozen.json`) and `tests/test_dashboard_summary.py`. The `traffic.ai_summaries` DDL is in `sql/ddl.sql` and `docs/plans/data-schema.md` but not applied, and `scripts/deploy_dashboard.sh` mounts `gemini-api-key` and grants write on that table but has not been run. Until both happen the endpoint answers `summary: null` and no card shows. The schema below is the design-time proposal; the built table is keyed on the serving slot (`slot_time`), see `data-schema.md`.
 
 ## Recommendation
 
@@ -82,7 +84,7 @@ Proposal only, no DDL changed. Table `traffic.ai_summaries`, partitioned by `DAT
 | `validation_ok` | BOOL | |
 | `input_tokens`, `output_tokens`, `latency_ms` | INT64 | Cost is derived |
 
-The dashboard shows the latest row with `validation_ok`. When validation fails the job retries once, then keeps the previous summary and the dashboard shows its older `as_of`.
+The dashboard shows the current slot's row with `validation_ok`. There is no fallback to an earlier summary: when generation or validation fails, the slot shows no card, nothing is written, and the empty result is cached until the next slot.
 
 ## Grounding and evaluation
 
@@ -100,7 +102,7 @@ Every summary card shows:
 - The **demo-only** badge only when a `demo_*` field feeds the summary (`.claude/rules/data-sources.md`). None does today: the facts use core columns (`v_traffic` is RMI-compatible, `rain_flag` is WeatherNext-compatible) and Places, which is the same source in production. Add the badge if a `demo_*` column is ever added to the facts.
 - A "Source data" disclosure that lists the facts (the `facts` JSON, formatted) and the tables they came from.
 - A note that review themes come from a small sample.
-- Sentences that failed validation are never shown; the card falls back to the previous summary with its older timestamp.
+- Sentences that failed validation are never shown. A summary that fails the gate is not shown at all: the slot shows no card (no fallback to an earlier summary), and the empty result is cached until the next slot.
 
 ## Samples
 
@@ -165,11 +167,11 @@ About 2–3 days.
 | Item | Note |
 |---|---|
 | `traffic.ai_summaries` DDL in `sql/ddl.sql`, `data-schema.md` section | Schema above |
-| On-demand generation in the dashboard API: when no valid row exists for the site's current slot, build facts, call Gemini, validate, MERGE, return; concurrent first views share one generation (single-flight, as in `dashboard/api/cache.py`) | Replaces the job and Scheduler entry of the hourly design. The `traffic-dashboard` service needs the `gemini-api-key` secret mounted (or the Vertex service account). While generating, each card shows the previous valid summary with its older time, or a skeleton if there is none; on failure it keeps the previous one |
+| On-demand generation in the dashboard API: when no valid row exists for the site's current slot, build facts, call Gemini, validate, MERGE, return; concurrent first views share one generation (single-flight, as in `dashboard/api/cache.py`) | Replaces the job and Scheduler entry of the hourly design. The `traffic-dashboard` service needs the `gemini-api-key` secret mounted (or the Vertex service account). While generating, each card shows a skeleton; on failure the slot shows no card (no fallback to an earlier summary) and the empty result is cached until the next slot |
 | Prompt and schema: split topic `site_profile` into `places` and `review_themes`, and require at least one sentence per topic | One card per section: `traffic` on Traffic (covers Typical day), `weather`, `places`, `review_themes`. The validator's 3–5 sentence rule becomes 4–6 |
 | Facts builder inside the job image | The job image cannot import `dashboard/` or `scripts/` (same constraint as `review_labels.py`). Move the busy-hour rules to a shared module, or copy them with a test that pins both to the same fixtures |
 | Parallel or cached fact queries | Cuts 10–12 s to about 3 s |
-| `GET /api/sites/{site_id}/summary` and a summary card at the top of the four sections, with the labels above | Returns the current slot's valid row, generating it if missing |
+| `GET /api/sites/{site_id}/ai-summary` (built) and a summary card at the top of the four sections, with the labels above | Returns the current slot's valid row, generating it if missing |
 | Tests | Port the prototype tests; add a frozen-facts set with expected validation results |
 | Decisions needed first | Seconds-under-a-minute wording, and whether the free-tier key is acceptable (cadence and display are decided) |
 

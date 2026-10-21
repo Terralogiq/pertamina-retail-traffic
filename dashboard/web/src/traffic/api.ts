@@ -1,4 +1,5 @@
 import { getJson } from "../api";
+import type { QueueRiskSite } from "../overview/api";
 
 /** One slot of one leg; the shape of GET /api/traffic/series and /api/traffic/latest. */
 export interface TrafficPoint {
@@ -69,3 +70,41 @@ export interface TypicalDayResponse {
 
 export const getTypicalDay = (siteId: string) =>
   getJson<TypicalDayResponse>(`/api/traffic/typical-day?${new URLSearchParams({ site_id: siteId })}`);
+
+/** One local hour of the queue-risk strip. `als_pct` is the share of readings slower before the station than after it. */
+export interface AlsHour {
+  hour: number;
+  n: number;
+  als_n: number;
+  als_pct: number | null;
+  /** n < 4 */
+  faded: boolean;
+  approach_median_delay_s: number | null;
+  /** Busy on the approach under the busy-hour rule while the departure is not. */
+  approach_only_busy: boolean;
+}
+
+/** Hours 0–23 for one day kind, with the consecutive approach-only busy hours as windows (`end_hour` exclusive). */
+export interface AlsDayKind {
+  day_kind: DayKind;
+  hours: AlsHour[];
+  windows: BusyWindow[];
+}
+
+/** GET /api/traffic/queue-risk?site_id=: the all-sites entry plus the longest run (hours) and the per-hour strip. */
+export interface QueueRiskSiteDetail extends QueueRiskSite {
+  /** Local dates with a paired reading. `ready` is days >= 7; until then no hour is flagged busy and `windows` are empty. */
+  days: number;
+  ready: boolean;
+  longest_run_h: number;
+  day_kinds: AlsDayKind[];
+}
+
+/** `sites` is empty when the site has no paired reading in the window. */
+export interface QueueRiskSiteResponse {
+  window_days: number;
+  sites: QueueRiskSiteDetail[];
+}
+
+export const getQueueRiskSite = (siteId: string) =>
+  getJson<QueueRiskSiteResponse>(`/api/traffic/queue-risk?${new URLSearchParams({ site_id: siteId })}`);

@@ -15,6 +15,7 @@ function renderAt(path: string) {
         <Routes>
           <Route path="/" element={<Page title="Overview">map</Page>} />
           <Route path="/rain" element={<Page title="Traffic vs rain">rain</Page>} />
+          <Route path="/places" element={<Page title="Places vs traffic">places</Page>} />
           <Route path="/site/:site_id" element={<SiteDetail />} />
         </Routes>
       </AppShell>
@@ -33,6 +34,12 @@ describe("AppShell nav", () => {
     const html = renderAt("/rain");
     expect(count(html, 'aria-current="page"')).toBe(1);
     expect(html).toMatch(/aria-current="page"[^>]*>Traffic vs rain</);
+  });
+
+  it("marks Places vs traffic as the page on /places", () => {
+    const html = renderAt("/places");
+    expect(count(html, 'aria-current="page"')).toBe(1);
+    expect(html).toMatch(/aria-current="page"[^>]*>Places vs traffic</);
   });
 
   it("keeps Overview highlighted with aria-current=true on a site page", () => {

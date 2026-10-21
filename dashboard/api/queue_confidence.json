@@ -1,52 +1,52 @@
 {
   "54.801.17": {
     "level": "medium",
-    "reason": "Recurs every day, often by a minute or more, while the road past the station flows; weekday-heavy, so a junction could cause it too",
-    "as_of": "2026-10-14"
+    "reason": "Strongest single spell in the data: minutes slower before the station on 13-17 Oct while the road past it flowed; outside that spell, weekday mornings only and milder",
+    "as_of": "2026-10-21"
   },
   "61.761.03": {
     "level": "low",
-    "reason": "Recurs every day and late in the evening, which fits fuel demand, but the delays are small enough for a crossing or an angkot stop to cause",
-    "as_of": "2026-10-14"
+    "reason": "Every day for two weeks and late in the evening, weekends too, which fits fuel demand, but the delays are small enough for a crossing or an angkot stop to cause",
+    "as_of": "2026-10-21"
   },
   "74.902.22": {
-    "level": "low",
-    "reason": "Steady every day, but delays stay under a minute and the whole road is slow in the afternoon",
-    "as_of": "2026-10-14"
+    "level": "very_low",
+    "reason": "A signalised junction starts about 30 m before the station, so a red light alone slows this road",
+    "as_of": "2026-10-21"
   },
   "34.121.03": {
     "level": "low",
     "reason": "Weekday evenings only, the shape of the commute rather than of fuel demand",
-    "as_of": "2026-10-14"
+    "as_of": "2026-10-21"
   },
   "24.351.97": {
     "level": "very_low",
     "reason": "Scattered across hours; the road before the station is slow even at usual times, which points to a fixed road feature",
-    "as_of": "2026-10-14"
+    "as_of": "2026-10-21"
   },
   "24.351.34": {
     "level": "very_low",
     "reason": "Mostly weekday mornings at 07:00, and the road after the station slows more often than the road before it",
-    "as_of": "2026-10-14"
+    "as_of": "2026-10-21"
   },
   "KM57A": {
     "level": "very_low",
-    "reason": "Almost all of it fell on three nights, 7-9 Oct; too little to judge",
-    "as_of": "2026-10-14"
+    "reason": "A few scattered nights and afternoons, mostly 7-9 Oct; too little to judge",
+    "as_of": "2026-10-21"
   },
   "54.601.80": {
     "level": "medium",
-    "reason": "Confident the road is not slowed, which contradicts three reviews that describe motorcycles backing up onto the road; a good place to check on the ground",
-    "as_of": "2026-10-14"
+    "reason": "Confident the road is not slowed: four through lanes, a separate kerb lane, a wide apron and a side-road entry let roadside waiting happen without slowing through traffic, which three reviews describe",
+    "as_of": "2026-10-21"
   },
   "34.117.12": {
     "level": "none",
     "reason": "Both sides of the station are often slow together, so a slowdown before it cannot be told apart from the road jam; risk unknown, not low",
-    "as_of": "2026-10-14"
+    "as_of": "2026-10-21"
   },
   "34.401.16": {
     "level": "none",
     "reason": "Both sides are often slow together and the road after the station slows more often than before it; risk unknown, not low",
-    "as_of": "2026-10-14"
+    "as_of": "2026-10-21"
   }
 }

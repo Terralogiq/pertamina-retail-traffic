@@ -250,3 +250,32 @@ CLUSTER BY site_id;
 
 -- CREATE ... IF NOT EXISTS leaves an old table as it was: bring it up to date.
 ALTER TABLE traffic.place_review_labels ADD COLUMN IF NOT EXISTS road_queue BOOL;
+
+-- ai_summaries (docs/plans/ai-summaries.md; written by the dashboard API, GET /api/sites/{site_id}/ai-summary): one
+-- AI summary per site and 30-minute slot, generated on the first site-page view of the slot. Only summaries that
+-- passed the validator are written. MERGEd on (site_id, slot_time, model, prompt_version), so a second instance
+-- racing on the same slot overwrites the first's row. Derived table: core columns only (no demo-only or raw columns).
+CREATE TABLE IF NOT EXISTS traffic.ai_summaries (
+  -- core
+  site_id        STRING NOT NULL,
+  slot_time      TIMESTAMP NOT NULL,          -- the :00/:30 UTC slot the summary serves (lookup key)
+  as_of          TIMESTAMP,                   -- latest traffic slot in the facts, UTC; NULL when the site had no traffic reading
+  generated_at   TIMESTAMP NOT NULL,
+  model          STRING NOT NULL,             -- pinned id, e.g. gemini-3.8-flash
+  model_version  STRING,                      -- the response's modelVersion (ids alias forward)
+  prompt_version STRING NOT NULL,             -- e.g. s5
+  facts          JSON NOT NULL,               -- the exact facts the model saw; label counts only, no review text
+  sentences      ARRAY<STRUCT<
+                   topic          STRING,     -- traffic | weather | places | review_themes
+                   text           STRING,
+                   ok             BOOL,
+                   problems       ARRAY<STRING>,
+                   number_matches ARRAY<STRUCT<number STRING, match STRING>>   -- match: exact | rounded
+                 >>,
+  validation_ok  BOOL NOT NULL,
+  input_tokens   INT64,
+  output_tokens  INT64,                       -- candidates + thinking tokens (both bill as output)
+  latency_ms     INT64                        -- the Gemini call, retries included
+)
+PARTITION BY DATE(slot_time)
+CLUSTER BY site_id;

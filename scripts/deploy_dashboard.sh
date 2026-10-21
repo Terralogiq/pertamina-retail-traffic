@@ -6,12 +6,15 @@
 # Read-only checks (describe/list) always run; every mutating command goes through run().
 # Secret values never pass through this script: you add the password yourself, and the browser key
 # is piped from `gcloud services api-keys get-key-string` straight into Secret Manager.
+# AI summaries (docs/plans/ai-summaries.md, optional): the service mounts gemini-api-key from gcp-coe-492507 as
+# GEMINI_API_KEY (cross-project path with the project NUMBER) only when its account can read it, else deploys
+# without it; it writes traffic.ai_summaries (dataEditor on that table only, step 4).
 #
 #   scripts/deploy_dashboard.sh               deploy everything
 #   scripts/deploy_dashboard.sh --dry-run     print every mutating command, change nothing
 #   scripts/deploy_dashboard.sh --default-sa  run the service as the Compute Engine default service account
 #                                             (has Editor) instead of creating traffic-dashboard. Only grants
-#                                             added: secretAccessor on the two dashboard secrets.
+#                                             added: secretAccessor on the two dashboard secrets and the Gemini key.
 #                                             Re-running without it moves to the dedicated account (bead pertamina-retail-traffic-907.7.12).
 #   scripts/deploy_dashboard.sh --map-id ID   set MAPS_MAP_ID on the service (cloud-styled Map ID); same as exporting
 #                                             MAPS_MAP_ID. Without either, the service keeps its current value and the
@@ -26,6 +29,10 @@ SA_RUN=traffic-dashboard
 SECRET_PASSWORD=DASHBOARD_PASSWORD
 SECRET_KEY=MAPS_BROWSER_KEY
 KEY_DISPLAY_NAME="traffic-dashboard browser key (Maps JavaScript API)"
+GEMINI_SECRET_PROJECT=gcp-coe-492507   # holds the Gemini API key (AI summaries); same secret as reviews-poller --mode label
+GEMINI_SECRET=gemini-api-key
+GEMINI_ENV_VAR=GEMINI_API_KEY
+SUMMARY_TABLE=ai_summaries             # the only table the dashboard writes
 
 # Read-only describe/list calls must never block on or auto-answer a prompt (e.g. "enable API? y/N").
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
@@ -43,7 +50,7 @@ while [ $# -gt 0 ]; do
       MAP_ID="$2"
       shift
       ;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
   shift
@@ -56,6 +63,10 @@ cd "$ROOT"
 GC_PROJ=(--project "$PROJECT" --billing-project "$PROJECT")
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
 DEFAULT_SA_EMAIL="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+GC_GEMINI_PROJ=(--project "$GEMINI_SECRET_PROJECT" --billing-project "$PROJECT")
+# Cloud Run wants the project NUMBER in a cross-project secret path, not the project id.
+GEMINI_SECRET_PROJECT_NUMBER=$(gcloud projects describe "$GEMINI_SECRET_PROJECT" --format='value(projectNumber)' 2>/dev/null || true)
+GEMINI_SECRET_PATH="projects/$GEMINI_SECRET_PROJECT_NUMBER/secrets/$GEMINI_SECRET"
 if [ "$DEFAULT_SA" = 1 ]; then
   SA_RUN_EMAIL="$DEFAULT_SA_EMAIL"
 else
@@ -179,12 +190,48 @@ json.dump(ds, open(path, "w"), indent=2)
   run gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/bigquery.jobUser \
     --condition=None --format=none "${GC_PROJ[@]}"
+  # AI summaries: write on traffic.ai_summaries only (the MERGE of each generated summary); the dataset stays READER.
+  # The table comes from sql/ddl.sql (scripts/bq_setup.sh). Until it exists the grant is skipped and the cards stay empty.
+  if bq --project_id="$PROJECT" show "$PROJECT:$DATASET.$SUMMARY_TABLE" >/dev/null 2>&1; then
+    run bq --project_id="$PROJECT" add-iam-policy-binding \
+      --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/bigquery.dataEditor "$PROJECT:$DATASET.$SUMMARY_TABLE"
+  else
+    echo "  $DATASET.$SUMMARY_TABLE does not exist yet (scripts/bq_setup.sh creates it); re-run this script after it"
+  fi
 fi
 for secret in "$SECRET_PASSWORD" "$SECRET_KEY"; do
   run gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/secretmanager.secretAccessor \
     --format=none "${GC_PROJ[@]}"
 done
+# The Gemini key lives in another project and is optional: without it the AI summary cards stay empty, so nothing
+# here stops the deploy. GEMINI_OK=1 only when the runtime account's secretAccessor is confirmed or written; only
+# then does step 7 mount the key. Otherwise the grant command is printed for the secret owner.
+GEMINI_OK=""
+GEMINI_GRANT_CMD="gcloud secrets add-iam-policy-binding $GEMINI_SECRET --project $GEMINI_SECRET_PROJECT --billing-project $PROJECT --member serviceAccount:$SA_RUN_EMAIL --role roles/secretmanager.secretAccessor"
+if [ -z "$GEMINI_SECRET_PROJECT_NUMBER" ]; then
+  echo "  WARNING: cannot describe project $GEMINI_SECRET_PROJECT; deploying without $GEMINI_ENV_VAR (AI summaries off)" >&2
+elif ! gcloud secrets describe "$GEMINI_SECRET" "${GC_GEMINI_PROJ[@]}" --format='value(name)' >/dev/null 2>&1; then
+  echo "  WARNING: $GEMINI_SECRET_PATH is missing or not readable by the caller; deploying without $GEMINI_ENV_VAR (AI summaries off)" >&2
+elif GEMINI_GRANTED=$(gcloud secrets get-iam-policy "$GEMINI_SECRET" "${GC_GEMINI_PROJ[@]}" --flatten='bindings[].members' \
+  --filter="bindings.role=roles/secretmanager.secretAccessor AND bindings.members=serviceAccount:$SA_RUN_EMAIL" \
+  --format='value(bindings.members)' 2>/dev/null); then
+  echo "  secret exists: $GEMINI_SECRET_PATH"
+  if [ -n "$GEMINI_GRANTED" ]; then
+    echo "  $SA_RUN_EMAIL can already read $GEMINI_SECRET"
+    GEMINI_OK=1
+  elif run gcloud secrets add-iam-policy-binding "$GEMINI_SECRET" \
+      --member="serviceAccount:$SA_RUN_EMAIL" --role=roles/secretmanager.secretAccessor \
+      --format=none "${GC_GEMINI_PROJ[@]}"; then
+    GEMINI_OK=1
+  else
+    echo "  WARNING: the grant on $GEMINI_SECRET_PATH failed; deploying without $GEMINI_ENV_VAR. The secret owner must run:" >&2
+    echo "    $GEMINI_GRANT_CMD" >&2
+  fi
+else
+  echo "  WARNING: cannot read the IAM policy of $GEMINI_SECRET_PATH; deploying without $GEMINI_ENV_VAR. The secret owner must run:" >&2
+  echo "    $GEMINI_GRANT_CMD" >&2
+fi
 
 # --- 5. Cloud Build permissions for --source deploys -----------------------------------------
 # Cloud Build builds as the Compute Engine default service account, which needs roles/run.builder.
@@ -231,12 +278,22 @@ if [ -n "$MAP_ID" ]; then
 else
   echo "  MAPS_MAP_ID not set (export it or pass --map-id ID): the map uses DEMO_MAP_ID, and an existing value on the service is kept"
 fi
+# The Gemini key is mounted only when step 4 confirmed the runtime account can read it (GEMINI_OK); --set-secrets
+# replaces the whole set, so a deploy without it also drops a key mounted earlier.
+SECRETS="$SECRET_PASSWORD=$SECRET_PASSWORD:latest,$SECRET_KEY=$SECRET_KEY:latest"
+GEMINI_NOTE="not mounted (AI summary cards stay empty); grant with: $GEMINI_GRANT_CMD"
+if [ -n "$GEMINI_OK" ]; then
+  SECRETS="$SECRETS,$GEMINI_ENV_VAR=$GEMINI_SECRET_PATH:latest"
+  GEMINI_NOTE="$GEMINI_ENV_VAR <- $GEMINI_SECRET_PATH:latest (AI summaries)"
+else
+  echo "  $GEMINI_ENV_VAR not mounted: $GEMINI_NOTE"
+fi
 run gcloud run deploy "$SERVICE" \
   --source dashboard \
   --region "$REGION" \
   --service-account "$SA_RUN_EMAIL" \
   --allow-unauthenticated \
-  --set-secrets "$SECRET_PASSWORD=$SECRET_PASSWORD:latest,$SECRET_KEY=$SECRET_KEY:latest" \
+  --set-secrets "$SECRETS" \
   ${MAP_ENV[@]+"${MAP_ENV[@]}"} \
   --min-instances 1 \
   --cpu-boost \
@@ -251,6 +308,7 @@ cat <<EOF
   url              : $SERVICE_URL
   map id           : $MAP_NOTE
   browser key      : restricted to maps-backend.googleapis.com, referrers $REFERRERS
+  gemini key       : $GEMINI_NOTE
 $([ "$DRY_RUN" = 1 ] && echo "  DRY RUN          : nothing was changed")
 
 Rotate the password later: $ADD_PASSWORD_CMD   (then deploy a new revision; everyone is logged out)

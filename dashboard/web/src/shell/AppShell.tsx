@@ -12,6 +12,7 @@ const NAV = [
     current: (path: string) => (path === "/" ? "page" : path.startsWith("/site/") ? "true" : undefined),
   },
   { to: "/rain", label: "Traffic vs rain", current: (path: string) => (path.startsWith("/rain") ? "page" : undefined) },
+  { to: "/places", label: "Places vs traffic", current: (path: string) => (path.startsWith("/places") ? "page" : undefined) },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {

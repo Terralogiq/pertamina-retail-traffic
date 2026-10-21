@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LatestLeg, Site, getLatestTraffic, getSites } from "../map/api";
 import { PlacesResponse, getPlaces } from "../places/api";
+import { AiSummary, getAiSummary } from "../summary/api";
 import { WeatherLatest, getWeatherLatest } from "../weather/api";
 
 /** `undefined` = still loading; `null` = loaded, nothing there; an Error = the request failed. */
@@ -11,15 +12,16 @@ export interface SiteData {
   legs: Load<LatestLeg[]>;
   weather: Load<WeatherLatest>;
   places: Load<PlacesResponse>;
+  summary: Load<AiSummary>;
 }
 
 const fail = (e: unknown) => (e instanceof Error ? e : new Error(String(e)));
 
 /** The requests behind the site page; a parameter of `loadSiteData` so a test can count them. */
-export const siteApi = { getSites, getLatestTraffic, getWeatherLatest, getPlaces };
+export const siteApi = { getSites, getLatestTraffic, getWeatherLatest, getPlaces, getAiSummary };
 
 /**
- * Resolves the site from /api/sites first and only then starts the traffic, weather and Places requests:
+ * Resolves the site from /api/sites first and only then starts the traffic, weather, Places and AI summary requests:
  * an unknown code (`/site/nope`) ends at `site = null` with no panel request. Each part reports on its own,
  * so a slow Places query doesn't hold back the traffic header.
  */
@@ -52,6 +54,11 @@ export async function loadSiteData(
     .getPlaces(siteId)
     .then((d) => set("places")(d))
     .catch((e) => set("places")(fail(e)));
+  // One request for the four section cards. The first view of a slot waits for generation, so it reports last.
+  api
+    .getAiSummary(siteId)
+    .then((d) => set("summary")(d.summary))
+    .catch((e) => set("summary")(fail(e)));
 }
 
 /** Everything the site header and panels share, fetched once (the panels used to refetch /api/sites each). */
@@ -62,6 +69,7 @@ export function useSiteData(siteId: string): SiteData {
     legs: undefined,
     weather: undefined,
     places: undefined,
+    summary: undefined,
   });
 
   useEffect(() => {
@@ -71,7 +79,7 @@ export function useSiteData(siteId: string): SiteData {
       (v: SiteData[K]) =>
         live && setData((d) => (d.siteId === siteId ? { ...d, [key]: v } : d));
     // Start from an empty record for this site, so the previous site's data never shows under the new heading.
-    setData({ siteId, site: undefined, legs: undefined, weather: undefined, places: undefined });
+    setData({ siteId, site: undefined, legs: undefined, weather: undefined, places: undefined, summary: undefined });
     void loadSiteData(siteId, set);
     return () => {
       live = false;
@@ -79,9 +87,10 @@ export function useSiteData(siteId: string): SiteData {
   }, [siteId]);
 
 // Until the effect has reset for a new siteId, report loading rather than the previous site's data.
-  if (data.siteId !== siteId) return { site: undefined, legs: undefined, weather: undefined, places: undefined };
-  const { site, legs, weather, places } = data;
-  return { site, legs, weather, places };
+  if (data.siteId !== siteId)
+    return { site: undefined, legs: undefined, weather: undefined, places: undefined, summary: undefined };
+  const { site, legs, weather, places, summary } = data;
+  return { site, legs, weather, places, summary };
 }
 
 export const isReady = <T,>(v: Load<T>): v is T => v !== undefined && v !== null && !(v instanceof Error);

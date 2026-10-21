@@ -10,6 +10,49 @@ On 8 days of data, Pemogan (Denpasar) has the strongest and most repeatable sign
 
 No site is rated high confidence. Nothing here has been checked against a queue on the ground, and a traffic signal, U-turn gap or bus stop just before the Front point would produce the same pattern.
 
+## 14-day rerun (2026-10-21)
+
+Bead `pertamina-retail-traffic-907.10.15`. Same queries, window end moved to `2026-10-21 03:30 UTC`: 692 slots per leg, no gaps, no null delay, 14 full local dates (7–20 Oct) including 4 weekend days (10, 11, 17, 18 Oct). The sections below this one are the 8-day analysis and stay as the record. Where they disagree, this section wins.
+
+| Site | ALS (weekday / weekend) | Week 1 → week 2 | Days ≥ 2 h ALS (of 14) | Median approach delay in ALS | ALS slots ≥ 1 min | Longest run | Both slow | Departure only |
+|---|---|---|---|---|---|---|---|---|
+| MT Haryono | 31.1% (33.6 / 24.5) | 32.1 → 30.1 | 14 | 30 s | 9 | 6.5 h | 12.1% | 0.6% |
+| Pemogan | 36.4% (41.2 / 24.0) | 27.0 → 45.1 | 13 | 55 s | 118 | 11.5 h | 7.5% | 1.6% |
+| Makassar | 22.4% (22.2 / 22.9) | 24.6 → 20.3 | 13 | 28 s | 2 | 3.5 h | 41.9% | 0.0% |
+| Lingkar Selatan | 28.5% (35.6 / 9.9) | 26.3 → 30.5 | 12 | 23 s | 6 | 5.5 h | 6.5% | 0.4% |
+| KM57A (toll) | 2.9% | 3.3 → 2.5 | 3 | 52 s | 10 | 2.0 h | 0.4% | 0.1% |
+| Tirtayasa | 4.2% | 5.7 → 2.8 | 3 | 37 s | 3 | 2.0 h | 3.3% | 7.2% |
+| Antasari | 5.1% | 6.0 → 4.2 | 3 | 24 s | 1 | 1.5 h | 14.6% | 15.5% |
+| Daan Mogot | 2.7% | 2.4 → 3.1 | 3 | 26 s | 3 | 1.5 h | 17.6% | 17.3% |
+| Bandung | 0.7% | 0.3 → 1.1 | 0 | 23 s | 0 | 1.0 h | 42.6% | 18.6% |
+| Gayungan | 0.3% | 0.6 → 0.0 | 0 | — | 0 | 0.5 h | 0.0% | 1.0% |
+
+Week 1 is local dates 7–13 Oct, week 2 is 14–20 Oct.
+
+**What changed.**
+
+- **Pemogan is one spell plus a mild base.** On 13–17 Oct, Saturday 17 included, the approach median delay ran 36–75 s for whole days (25–39 ALS slots of 48 a day) while the departure stayed near 10 s. On 18–20 Oct it is back to about 10 s, the same as Mon 12 Oct. Distance held at 500–509 m with no `demo_rerouted` slot, so it is not a detour. Without 13–17 Oct, the only approach-only busy hour left is weekdays 08:00 WITA (the 8-day run had eight). Confidence stays **medium**, for a different reason: a multi-day, approach-only, minutes-long spell is the strongest candidate event in the data. It fits a supply-driven queue (the one corroborating review describes two days of Solar queues) as well as roadworks or a lane closure. The every-day recurrence argument from the 8-day run no longer holds. Pertamina's transaction counts and any supply or closure log for 13–17 Oct are now the first validation ask (`.10.17`).
+- **MT Haryono is the most consistent site.** ALS was seen on 14 of 14 days, at the same share in both weeks. Approach-only busy hours are weekdays 19:00–22:00 and weekends 17:00–22:00 WITA, the same late-evening shape on weekends, which fits fuel demand better than commuting. Delays are still about 30 s, so it stays **low**. The ranking rule (recurrence, then severity) now puts it first. With Pemogan's spell taken out, the two are close.
+- **Makassar is more corridor-like.** Both legs slow in 42% of slots (was 33%) and ALS fell to 20% in week 2. Still **low**.
+- **Lingkar Selatan has not changed.** Weekday evenings, 9.9% at weekends. Still **low**.
+- **KM57A is no longer just three nights.** There are a few slots on 14, 16 and 17 Oct, at 38 s median. Still **very low**.
+- **Gayungan, Daan Mogot and Bandung have not changed.** Gayungan: 2 slow approach slots in 692. Daan Mogot and Bandung are still masked.
+
+**Desk check (validation step 1, `.10.16`).** See [queue-risk-desk-check.md](queue-risk-desk-check.md).
+- Makassar drops to **very low**: a signalised junction starts about 30 m before Front.
+- Pemogan is **inconclusive** and stays medium. There is a two-lamp signal head about 65 m out, but weekday approach delays near 10 s on 12, 19 and 20 Oct argue that it does not act as a working vehicle signal. That needs confirming on site.
+- MT Haryono, Lingkar Selatan and Gayungan pass. At Gayungan the geometry (a kerb lane, a wide apron, entry from a side road) supports the "waits on the shoulder" explanation.
+
+The ranking table below is the 8-day one. Today's levels are in `dashboard/api/queue_confidence.json`.
+
+Signal tiers in `queue_risk.tier()` follow the data on their own. Pemogan's median ALS delay is now 55 s, under the 60 s strong bar, so the overview shows it as Moderate.
+
+**Weekend.** With 4 weekend days, each weekend hour now rests on 8 readings. The weekend headline gate (4 weekend days) is met. Weekend ALS is lower than weekday at every site except Makassar (22.9% vs 22.2%). MT Haryono's weekend evenings (17:00–22:00 approach-only busy) are the only weekend window that clears the busy-hour rule outside Makassar.
+
+**Rain.** Rain picked up from 14 Oct: 85–135 rain slots (core `rain_flag`) at seven sites, 42 at Pemogan, 6 at Gayungan and 4 at Makassar. An hour-matched comparison (same site and local hour, rain against dry, hours with at least 2 rain and 4 dry slots, weighted by rain slots) shows no site where rain raises the approach delay or ALS. Approach delay in rain is 0 to 15 s lower and ALS 0 to 7 points lower. This is not yet a rain effect, because rain is concentrated in week 2, so it is confounded with date, including the end of Pemogan's spell. The rain gate stays at 4 weeks, now with a date-matched check as well.
+
+Query for the rain check: the `legs` and `paired` CTEs, then join `traffic.weather_slots` on `site_id` and `slot_time`, and compare by `(site_id, hour)`.
+
 ## What the data is
 
 | Fact | Value |
@@ -135,7 +178,7 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 - Three facts: days with 2 h or more of ALS, the median approach delay in ALS slots, and the longest run.
 - A confidence chip (Medium, Low, Very low) with its reason in one line.
 - A fixed caption: "Road traffic on the 500 m before the station, not a forecourt queue count."
-- A masked state, for sites like Bandung and Daan Mogot: "The road past the station is slower than the road before it at these hours, so a station queue cannot be seen here." It shows no strip.
+- A masked state, for sites like Bandung and Daan Mogot: "Both sides of the station are slow together at these hours (area-wide congestion), so a station queue cannot be seen here." (user note on `.10.18`, 2026-10-14). It shows no strip, facts or confidence chip.
 - A link to the Review themes panel's `antrian` and `keamanan_lalu_lintas` counts, labelled "sampled reviews, weak evidence".
 
 **Overview.** Current screen: [overview-potential-queues.md](overview-potential-queues.md) (the station table UI in [overview-station-table.md](overview-station-table.md) is superseded). Superseded 2026-10-14 by a user decision: the overview shows queue risk now, as a sortable column with neutral wording, before the gate below; see [overview-station-table.md](overview-station-table.md). Original proposal: no queue ranking yet. Once there are 14 days of data and at least one validation step agrees, add a "Queue risk" sort to the side list, showing rank and confidence chip with the masked sites at the end. The existing 7-day ranking gate is met, but a ranking reads as a finding, and that needs ground truth first.
@@ -145,7 +188,7 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 | Item | Until |
 |---|---|
 | Overview ranking | ~~14 days and one validation step agreeing~~ Superseded 2026-10-14; current overview: [overview-potential-queues.md](overview-potential-queues.md) ([overview-station-table.md](overview-station-table.md) superseded) |
-| Weekend headline | 4 weekend days in the window. Until then the strip shows weekend hours faded and the headline uses weekdays |
+| Weekend headline | ~~4 weekend days in the window~~ Met 2026-10-21 (10, 11, 17, 18 Oct); weekend hours now have n = 8 |
 | Rain effect | 4 weeks, `.7.13` closed, and at least 8 hour-matched rain slots |
 | "Likely queue" wording | Validation steps 3 or 4 confirm |
 
@@ -153,7 +196,7 @@ If steps 3 or 4 confirm at Pemogan and MT Haryono, ALS can carry the label "like
 
 ## Follow-ups for the orchestrator
 
-- Rerun this analysis at 14 days (2026-10-21) and at 4 weeks (2026-11-03, alongside `.11.7`).
+- Rerun this analysis at 14 days (done 2026-10-21, see above) and at 4 weeks (2026-11-03, alongside `.11.7`), adding a date-matched rain check.
 - Desk check of the four approach legs (validation step 1).
 - Ask Pertamina for per-30-minute transaction counts and CCTV access (validation steps 2 and 3).
 - With RMI: register a short third SelectedRoute covering the last 100–150 m before each turn-in, so a slowdown can be placed at the station. This changes `routes` and needs a decision.

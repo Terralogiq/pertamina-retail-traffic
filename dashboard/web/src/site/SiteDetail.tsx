@@ -6,11 +6,12 @@ import { PlacesPanel } from "../places";
 import { ReviewThemesPanel } from "../reviews";
 import { Page } from "../shell/AppShell";
 import { BandIndicator } from "../theme/BandIndicator";
-import { TrafficCharts, TypicalDay } from "../traffic";
+import { QueueRisk, TrafficCharts, TypicalDay } from "../traffic";
 import { formatDelay, legLabel, tzLabel } from "../traffic/model";
 import { WeatherPanel } from "../weather";
 import type { WeatherLatest } from "../weather/api";
 import type { PlacesResponse } from "../places/api";
+import { SummaryCard } from "../summary";
 import { Section, Skeleton } from "./Section";
 import { Load, isReady, useSiteData } from "./useSiteData";
 import "./SiteDetail.css";
@@ -119,7 +120,7 @@ function SiteNav() {
 export function SiteDetail() {
   const { site_id } = useParams();
   const siteId = site_id!;
-  const { site, legs, weather, places } = useSiteData(siteId);
+  const { site, legs, weather, places, summary } = useSiteData(siteId);
   const timezone = isReady(site) ? site.timezone : site === undefined ? undefined : null;
   const notice = isReady(legs) ? baselineNotice(legs) : null;
 
@@ -155,13 +156,28 @@ export function SiteDetail() {
             <Section id="map" title="Road segments" note="Approach and departure legs on the SPBU side, coloured by current state">
               <SiteMap siteId={siteId} />
             </Section>
-            <TrafficCharts siteId={siteId} timezone={timezone} baselineNote={notice} site={site} />
+            <TrafficCharts
+              siteId={siteId}
+              timezone={timezone}
+              baselineNote={notice}
+              site={site}
+              summary={<SummaryCard topic="traffic" data={summary} timezone={timezone} />}
+            />
             <TypicalDay siteId={siteId} timezone={timezone} />
-            <ReviewThemesPanel siteId={siteId} />
+            <QueueRisk siteId={siteId} timezone={timezone} site={site} />
+            <ReviewThemesPanel
+              siteId={siteId}
+              summary={<SummaryCard topic="review_themes" data={summary} timezone={timezone} />}
+            />
           </div>
           <div className="span-4 site-column">
-            <WeatherPanel siteId={siteId} timezone={timezone} now={weather} />
-            <PlacesPanel data={places} />
+            <WeatherPanel
+              siteId={siteId}
+              timezone={timezone}
+              now={weather}
+              summary={<SummaryCard topic="weather" data={summary} timezone={timezone} />}
+            />
+            <PlacesPanel data={places} summary={<SummaryCard topic="places" data={summary} timezone={timezone} />} />
           </div>
         </div>
       )}

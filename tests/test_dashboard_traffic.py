@@ -29,12 +29,14 @@ class FakeBq:
     """Stands in for bq.query: sites rows for the /api/sites query, `rows` for any traffic query.
 
     A typical-day request also counts distinct local dates. That query is recognised by COUNT(DISTINCT
-    and returns `days`, so the hour rows and the day count can differ.
+    and returns `days`, so the hour rows and the day count can differ. The per-hour queue-risk query is
+    recognised by its GROUP BY day_kind, hour and returns `hours`.
     """
 
-    def __init__(self, rows=(), days=0):
+    def __init__(self, rows=(), days=0, hours=()):
         self.rows = list(rows)
         self.days = days
+        self.hours = list(hours)
         self.calls = []  # (sql, params) of the traffic queries only
 
     def __call__(self, sql, params=None):
@@ -45,6 +47,8 @@ class FakeBq:
         self.calls.append((sql, params))
         if "COUNT(DISTINCT" in sql:
             return [{"days": self.days}]
+        if "GROUP BY day_kind, hour" in sql:
+            return self.hours
         return self.rows
 
 
@@ -58,8 +62,8 @@ class TrafficTest(unittest.TestCase):
         self.client = TestClient(app, base_url="https://testserver")
         self.client.post("/api/login", json={"password": "pw"})
 
-    def get(self, url, rows=(), days=0):
-        fake = FakeBq(rows, days=days)
+    def get(self, url, rows=(), days=0, hours=()):
+        fake = FakeBq(rows, days=days, hours=hours)
         with mock.patch("dashboard.api.bq.query", fake):
             res = self.client.get(url)
         return res, fake
@@ -295,9 +299,147 @@ class TrafficTest(unittest.TestCase):
             self.client.get("/api/traffic/queue-risk")
         self.assertEqual(len(fake.calls), 1)
 
+    def test_queue_risk_all_sites_is_unchanged_by_the_site_filter(self):
+        # The overview's call: no site_id, one job, no per-site fields.
+        row = {"site_id": SITE, "als_pct": 5.0, "both_slow_pct": 1.0, "departure_only_pct": 1.0,
+               "days_with_2h_als": 1, "full_days": 7, "als_median_delay_s": 30.0}
+        res, fake = self.get("/api/traffic/queue-risk", [row])
+        self.assertEqual(len(fake.calls), 1)
+        self.assertNotIn("@site_id", fake.calls[0][0])
+        self.assertNotIn("site_id", fake.calls[0][1])
+        self.assertNotIn("day_kinds", res.json()["sites"][0])
+        self.assertNotIn("longest_run_h", res.json()["sites"][0])
+
+    def test_queue_risk_site_filter_sql_and_params(self):
+        _, fake = self.get(f"/api/traffic/queue-risk?site_id={SITE}")
+        self.assertEqual(len(fake.calls), 2)  # summary and hours
+        for sql, params in fake.calls:
+            self.assertEqual(params["site_id"], SITE)
+            self.assertEqual(params["to_ts"] - params["from_ts"], timedelta(days=28))
+            self.assertIn("r.site_id = @site_id", sql)
+            self.assertIn("r.active", sql)
+            self.assertIn("t.delay_s IS NOT NULL", sql)
+            self.assertNotIn("static_ratio", sql)
+            self.assertNotIn("demo_", sql)
+            self.assertNotIn("Asia/", sql)
+            self.assertIn("t.congestion_index >= 1.5", sql)
+            self.assertIn("baseline_samples, 0) >= 302", sql)
+            self.assertIn("EXTRACT(HOUR FROM t.slot_time AT TIME ZONE s.timezone)", sql)
+        summary_sql = next(sql for sql, _ in fake.calls if "longest_run_h" in sql)
+        hours_sql = next(sql for sql, _ in fake.calls if "GROUP BY day_kind, hour" in sql)
+        self.assertIn("n >= 40 AND als_n >= 4", summary_sql)
+        # weekend = Saturday, Sunday or a national holiday, from holidays.py
+        self.assertIn("EXTRACT(DAYOFWEEK FROM t.slot_time AT TIME ZONE s.timezone) IN (1, 7)", hours_sql)
+        self.assertIn("DATE '2026-08-17'", hours_sql)
+        self.assertNotIn("DATE '2026-02-16'", hours_sql)
+        # the busy rule runs in Python from these counts (busy.counts_are_busy), not in SQL
+        self.assertIn("app_slow_n", hours_sql)
+        self.assertIn("dep_slow_n", hours_sql)
+
+    def test_queue_risk_site_unknown_is_404(self):
+        res, fake = self.get("/api/traffic/queue-risk?site_id=nope")
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(fake.calls, [])
+
+    def test_queue_risk_site_payload_shape(self):
+        summary = {"site_id": SITE, "als_pct": 31.1, "both_slow_pct": 12.1, "departure_only_pct": 0.6,
+                   "days_with_2h_als": 14, "full_days": 14, "als_median_delay_s": 30.0, "longest_run_h": 6.5,
+                   "days": 14}
+
+        def hour(day_kind, h, n, als_n, app_slow_n, dep_slow_n, app_median, dep_median):
+            return {"day_kind": day_kind, "hour": h, "n": n, "als_n": als_n, "app_slow_n": app_slow_n,
+                    "dep_slow_n": dep_slow_n, "app_median_s": app_median, "dep_median_s": dep_median}
+        hours = [
+            hour("weekday", 19, 10, 6, 6, 0, 40.0, 10.0),   # approach only busy
+            hour("weekday", 20, 10, 5, 5, 5, 45.0, 35.0),   # busy on both legs: not approach-only
+            hour("weekday", 21, 10, 6, 6, 0, 35.0, 10.0),   # approach only busy
+            hour("weekday", 22, 10, 4, 4, 0, 50.0, 10.0),   # under half slow: not busy
+            hour("weekend", 17, 3, 3, 3, 0, 60.0, 10.0),    # busy but a thin sample: faded
+        ]
+        res, fake = self.get(f"/api/traffic/queue-risk?site_id={SITE}", [summary], hours=hours)
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(set(body), {"window_days", "sites"})
+        self.assertEqual(len(body["sites"]), 1)
+        entry = body["sites"][0]
+        self.assertEqual(set(entry), {"site_id", "tier", "als_pct", "both_slow_pct", "departure_only_pct",
+                                      "days_with_2h_als", "full_days", "als_median_delay_s", "confidence",
+                                      "longest_run_h", "day_kinds", "days", "ready"})
+        self.assertEqual((entry["days_with_2h_als"], entry["full_days"], entry["longest_run_h"]), (14, 14, 6.5))
+        self.assertEqual((entry["days"], entry["ready"]), (14, True))
+        self.assertEqual([k["day_kind"] for k in entry["day_kinds"]], ["weekday", "weekend"])
+        weekday, weekend = entry["day_kinds"]
+        self.assertEqual([h["hour"] for h in weekday["hours"]], list(range(24)))
+        self.assertEqual(len(weekend["hours"]), 24)
+        by_hour = {h["hour"]: h for h in weekday["hours"]}
+        self.assertEqual(set(by_hour[19]), {"hour", "n", "als_n", "als_pct", "faded", "approach_median_delay_s",
+                                            "approach_only_busy"})
+        self.assertEqual((by_hour[19]["n"], by_hour[19]["als_n"], by_hour[19]["als_pct"]), (10, 6, 60.0))
+        self.assertEqual([by_hour[h]["approach_only_busy"] for h in (19, 20, 21, 22)], [True, False, True, False])
+        self.assertFalse(by_hour[19]["faded"])
+        # an hour with no reading: faded, no share, not busy
+        self.assertEqual((by_hour[3]["n"], by_hour[3]["als_pct"], by_hour[3]["faded"], by_hour[3]["approach_only_busy"]),
+                         (0, None, True, False))
+        self.assertEqual(weekday["windows"], [
+            {"start_hour": 19, "end_hour": 20, "median_delay_s": 40.0},
+            {"start_hour": 21, "end_hour": 22, "median_delay_s": 35.0}])
+        thin = weekend["hours"][17]
+        self.assertTrue(thin["faded"])
+        self.assertEqual(thin["n"], 3)
+        self.assertTrue(thin["approach_only_busy"])  # same as typical-day: the flag shows, the cell fades
+        # a second request is served from the cache
+        again = FakeBq()
+        with mock.patch("dashboard.api.bq.query", again):
+            self.client.get(f"/api/traffic/queue-risk?site_id={SITE}")
+        self.assertEqual(again.calls, [])
+
+    def test_queue_risk_site_windows_wait_until_ready(self):
+        def summary(days):
+            return {"site_id": SITE, "als_pct": 31.1, "both_slow_pct": 12.1, "departure_only_pct": 0.6,
+                    "days_with_2h_als": 6, "full_days": 6, "als_median_delay_s": 30.0, "longest_run_h": 6.5,
+                    "days": days}
+        hours = [{"day_kind": "weekday", "hour": 19, "n": 10, "als_n": 6, "app_slow_n": 6, "dep_slow_n": 0,
+                  "app_median_s": 40.0, "dep_median_s": 10.0}]
+        early, _ = self.get(f"/api/traffic/queue-risk?site_id={SITE}", [summary(6)], hours=hours)
+        entry = early.json()["sites"][0]
+        self.assertEqual((entry["days"], entry["ready"]), (6, False))
+        for kind in entry["day_kinds"]:
+            self.assertEqual(kind["windows"], [])
+            self.assertFalse(any(h["approach_only_busy"] for h in kind["hours"]))
+        # the share per hour is still reported; only the busy flag waits
+        self.assertEqual(entry["day_kinds"][0]["hours"][19]["als_pct"], 60.0)
+        cache.default.clear()
+        ready, _ = self.get(f"/api/traffic/queue-risk?site_id={SITE}", [summary(7)], hours=hours)
+        entry = ready.json()["sites"][0]
+        self.assertTrue(entry["ready"])
+        self.assertEqual(entry["day_kinds"][0]["windows"], [{"start_hour": 19, "end_hour": 20, "median_delay_s": 40.0}])
+
+    def test_queue_risk_site_cache_is_per_site(self):
+        fake = FakeBq()
+        with mock.patch("dashboard.api.bq.query", fake):
+            self.client.get(f"/api/traffic/queue-risk?site_id={SITE}")
+            self.client.get("/api/traffic/queue-risk?site_id=34.121.03")
+            self.client.get(f"/api/traffic/queue-risk?site_id={SITE}")
+        self.assertEqual(len(fake.calls), 4)  # two sites x (summary + hours)
+
+    def test_queue_risk_site_without_readings(self):
+        res, _ = self.get(f"/api/traffic/queue-risk?site_id={SITE}")
+        self.assertEqual(res.json(), {"window_days": 28, "sites": []})
+
+    def test_queue_risk_site_without_als_has_zero_run(self):
+        summary = {"site_id": SITE, "als_pct": 0.0, "both_slow_pct": 0.0, "departure_only_pct": 0.0,
+                   "days_with_2h_als": 0, "full_days": 14, "als_median_delay_s": None, "longest_run_h": None,
+                   "days": 14}
+        res, _ = self.get(f"/api/traffic/queue-risk?site_id={SITE}", [summary])
+        entry = res.json()["sites"][0]
+        self.assertEqual(entry["longest_run_h"], 0.0)
+        self.assertIsNone(entry["als_median_delay_s"])
+        self.assertEqual(entry["tier"], "none")
+
     def test_need_login(self):
         self.client.cookies.clear()
-        for path in ("latest", "series?site_id=x", "pattern?site_id=x", "typical-day?site_id=x", "queue-risk"):
+        for path in ("latest", "series?site_id=x", "pattern?site_id=x", "typical-day?site_id=x", "queue-risk",
+                     "queue-risk?site_id=x"):
             self.assertEqual(self.client.get(f"/api/traffic/{path}").status_code, 401)
 
 

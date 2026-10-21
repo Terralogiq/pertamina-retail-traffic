@@ -109,27 +109,33 @@ _SITE_SLOW = (slow_count_sql()
               .replace("@gate_s", f"IF({_IS_TOLL}, @toll_gate_s, @urban_gate_s)")
               .replace("@provisional_kmh", f"IF({_IS_TOLL}, @toll_provisional_kmh, @urban_provisional_kmh)"))
 
-# Queue-risk proxy (docs/plans/queue-risk.md, "Reproduce"), all sites in one job. A slot is approach-led (ALS)
-# when the approach reading is slow and the departure reading of the same slot is not. A full local date has at
-# least 40 slots; it recurs when 4 of them (2 h) are ALS.
-QUEUE_RISK_SQL = f"""
+# Queue-risk proxy (docs/plans/queue-risk.md, "Reproduce"). A slot is approach-led (ALS) when the approach reading
+# is slow and the departure reading of the same slot is not. A full local date has at least 40 slots; it recurs
+# when 4 of them (2 h) are ALS. `{only_site}` restricts one site for the card; the overview runs all sites.
+_QUEUE_RISK_PAIRED = f"""
 WITH legs AS (
   SELECT
     r.site_id, r.leg, t.slot_time, t.delay_s,
     DATE(t.slot_time, s.timezone) AS local_date,
+    CASE WHEN {_WEEKEND} THEN 'weekend' ELSE 'weekday' END AS day_kind,
+    EXTRACT(HOUR FROM t.slot_time AT TIME ZONE s.timezone) AS hour,
     IFNULL(({_SITE_SLOW}), FALSE) AS slow
   FROM {bq.table("v_traffic")} AS t
   JOIN {bq.table("routes")} AS r ON r.selected_route_id = t.selected_route_id AND r.active
   JOIN {bq.table("sites")} AS s ON s.site_id = r.site_id
-  WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND t.delay_s IS NOT NULL
+  WHERE t.slot_time >= @from_ts AND t.slot_time <= @to_ts AND t.delay_s IS NOT NULL{{only_site}}
 ),
 paired AS (  -- one row per site and slot: both legs come from the same computeRoutes call
-  SELECT a.site_id, a.slot_time, a.local_date, a.delay_s AS app_delay_s,
+  SELECT a.site_id, a.slot_time, a.local_date, a.day_kind, a.hour, a.delay_s AS app_delay_s, d.delay_s AS dep_delay_s,
     a.slow AS app_slow, d.slow AS dep_slow, a.slow AND NOT d.slow AS als
   FROM legs AS a
   JOIN legs AS d ON d.site_id = a.site_id AND d.slot_time = a.slot_time AND d.leg = 'departure'
   WHERE a.leg = 'approach'
-),
+)"""
+
+_ONLY_SITE = "\n    AND r.site_id = @site_id"
+
+QUEUE_RISK_SQL = _QUEUE_RISK_PAIRED.format(only_site="") + """,
 daily AS (
   SELECT site_id, COUNTIF(n >= 40 AND als_n >= 4) AS days_with_2h_als, COUNTIF(n >= 40) AS full_days
   FROM (SELECT site_id, local_date, COUNT(*) AS n, COUNTIF(als) AS als_n FROM paired GROUP BY 1, 2)
@@ -146,6 +152,50 @@ SELECT
 FROM paired AS p
 LEFT JOIN daily AS d USING (site_id)
 GROUP BY p.site_id
+"""
+
+# One site, for the card: the summary above plus the longest run of consecutive ALS slots (30 min each).
+QUEUE_RISK_SITE_SQL = _QUEUE_RISK_PAIRED.format(only_site=_ONLY_SITE) + """,
+runs AS (
+  SELECT MAX(len) / 2 AS longest_run_h
+  FROM (
+    SELECT COUNT(*) AS len
+    FROM (SELECT als, COUNTIF(NOT als) OVER (ORDER BY slot_time) AS grp FROM paired)
+    WHERE als GROUP BY grp
+  )
+),
+daily AS (
+  SELECT COUNTIF(n >= 40 AND als_n >= 4) AS days_with_2h_als, COUNTIF(n >= 40) AS full_days, COUNT(*) AS days
+  FROM (SELECT local_date, COUNT(*) AS n, COUNTIF(als) AS als_n FROM paired GROUP BY 1)
+)
+SELECT
+  p.site_id,
+  ROUND(100 * AVG(IF(p.als, 1, 0)), 1) AS als_pct,
+  ROUND(100 * AVG(IF(p.app_slow AND p.dep_slow, 1, 0)), 1) AS both_slow_pct,
+  ROUND(100 * AVG(IF(p.dep_slow AND NOT p.app_slow, 1, 0)), 1) AS departure_only_pct,
+  APPROX_QUANTILES(IF(p.als, p.app_delay_s, NULL), 100)[OFFSET(50)] AS als_median_delay_s,
+  ANY_VALUE(d.days_with_2h_als) AS days_with_2h_als,
+  ANY_VALUE(d.full_days) AS full_days,
+  ANY_VALUE(d.days) AS days,
+  ANY_VALUE(r.longest_run_h) AS longest_run_h
+FROM paired AS p, daily AS d, runs AS r
+GROUP BY p.site_id
+"""
+
+# Per local hour and day kind, for the 24-cell strip. The busy flags are not computed here: the counts and
+# medians go to busy.counts_are_busy, so the band rule stays in busy.py.
+QUEUE_RISK_HOURS_SQL = _QUEUE_RISK_PAIRED.format(only_site=_ONLY_SITE) + """
+SELECT
+  day_kind, hour,
+  COUNT(*) AS n,
+  COUNTIF(als) AS als_n,
+  COUNTIF(app_slow) AS app_slow_n,
+  COUNTIF(dep_slow) AS dep_slow_n,
+  APPROX_QUANTILES(app_delay_s, 100)[OFFSET(50)] AS app_median_s,
+  APPROX_QUANTILES(dep_delay_s, 100)[OFFSET(50)] AS dep_median_s
+FROM paired
+GROUP BY day_kind, hour
+ORDER BY day_kind, hour
 """
 
 
@@ -227,6 +277,65 @@ def _queue_risk_site(row, confidence):
     return {**entry, "tier": queue_risk.tier(entry), "confidence": confidence.get(row["site_id"])}
 
 
+def _als_hour(row, hour):
+    """One local hour of the ALS strip. An hour with no readings is faded and carries no share."""
+    if row is None:
+        return {"hour": hour, "n": 0, "als_n": 0, "als_pct": None, "faded": True,
+                "approach_median_delay_s": None, "approach_only_busy": False}
+    n = int(row["n"])
+    als_n = int(row["als_n"])
+    approach_median = row["app_median_s"]
+    approach_busy = counts_are_busy(int(row["app_slow_n"]), n, approach_median)
+    departure_busy = counts_are_busy(int(row["dep_slow_n"]), n, row["dep_median_s"])
+    return {
+        "hour": hour,
+        "n": n,
+        "als_n": als_n,
+        "als_pct": round(100 * als_n / n, 1),
+        "faded": n < FADED_BELOW,
+        "approach_median_delay_s": None if approach_median is None else round(float(approach_median), 1),
+        # Busy on the approach while the departure is not: same gates as the Busy hours card, per leg.
+        "approach_only_busy": approach_busy and not departure_busy,
+    }
+
+
+def _als_day_kinds(hour_rows, ready):
+    """Weekday and weekend, hours 0-23 each, with the approach-only busy windows (busy.peak_windows).
+
+    Until the site has READY_DAYS local dates no hour is flagged busy and there are no windows, as for
+    typical-day ("Hidden until ready", docs/plans/traffic-presentation.md).
+    """
+    index = {(row["day_kind"], int(row["hour"])): row for row in hour_rows}
+    kinds = []
+    for day_kind in ("weekday", "weekend"):
+        hours = [_als_hour(index.get((day_kind, hour)), hour) for hour in range(24)]
+        if not ready:
+            hours = [{**h, "approach_only_busy": False} for h in hours]
+        windows = peak_windows([
+            {"busy": h["approach_only_busy"], "median_delay_s": h["approach_median_delay_s"]} for h in hours])
+        kinds.append({"day_kind": day_kind, "hours": hours, "windows": windows})
+    return kinds
+
+
+def _queue_risk_site_payload(rows, hour_rows):
+    """The all-sites entry for one site, plus `days` (local dates with a paired reading), `ready` (days >=
+    READY_DAYS), `longest_run_h` (hours) and `day_kinds`. `sites` is empty when the site has no paired reading."""
+    confidence = queue_risk.load_confidence()
+    sites = []
+    for row in rows:
+        longest = row["longest_run_h"]
+        days = int(row["days"] or 0)
+        ready = days >= READY_DAYS
+        sites.append({
+            **_queue_risk_site(row, confidence),
+            "days": days,
+            "ready": ready,
+            "longest_run_h": 0.0 if longest is None else float(longest),
+            "day_kinds": _als_day_kinds(hour_rows, ready),
+        })
+    return {"window_days": PATTERN_MAX_DAYS, "sites": sites}
+
+
 def _queue_risk_payload(rows):
     """Sites that have paired readings in the window, in queue-risk order."""
     confidence = queue_risk.load_confidence()
@@ -306,16 +415,29 @@ def traffic_typical_day(site_id: str):
 
 
 @router.get("/traffic/queue-risk")
-def traffic_queue_risk():
+def traffic_queue_risk(site_id: str | None = None):
     """Per site: how often the road is slower before the station than after it, over the last 28 days.
 
+    With `site_id`, the same entry for that site plus the per-hour ALS share (weekday and weekend) and the
+    approach-only busy windows, for the site-page card.
     Not a queue measurement: the tier ranks a road signal and `confidence` is a reviewed judgement.
     """
+    if site_id is not None:
+        _require_site(site_id)
     end = cache.utc_now()
     params = {
         "from_ts": end - timedelta(days=PATTERN_MAX_DAYS), "to_ts": end,
         "urban_gate_s": GATE_S["urban"], "toll_gate_s": GATE_S["toll"],
         "urban_provisional_kmh": PROVISIONAL_KMH["urban"], "toll_provisional_kmh": PROVISIONAL_KMH["toll"],
     }
-    return cache.default.get_or_compute(
-        "traffic/queue-risk", {}, lambda: _queue_risk_payload(bq.query(QUEUE_RISK_SQL, params)))
+    if site_id is None:
+        return cache.default.get_or_compute(
+            "traffic/queue-risk", {}, lambda: _queue_risk_payload(bq.query(QUEUE_RISK_SQL, params)))
+
+    def compute():
+        rows, hour_rows = bq.query_all(
+            (QUEUE_RISK_SITE_SQL, {**params, "site_id": site_id}),
+            (QUEUE_RISK_HOURS_SQL, {**params, "site_id": site_id}))
+        return _queue_risk_site_payload(rows, hour_rows)
+
+    return cache.default.get_or_compute("traffic/queue-risk", {"site_id": site_id}, compute)

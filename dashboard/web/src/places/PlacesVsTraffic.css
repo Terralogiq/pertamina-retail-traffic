@@ -1,0 +1,350 @@
+/* Places vs traffic. Tokens only; colour is neutral on purpose (no red/green: nothing here is good or bad). */
+
+:root {
+  --poi-row-radius-width: 5.5rem;
+  --poi-row-values-width: 9rem;
+  --poi-track-height: 1.5rem;
+  --poi-span-height: 2px;
+  --poi-mark-size: 0.8125rem;
+  --poi-mini-width: 9rem;
+  --poi-group-width: 10rem;
+  --poi-loading-height: 12rem;
+}
+
+.poi-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.poi-stack .widget {
+  margin-bottom: 0;
+}
+
+/* Caveat banner */
+
+.poi-caveat {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--state-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--state-warning-surface);
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+}
+
+.poi-caveat-title {
+  color: var(--state-warning);
+  font-size: var(--text-md);
+}
+
+.poi-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.poi-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.poi-caption,
+.poi-note {
+  max-width: 68ch;
+  margin: 0 0 var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.poi-note {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.poi-empty,
+.poi-loading {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.poi-loading {
+  min-height: var(--poi-loading-height);
+  border: 1px solid var(--border);
+}
+
+.poi-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--state-error-surface);
+  color: var(--state-error);
+}
+
+/* Summary plot */
+
+.poi-axis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: var(--space-3) var(--poi-row-values-width) 0 var(--poi-group-width);
+  padding-left: var(--poi-row-radius-width);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.poi-axis span:nth-child(2) {
+  text-align: center;
+}
+
+.poi-axis span:last-child {
+  text-align: right;
+}
+
+.poi-groups,
+.poi-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poi-group {
+  display: grid;
+  grid-template-columns: var(--poi-group-width) minmax(0, 1fr);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.poi-group-name {
+  font-size: var(--text-sm);
+}
+
+.poi-row {
+  display: grid;
+  grid-template-columns: var(--poi-row-radius-width) minmax(0, 1fr) var(--poi-row-values-width);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.poi-row:hover {
+  background: var(--surface-2);
+}
+
+.poi-row.selected {
+  border-color: var(--brand-primary);
+  background: var(--state-info-surface);
+  color: var(--ink-1);
+}
+
+.poi-row-radius {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.poi-row-values {
+  text-align: right;
+}
+
+.poi-row-p {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+/* Zero line at the centre of the track; the interval is a bar, rho a marker whose shape encodes the radius. */
+.poi-track {
+  position: relative;
+  height: var(--poi-track-height);
+}
+
+.poi-track::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  border-left: 1px dashed var(--ink-3);
+}
+
+.poi-span {
+  position: absolute;
+  top: calc(50% - var(--poi-span-height) / 2);
+  height: var(--poi-span-height);
+  background: var(--border-strong);
+}
+
+.poi-mark {
+  position: absolute;
+  top: 50%;
+  width: var(--poi-mark-size);
+  height: var(--poi-mark-size);
+  background: var(--ink-1);
+  transform: translate(-50%, -50%);
+}
+
+.poi-mark.static {
+  position: static;
+  display: inline-block;
+  transform: none;
+}
+
+.poi-mark.circle {
+  border-radius: var(--radius-pill);
+}
+
+.poi-mark.square {
+  border-radius: 1px;
+}
+
+.poi-mark.triangle {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* Small multiples */
+
+.poi-multiples {
+  display: grid;
+  grid-template-columns: var(--poi-group-width) repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.poi-multiples-head {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: center;
+}
+
+.poi-multiples-group {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.poi-mini {
+  position: relative;
+  max-width: var(--poi-mini-width);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  cursor: pointer;
+}
+
+.poi-mini.selected {
+  border: 2px solid var(--brand-primary);
+}
+
+.poi-mini-svg {
+  display: block;
+  width: 100%;
+}
+
+.poi-mini-rho {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.poi-dot {
+  fill: var(--ink-2);
+  stroke: var(--surface-1);
+  stroke-width: 0.5;
+}
+
+.poi-dot.toll {
+  fill: var(--surface-1);
+  stroke: var(--ink-2);
+  stroke-width: 1;
+}
+
+.poi-dot.hot {
+  fill: var(--brand-primary);
+  stroke: var(--ink-1);
+}
+
+/* Scatter statistics */
+
+.poi-stats {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+}
+
+.poi-sentence {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+/* Site table */
+
+.poi-sort {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.poi-sort:hover {
+  color: var(--ink-1);
+  text-decoration: underline;
+}
+
+.poi-table tbody tr.hot {
+  background: var(--state-info-surface);
+}
+
+.poi-bar-cell {
+  position: relative;
+  min-width: 5rem;
+}
+
+.poi-bar {
+  position: absolute;
+  inset: var(--space-1) auto var(--space-1) 0;
+  background: var(--surface-sunken);
+}
+
+.poi-bar-value {
+  position: relative;
+}
+
+.poi-footer {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --poi-group-width: 6rem;
+    --poi-row-values-width: 6.5rem;
+  }
+
+  .poi-row-p {
+    display: none;
+  }
+}

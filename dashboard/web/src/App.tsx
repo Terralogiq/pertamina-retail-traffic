@@ -4,6 +4,7 @@ import { AppConfig, getConfig, setUnauthorizedHandler, UnauthorizedError } from 
 import { Login } from "./login";
 import { Overview } from "./map";
 import { AppShell } from "./shell/AppShell";
+import { PlacesVsTraffic } from "./places";
 import { SiteDetail } from "./site";
 import { Wordmark } from "./theme/Wordmark";
 import { RainView } from "./weather";
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/" element={<Overview />} />
         <Route path="/site/:site_id" element={<SiteDetail />} />
         <Route path="/rain" element={<RainView />} />
+        <Route path="/places" element={<PlacesVsTraffic />} />
       </Routes>
     </AppShell>
   );

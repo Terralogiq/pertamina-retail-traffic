@@ -1,0 +1,65 @@
+.ai-summary {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--state-info-surface);
+}
+
+.ai-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.ai-summary-badge {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-pill);
+  color: var(--brand-primary);
+  background: var(--surface-1);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ai-summary-text {
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+}
+
+.ai-summary-note {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.ai-summary-source {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.ai-summary-source summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.ai-summary-source p {
+  margin-top: var(--space-2);
+}
+
+.ai-summary-source pre {
+  overflow: auto;
+  max-height: 16rem;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  font-size: var(--text-xs);
+  white-space: pre;
+}

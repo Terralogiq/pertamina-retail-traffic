@@ -117,7 +117,7 @@ class ConfidenceFileTest(unittest.TestCase):
     def test_levels_match_the_ranking_table(self):
         levels = {site: entry["level"] for site, entry in queue_risk.load_confidence().items()}
         self.assertEqual(levels, {
-            "54.801.17": "medium", "61.761.03": "low", "74.902.22": "low", "34.121.03": "low",
+            "54.801.17": "medium", "61.761.03": "low", "74.902.22": "very_low", "34.121.03": "low",
             "24.351.97": "very_low", "24.351.34": "very_low", "KM57A": "very_low",
             "54.601.80": "medium", "34.117.12": "none", "34.401.16": "none"})
 

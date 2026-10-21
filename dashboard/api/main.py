@@ -1,7 +1,9 @@
 """Dashboard API: FastAPI app serving /api/* (password-gated) and the Vite build as static files.
 
 Run locally: uvicorn dashboard.api.main:app --port 8080   (from the repo root)
-Env: DASHBOARD_PASSWORD, MAPS_BROWSER_KEY (both Secret Manager secrets on Cloud Run).
+Env: DASHBOARD_PASSWORD, MAPS_BROWSER_KEY, GEMINI_API_KEY (Secret Manager secrets on Cloud Run). Without
+GEMINI_API_KEY the AI summary cards stay empty; locally:
+  export GEMINI_API_KEY=$(gcloud secrets versions access latest --secret=gemini-api-key --project=gcp-coe-492507 --billing-project=gcp-coe-sandbox)
 """
 import mimetypes
 from pathlib import Path
@@ -13,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import auth
-from .routers import places, reviews, sites, traffic, weather
+from .routers import places, poi, reviews, sites, summary, traffic, weather
 
 # Python's mimetypes table lacks woff2 on some platforms (it served as application/octet-stream).
 mimetypes.add_type("font/woff2", ".woff2")
@@ -31,8 +33,10 @@ api = APIRouter(prefix="/api", dependencies=[Depends(auth.require_session)])
 api.include_router(sites.router)
 api.include_router(traffic.router)
 api.include_router(weather.router)
+api.include_router(poi.router)  # before places: /places/analysis must not match /places/{site_id}
 api.include_router(places.router)
 api.include_router(reviews.router)
+api.include_router(summary.router)
 app.include_router(api)
 
 

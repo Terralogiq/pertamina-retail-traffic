@@ -99,6 +99,7 @@ describe("loadSiteData", () => {
     getLatestTraffic: vi.fn(() => Promise.resolve([leg("approach")])),
     getWeatherLatest: vi.fn(() => Promise.resolve([])),
     getPlaces: vi.fn(() => Promise.resolve(null as never)),
+    getAiSummary: vi.fn(() => Promise.resolve({ site_id: "74.902.22", summary: null })),
   }) satisfies typeof siteApi;
   const run = async (siteId: string, api: ReturnType<typeof fakeApi>) => {
     const got: Record<string, unknown> = {};
@@ -114,6 +115,7 @@ describe("loadSiteData", () => {
     expect(api.getLatestTraffic).not.toHaveBeenCalled();
     expect(api.getWeatherLatest).not.toHaveBeenCalled();
     expect(api.getPlaces).not.toHaveBeenCalled();
+    expect(api.getAiSummary).not.toHaveBeenCalled();
   });
 
   it("fires no panel request when /api/sites fails, and reports the error", async () => {
@@ -131,5 +133,17 @@ describe("loadSiteData", () => {
     expect(got.legs).toHaveLength(1);
     expect(api.getWeatherLatest).toHaveBeenCalledTimes(1);
     expect(api.getPlaces).toHaveBeenCalledWith(site.site_id);
+    // one AI summary request for the four section cards; no summary in the slot is null, not an error
+    expect(api.getAiSummary).toHaveBeenCalledTimes(1);
+    expect(api.getAiSummary).toHaveBeenCalledWith(site.site_id);
+    expect(got.summary).toBeNull();
+  });
+
+  it("reports a failed AI summary request without touching the other parts", async () => {
+    const api = fakeApi([site]);
+    api.getAiSummary.mockImplementation(() => Promise.reject(new Error("down")));
+    const got = await run(site.site_id, api);
+    expect(got.summary).toBeInstanceOf(Error);
+    expect(got.legs).toHaveLength(1);
   });
 });

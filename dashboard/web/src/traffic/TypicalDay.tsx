@@ -161,7 +161,7 @@ export function HourStrip({ leg, hours }: { leg: string; hours: TypicalHour[] })
   );
 }
 
-function DayKindControl({ value, onChange }: { value: DayKind; onChange: (kind: DayKind) => void }) {
+export function DayKindControl({ value, onChange }: { value: DayKind; onChange: (kind: DayKind) => void }) {
   return (
     <div className="segmented" role="group" aria-label="Day kind">
       {DAY_KINDS.map((kind) => (

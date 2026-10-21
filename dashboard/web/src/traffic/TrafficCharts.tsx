@@ -1,5 +1,5 @@
 import { errorText } from "../api";
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
 import { CHART_INK, SERIES } from "../theme/palette";
 import { WeatherSeriesPoint, getWeatherSeries } from "../weather/api";
@@ -119,17 +119,19 @@ function RangeControl({ value, onChange }: { value: Range; onChange: (r: Range) 
   );
 }
 
-/** Recent delay, one chart, with a rain strip on the same time axis. Core columns only. */
+/** Recent delay, one chart, with a rain strip on the same time axis. Core columns only. `summary` is the AI card shown first. */
 export default function TrafficCharts({
   siteId,
   timezone,
   baselineNote,
   site,
+  summary,
 }: {
   siteId: string;
   timezone: string | null | undefined;
   baselineNote?: string | null;
   site?: import("../map/api").Site;
+  summary?: ReactNode;
 }) {
   const [range, setRange] = useState<Range>("24h");
   const [points, setPoints] = useState<TrafficPoint[] | null>(null);
@@ -195,6 +197,7 @@ export default function TrafficCharts({
       note={`Approach and departure legs, ${windowLabel}, times in ${tz}`}
       actions={<RangeControl value={range} onChange={setRange} />}
     >
+      {summary}
       {baselineNote && <p className="traffic-provisional">{baselineNote}</p>}
       {weekdayHeadline && <p className="traffic-headline">{weekdayHeadline}</p>}
       {error && <Notice tone="error">Couldn't load traffic. {error}</Notice>}

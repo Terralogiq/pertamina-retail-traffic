@@ -70,6 +70,7 @@ All endpoints are GET unless noted, return JSON, and require the session cookie 
 | `GET /api/weather/series?site_id&from&to` | per slot | `weather_slots` |
 | `GET /api/rain?site_id&days=28` | rain vs dry delay summary + scatter points | `v_traffic` ⨝ `weather_slots` |
 | `GET /api/places/{site_id}` | latest run: details (rating, review count, 5 reviews, hours), competitors by brand per radius, POI counts per type × radius, `fetched_at` | `places_*` |
+| `GET /api/sites/{site_id}/ai-summary` | `{site_id, summary}`: the current 30-min slot's validated AI summary (sentences tagged `traffic`, `weather`, `places`, `review_themes`, plus `facts`, `sources`, model and times), generated with one Gemini call on the slot's first view; `summary: null` when none (no key, failed call, rejected answer). See `ai-summaries.md` | `ai_summaries`; facts from `v_traffic`, `weather_slots`, `places_*`, `place_review_labels` |
 | `GET /health` | 200 | — |
 
 ## Phases

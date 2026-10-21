@@ -281,3 +281,29 @@ Derived table (bead `.10.5.1`): labels per review for the complaints analysis an
 | `labeled_at` | TIMESTAMP | when the row was written |
 
 **Merge.** One MERGE on `(review_key, method)` per load: a rerun, or a new taxonomy or model version, overwrites that method's row and leaves the other method's row alone. The loader fails on a `review_key` that is not in `v_place_reviews` rather than writing a label with no site.
+
+## ai_summaries
+Derived table: AI summaries per site and 30-minute slot, written by the dashboard API (`dashboard/api/routers/summary.py`, `GET /api/sites/{site_id}/ai-summary`). Design: `docs/plans/ai-summaries.md`. DDL: the last section of `sql/ddl.sql`. **Proposed, not yet created**: the table does not exist until the DDL is applied, and until then the endpoint answers `summary: null`.
+
+**Cadence (on demand).** The first site-page view in a slot looks the row up by `(site_id, slot_time, model, prompt_version)`. On a miss the API builds the facts, calls Gemini once and runs the validator; only a passing summary is MERGEd and shown, a failure shows no card and writes nothing (counts are logged). A view belongs to the slot that started at least 5 minutes earlier (it changes at :05 and :35 UTC, the dashboard cache boundary), so the slot's own traffic readings are in. At most one row per site and slot (480 a day at 10 sites); only slots with a view get one, up to about 1,500 a month at 50 views a day.
+
+Core columns only (the facts use core columns and Places), no `demo_*`, no `raw`: `facts` is the model's whole input and `sentences` its checked output. Partitioned by `DATE(slot_time)` (the lookup filters it), clustered by `site_id`.
+
+| Column | Type | Source |
+|---|---|---|
+| `site_id` | STRING | `traffic.sites`; MERGE key, cluster column |
+| `slot_time` | TIMESTAMP | the :00/:30 UTC slot the summary serves; MERGE key, partition column |
+| `as_of` | TIMESTAMP, nullable | the latest traffic slot in the facts (UTC); behind `slot_time` when the collector missed a slot; NULL when the site had no reading in 28 days |
+| `generated_at` | TIMESTAMP | when the API wrote the row |
+| `model` | STRING | pinned model id (`gemini-3.8-flash`); MERGE key |
+| `model_version` | STRING | the response's `modelVersion`: ids alias forward, so this records what actually answered |
+| `prompt_version` | STRING | `PROMPT_VERSION` in `dashboard/api/ai_summary.py` (`s5`); MERGE key |
+| `facts` | JSON | the facts the model saw, one key per topic (`site`, `traffic`, `weather`, `places`, `review_themes`): aggregated delays, counts and the rating; label counts only, never review text, gists or authors |
+| `sentences` | ARRAY<STRUCT<topic STRING, text STRING, ok BOOL, problems ARRAY<STRING>, number_matches ARRAY<STRUCT<number STRING, match STRING>>>> | the model's sentences in order with the validator's verdict; `topic` is `traffic`, `weather`, `places` or `review_themes` (one dashboard card each); `match` is `exact` or `rounded` |
+| `validation_ok` | BOOL | the validator's verdict; true on every row, because only passing summaries are stored |
+| `input_tokens`, `output_tokens` | INT64 | `usageMetadata.promptTokenCount`; `candidatesTokenCount` + `thoughtsTokenCount` (both bill as output). Cost is derived |
+| `latency_ms` | INT64 | the Gemini call, retries included |
+
+**Merge.** One MERGE per generated summary on `(site_id, slot_time, model, prompt_version)`. Two dashboard instances that miss the same slot at once both generate; the second MERGE overwrites the first's row. A new prompt or model version starts new rows beside the old ones.
+
+**Access.** The dashboard's service account is a dataset READER; it needs `roles/bigquery.dataEditor` on this table only (step 4 of `scripts/deploy_dashboard.sh`, once the table exists).

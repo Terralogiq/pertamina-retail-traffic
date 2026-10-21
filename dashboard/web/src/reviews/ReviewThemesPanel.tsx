@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { errorText } from "../api";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
@@ -83,8 +83,8 @@ export function ReviewThemes({ data }: { data: ReviewThemesResponse }) {
   );
 }
 
-/** Review themes section of the site page: fetches its own data once the page has mounted it for a known site. */
-export function ReviewThemesPanel({ siteId }: { siteId: string }) {
+/** Review themes section of the site page: fetches its own data once the page has mounted it for a known site. `summary` is the AI card shown first. */
+export function ReviewThemesPanel({ siteId, summary }: { siteId: string; summary?: ReactNode }) {
   const [state, setState] = useState<{ siteId: string; data: Load<ReviewThemesResponse> }>({ siteId, data: undefined });
   useEffect(() => {
     let live = true;
@@ -99,6 +99,7 @@ export function ReviewThemesPanel({ siteId }: { siteId: string }) {
   const data = state.siteId === siteId ? state.data : undefined; // never the previous site's counts under the new heading
   return (
     <Section id="review-themes" title="Review themes" note="From Google reviews of this station">
+      {summary}
       {data === undefined && <Skeleton height={THEMES_HEIGHT} label="Loading review themes" />}
       {data instanceof Error && <Notice tone="error">Couldn't load review themes. {data.message}</Notice>}
       {data === null && <Notice>No review themes for this site yet.</Notice>}

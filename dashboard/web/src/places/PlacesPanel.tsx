@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
 import type { Load } from "../site/useSiteData";
 import { PlaceDetails, PlaceReview, PlacesResponse } from "./api";
@@ -212,11 +212,12 @@ export function PoiTable({ data }: { data: PlacesResponse }) {
   );
 }
 
-/** Places section of the site page, from the latest stored run (fetched once by the page). */
-export function PlacesPanel({ data }: { data: Load<PlacesResponse> }) {
+/** Places section of the site page, from the latest stored run (fetched once by the page). `summary` is the AI card shown first. */
+export function PlacesPanel({ data, summary }: { data: Load<PlacesResponse>; summary?: ReactNode }) {
   const note = data && !(data instanceof Error) && data.fetched_at ? `Google Places, refreshed weekly · last run ${longDate(data.fetched_at)}` : undefined;
   return (
     <Section id="places" title="Places" note={note}>
+      {summary}
       {data === undefined && <Skeleton height={PLACES_HEIGHT} label="Loading Places" />}
       {data instanceof Error && <Notice tone="error">Couldn't load Places. {data.message}</Notice>}
       {(data === null || (data && !(data instanceof Error) && !data.details)) && (

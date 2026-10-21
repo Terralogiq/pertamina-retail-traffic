@@ -1,6 +1,6 @@
 import { errorText } from "../api";
 import type { EChartsOption } from "echarts";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Block, Notice, Section, Skeleton } from "../site/Section";
 import type { Load } from "../site/useSiteData";
 import { SERIES } from "../theme/palette";
@@ -125,15 +125,17 @@ export function PrecipProbabilityChart({ series, tz }: { series: WeatherSeriesPo
   );
 }
 
-/** Weather section of the site page. `now` comes from the page's shared fetch; the 24 h series is fetched here. */
+/** Weather section of the site page. `now` comes from the page's shared fetch; the 24 h series is fetched here. `summary` is the AI card shown first. */
 export function WeatherPanel({
   siteId,
   timezone,
   now,
+  summary,
 }: {
   siteId: string;
   timezone: string | null | undefined;
   now: Load<WeatherLatest>;
+  summary?: ReactNode;
 }) {
   const [series, setSeries] = useState<WeatherSeriesPoint[] | null>(null);
   const [seriesError, setSeriesError] = useState("");
@@ -153,6 +155,7 @@ export function WeatherPanel({
 
   return (
     <Section id="weather" title="Weather">
+      {summary}
       {now === undefined && <Skeleton height={NOW_HEIGHT} label="Loading current weather" />}
       {now instanceof Error && <Notice tone="error">Couldn't load the current weather. {now.message}</Notice>}
       {now === null && <Notice>No weather reading in the last 2 hours.</Notice>}

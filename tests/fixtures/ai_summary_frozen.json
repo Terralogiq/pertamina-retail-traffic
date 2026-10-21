@@ -1,0 +1,251 @@
+{
+  "_about": "Frozen facts set for the AI summary validator (docs/plans/ai-summaries.md, Grounding and evaluation). Facts in the shape of dashboard/api/ai_summary.facts_for_site; the urban and toll snapshots follow the 2026-10-14 prototype runs. Each case is a model answer with the expected gate result. Re-run when MODEL or PROMPT_VERSION changes.",
+  "facts": {
+    "urban": {
+      "site": {"id": "34.121.03", "name": "SPBU TB Simatupang", "city": "Jakarta Selatan", "road": "Jl. TB Simatupang", "road_class": "urban"},
+      "traffic": {
+        "as_of_local": "15:30", "today_weekday": "Wednesday", "day_kind": "weekday", "data_days": 8,
+        "same_kind_days_in_history": 6, "busy_windows_ready": true, "busy_windows_needs_more_days": 0,
+        "worst_leg_today_by_median": null, "road_class": "urban",
+        "legs": {
+          "approach": {
+            "today_slots": 32, "today_median_delay": {"value": 14, "unit": "s"},
+            "today_peak": {"time": "08:00", "delay": {"value": 25, "unit": "s"}}, "today_slow_slots": 4,
+            "usual_median_delay_same_hours": {"value": 13, "unit": "s"}, "week_median_delay": {"value": 15, "unit": "s"},
+            "week_slow_share_pct": 9, "week_busiest_hour": {"hour": "18:00", "median_delay": {"value": 41, "unit": "s"}},
+            "busy_windows_for_today_kind": [{"start": "17:00", "end": "19:00", "median_delay": {"value": 38, "unit": "s"}, "direction": "slower"}],
+            "today_vs_usual": {"difference": {"value": 1, "unit": "s"}, "direction": "no clear difference"}
+          },
+          "departure": {
+            "today_slots": 32, "today_median_delay": {"value": 11, "unit": "s"},
+            "today_peak": {"time": "17:30", "delay": {"value": 18, "unit": "s"}}, "today_slow_slots": 0,
+            "usual_median_delay_same_hours": {"value": 10, "unit": "s"}, "week_median_delay": {"value": 10, "unit": "s"},
+            "week_slow_share_pct": 0, "week_busiest_hour": {"hour": "17:00", "median_delay": {"value": 16, "unit": "s"}},
+            "busy_windows_for_today_kind": [],
+            "today_vs_usual": {"difference": {"value": 1, "unit": "s"}, "direction": "no clear difference"}
+          }
+        }
+      },
+      "weather": {
+        "slot_minutes": 30, "today_rain_slots": 0, "today_slots_with_weather": 32, "raining_at_as_of": false,
+        "today_temp_min_c": 26, "today_temp_max_c": 35,
+        "rain_effect_by_leg": {
+          "approach": {"rain_slots_compared": 73, "days_of_data": 8, "median_difference": {"value": 0, "unit": "s"}, "direction": "no clear difference"},
+          "departure": {"rain_slots_compared": 73, "days_of_data": 8, "median_difference": {"value": 0, "unit": "s"}, "direction": "no clear difference"}
+        },
+        "rain_definition": "core rain_flag (precipitation)"
+      },
+      "places": {
+        "google_rating": 4.4, "google_rating_count": 1656,
+        "competitor_gas_stations": {
+          "within_1000_m": {"radius_m": 1000, "count": 7, "by_brand": {"Pertamina": 4, "Shell": 2, "BP": 1}, "list_capped": false},
+          "within_3000_m": {"radius_m": 3000, "count": 19, "by_brand": {"Pertamina": 11, "Shell": 5, "BP": 2, "Vivo": 1}, "list_capped": true}
+        },
+        "nearest_competitor": {"brand": "Shell", "distance_m": 412.6},
+        "places_nearby_counts": {"radius_m": 500, "lodging": 83, "restaurant": 156, "convenience_store": 12, "school": 19, "shopping_mall": 5, "cafe": 59}
+      },
+      "review_themes": {
+        "reviews_stored": 15, "reviews_with_text": 12,
+        "complaint_theme_counts": {"pelayanan_petugas": 3, "pembayaran": 2, "lainnya": 1},
+        "note": "a small sample of the newest and most relevant Google reviews, not all reviews"
+      }
+    },
+    "toll": {
+      "site": {"id": "KM57A", "name": "SPBU Rest Area KM 57 A", "city": "Karawang", "road": "Jalan Tol Jakarta-Cikampek", "road_class": "toll"},
+      "traffic": {
+        "as_of_local": "15:30", "today_weekday": "Wednesday", "day_kind": "weekday", "data_days": 8,
+        "same_kind_days_in_history": 6, "busy_windows_ready": true, "busy_windows_needs_more_days": 0,
+        "worst_leg_today_by_median": null, "road_class": "toll",
+        "legs": {
+          "approach": {
+            "today_slots": 32, "today_median_delay": {"value": 9, "unit": "s"},
+            "today_peak": {"time": "02:00", "delay": {"value": 33, "unit": "s"}}, "today_slow_slots": 1,
+            "usual_median_delay_same_hours": {"value": 8, "unit": "s"}, "week_median_delay": {"value": 8, "unit": "s"},
+            "week_slow_share_pct": 1, "week_busiest_hour": {"hour": "02:00", "median_delay": {"value": 20, "unit": "s"}},
+            "busy_windows_for_today_kind": [],
+            "today_vs_usual": {"difference": {"value": 1, "unit": "s"}, "direction": "no clear difference"}
+          },
+          "departure": {
+            "today_slots": 32, "today_median_delay": {"value": 6, "unit": "s"},
+            "today_peak": {"time": "11:30", "delay": {"value": 16, "unit": "s"}}, "today_slow_slots": 0,
+            "usual_median_delay_same_hours": {"value": 6, "unit": "s"}, "week_median_delay": {"value": 6, "unit": "s"},
+            "week_slow_share_pct": 0, "week_busiest_hour": {"hour": "11:00", "median_delay": {"value": 12, "unit": "s"}},
+            "busy_windows_for_today_kind": [],
+            "today_vs_usual": {"difference": {"value": 0, "unit": "s"}, "direction": "no clear difference"}
+          }
+        }
+      },
+      "weather": {
+        "slot_minutes": 30, "today_rain_slots": 0, "today_slots_with_weather": 32, "raining_at_as_of": false,
+        "today_temp_min_c": 25, "today_temp_max_c": 36,
+        "rain_effect_by_leg": {
+          "approach": {"rain_slots_compared": 62, "days_of_data": 8, "median_difference": {"value": 0, "unit": "s"}, "direction": "no clear difference"},
+          "departure": {"rain_slots_compared": 62, "days_of_data": 8, "median_difference": {"value": 1, "unit": "s"}, "direction": "no clear difference"}
+        },
+        "rain_definition": "core rain_flag (precipitation)"
+      },
+      "places": {
+        "google_rating": 4.5, "google_rating_count": 12119,
+        "competitor_gas_stations": {
+          "within_1000_m": {"radius_m": 1000, "count": 6, "by_brand": {"Pertamina": 3, "Shell": 3}, "list_capped": false},
+          "within_3000_m": {"radius_m": 3000, "count": 19, "by_brand": {"Pertamina": 12, "Shell": 7}, "list_capped": true}
+        },
+        "nearest_competitor": {"brand": "Shell", "distance_m": 210.0},
+        "places_nearby_counts": {"radius_m": 500, "restaurant": 72, "cafe": 24, "convenience_store": 7, "lodging": 4, "school": 2, "shopping_mall": 2}
+      },
+      "review_themes": {
+        "reviews_stored": 20, "reviews_with_text": 16,
+        "complaint_theme_counts": {"kebersihan": 3, "toilet": 3, "fasilitas": 2},
+        "note": "a small sample of the newest and most relevant Google reviews, not all reviews"
+      }
+    },
+    "sparse": {
+      "site": {"id": "24.351.97", "name": "SPBU Pramuka", "city": "Bandar Lampung", "road": "Jl. Pramuka", "road_class": "urban"},
+      "traffic": {
+        "as_of_local": "09:00", "today_weekday": "Monday", "day_kind": "weekday", "data_days": 5,
+        "same_kind_days_in_history": 4, "busy_windows_ready": false, "busy_windows_needs_more_days": 2,
+        "worst_leg_today_by_median": "approach", "road_class": "urban",
+        "legs": {
+          "approach": {
+            "today_slots": 19, "today_median_delay": {"value": 21, "unit": "s"},
+            "today_peak": {"time": "07:30", "delay": {"value": 1.2, "unit": "min"}}, "today_slow_slots": 3,
+            "usual_median_delay_same_hours": {"value": 12, "unit": "s"}, "week_median_delay": {"value": 13, "unit": "s"},
+            "week_slow_share_pct": 6, "week_busiest_hour": null, "busy_windows_for_today_kind": [],
+            "today_vs_usual": {"difference": {"value": 9, "unit": "s"}, "direction": "slower"}
+          }
+        }
+      },
+      "weather": {
+        "slot_minutes": 30, "today_rain_slots": 2, "today_slots_with_weather": 19, "raining_at_as_of": true,
+        "today_temp_min_c": 24, "today_temp_max_c": 29,
+        "rain_effect_by_leg": {"approach": null},
+        "rain_definition": "core rain_flag (precipitation)"
+      },
+      "places": {
+        "google_rating": null, "google_rating_count": null,
+        "competitor_gas_stations": {
+          "within_1000_m": {"radius_m": 1000, "count": 2, "by_brand": {"Pertamina": 2}, "list_capped": false},
+          "within_3000_m": {"radius_m": 3000, "count": 9, "by_brand": {"Pertamina": 8, "Shell": 1}, "list_capped": false}
+        },
+        "nearest_competitor": {"brand": "Pertamina", "distance_m": 640.0},
+        "places_nearby_counts": {"radius_m": 500}
+      },
+      "review_themes": {
+        "reviews_stored": 0, "reviews_with_text": 0, "complaint_theme_counts": {},
+        "note": "a small sample of the newest and most relevant Google reviews, not all reviews"
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "urban, six grounded sentences",
+      "facts": "urban", "ok": true, "count_ok": true, "missing_topics": [], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 on Wednesday, the approach leg had 4 slow slots with a peak delay of 25 s at 08:00, with no clear difference compared to usual."},
+        {"topic": "traffic", "text": "On typical weekdays the approach leg has a busy window from 17:00 to 19:00 with a 38 s median delay, while the departure leg flowed freely today across all 32 slots and has no usual busy window."},
+        {"topic": "weather", "text": "There was no rain today, with temperatures from 26 to 35 C, and across 73 rain slots over 8 days of data delays showed no clear difference associated with rain on either leg."},
+        {"topic": "places", "text": "The station has a 4.4 Google rating from 1,656 ratings, with 7 competitor gas stations within 1000 m and at least 19 within 3000 m."},
+        {"topic": "places", "text": "Within 500 m there are 83 lodging places, 156 restaurants, 12 convenience stores, 19 schools, 5 shopping malls and 59 cafes."},
+        {"topic": "review_themes", "text": "In a small sample of 12 reviews with text, complaints concerned staff service in 3 reviews, payment in 2 and other in 1."}
+      ]
+    },
+    {
+      "name": "toll, four sentences, one per topic",
+      "facts": "toll", "ok": true, "count_ok": true, "missing_topics": [], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 on Wednesday, the approach leg had 1 slow slot today with a peak delay of 33 s at 02:00 and the departure leg flowed freely across 32 slots; neither leg has a usual busy window on typical weekdays."},
+        {"topic": "weather", "text": "It was not raining at 15:30, temperatures ranged from 25 to 36 C, and across 62 rain slots over 8 days of data delays showed no clear difference associated with rain."},
+        {"topic": "places", "text": "SPBU Rest Area KM 57 A has a 4.5 Google rating from 12119 ratings, with 6 competitor gas stations within 1000 m and at least 19 within 3000 m."},
+        {"topic": "review_themes", "text": "A small sample of 16 reviews with text raised cleanliness in 3 reviews, toilets in 3 and facilities in 2."}
+      ]
+    },
+    {
+      "name": "sparse site: not-ready facts are phrased as not available",
+      "facts": "sparse", "ok": true, "count_ok": true, "missing_topics": [], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 09:00 on Monday, the approach leg had 3 slow slots with a peak delay of 1.2 min at 07:30, about 9 s slower than usual."},
+        {"topic": "traffic", "text": "Busy windows are not available yet and need 2 more days of data."},
+        {"topic": "weather", "text": "It was raining at 09:00 after 2 rain slots today, with temperatures from 24 to 29 C; a rain comparison is not available yet."},
+        {"topic": "places", "text": "No Google rating is available yet; there are 2 competitor gas stations within 1000 m and 9 within 3000 m."},
+        {"topic": "review_themes", "text": "No reviews with text are stored yet, so the sample raised no complaint theme."}
+      ]
+    },
+    {
+      "name": "invented peak delay",
+      "facts": "toll", "ok": false, "count_ok": true, "missing_topics": [],
+      "problems": ["number 35 is not in the facts"],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 the approach leg peaked at 35 s at 02:00."},
+        {"topic": "weather", "text": "It was not raining at 15:30, with temperatures from 25 to 36 C."},
+        {"topic": "places", "text": "The station has a 4.5 Google rating from 12119 ratings."},
+        {"topic": "review_themes", "text": "A small sample of 16 reviews with text raised toilets in 3 reviews."}
+      ]
+    },
+    {
+      "name": "invented time, wrong direction and a weekday that is not today",
+      "facts": "urban", "ok": false, "count_ok": true, "missing_topics": [],
+      "problems": ["time 18:30 is not in the facts", "direction 'faster' not given by the facts", "weekday Tuesday is not in the facts"],
+      "sentences": [
+        {"topic": "traffic", "text": "The approach leg is busiest from 17:00 to 18:30."},
+        {"topic": "traffic", "text": "The departure leg was faster than usual on Tuesday."},
+        {"topic": "weather", "text": "There was no rain today, with temperatures from 26 to 35 C."},
+        {"topic": "places", "text": "The station has a 4.4 Google rating from 1656 ratings."},
+        {"topic": "review_themes", "text": "A small sample of 12 reviews with text raised staff service in 3 reviews."}
+      ]
+    },
+    {
+      "name": "spelled-out number, date word and a quote",
+      "facts": "urban", "ok": false, "count_ok": true, "missing_topics": [],
+      "problems": ["spelled-out number or share word 'three'", "date word October", "quoted text"],
+      "sentences": [
+        {"topic": "traffic", "text": "The approach leg had three slow slots today."},
+        {"topic": "weather", "text": "There was no rain on 14 October."},
+        {"topic": "places", "text": "The station has a 4.4 Google rating from 1656 ratings."},
+        {"topic": "review_themes", "text": "One reviewer wrote \"rude staff\"."}
+      ]
+    },
+    {
+      "name": "no review_themes sentence",
+      "facts": "urban", "ok": false, "count_ok": true, "missing_topics": ["review_themes"], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 the approach leg had 4 slow slots."},
+        {"topic": "traffic", "text": "The departure leg flowed freely today."},
+        {"topic": "weather", "text": "There was no rain today."},
+        {"topic": "places", "text": "The station has a 4.4 Google rating from 1656 ratings, with 12 reviews with text in the sample."}
+      ]
+    },
+    {
+      "name": "the old site_profile topic is rejected",
+      "facts": "urban", "ok": false, "count_ok": true, "missing_topics": ["places", "review_themes"],
+      "problems": ["topic 'site_profile' is not one of traffic, weather, places, review_themes"],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 the approach leg had 4 slow slots."},
+        {"topic": "traffic", "text": "The departure leg flowed freely today."},
+        {"topic": "weather", "text": "There was no rain today."},
+        {"topic": "site_profile", "text": "The station has a 4.4 Google rating from 1656 ratings."}
+      ]
+    },
+    {
+      "name": "three sentences is too few",
+      "facts": "toll", "ok": false, "count_ok": false, "missing_topics": ["review_themes"], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 the approach leg had 1 slow slot."},
+        {"topic": "weather", "text": "It was not raining at 15:30."},
+        {"topic": "places", "text": "The station has a 4.5 Google rating from 12119 ratings."}
+      ]
+    },
+    {
+      "name": "seven sentences is too many",
+      "facts": "toll", "ok": false, "count_ok": false, "missing_topics": [], "problems": [],
+      "sentences": [
+        {"topic": "traffic", "text": "As of 15:30 the approach leg had 1 slow slot."},
+        {"topic": "traffic", "text": "Its peak delay was 33 s at 02:00."},
+        {"topic": "traffic", "text": "The departure leg flowed freely today."},
+        {"topic": "weather", "text": "It was not raining at 15:30."},
+        {"topic": "weather", "text": "Temperatures ranged from 25 to 36 C."},
+        {"topic": "places", "text": "The station has a 4.5 Google rating from 12119 ratings."},
+        {"topic": "review_themes", "text": "A small sample of 16 reviews with text raised toilets in 3 reviews."}
+      ]
+    }
+  ]
+}
