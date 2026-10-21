@@ -1,5 +1,5 @@
-import { GROUP_ORDER, QueueGroup } from "../overview/model";
-import { GroupChip } from "../overview/QueueGroup";
+import { QueueRisk, RISK_ORDER } from "../overview/model";
+import { RiskChip } from "../overview/QueueRisk";
 import { BandIndicator } from "../theme/BandIndicator";
 import { LatestLeg, Site } from "./api";
 import { BAND_RANK, Basis, CONGESTION_BANDS, legBand, legContext } from "./bands";
@@ -37,24 +37,25 @@ function CompactScale() {
   );
 }
 
-const GROUP_KEYS: Record<QueueGroup, string> = {
-  potential: "both signals",
-  traffic_only: "slower before the station than after",
-  reviews_only: "a review: queue reaches the road",
-  none: "neither",
+const RISK_KEYS: Record<QueueRisk, string> = {
+  both: "both signals",
+  traffic: "slower before the station than after",
+  reviews: "a review: queue reaches the road",
+  busy: "both sides of the station slow together; traffic can't tell",
+  low: "no signal",
 };
 
-/** Map key in "Potential queues" mode: one chip per group, in list order, with what puts a station in it. */
+/** Map key in "Queue risk" mode: one chip per level, in list order, with what puts a station in it. */
 export function QueueLegend() {
   return (
     <aside className="map-legend" aria-label="Map key">
       <div className="map-legend-scale">
-        <p className="map-legend-title">Potential queues</p>
+        <p className="map-legend-title">Queue risk</p>
         <ul className="map-legend-rows">
-          {GROUP_ORDER.map((g) => (
-            <li key={g}>
-              <GroupChip group={g} />
-              <span className="map-legend-range">{GROUP_KEYS[g]}</span>
+          {RISK_ORDER.map((r) => (
+            <li key={r}>
+              <RiskChip risk={r} />
+              <span className="map-legend-range">{RISK_KEYS[r]}</span>
             </li>
           ))}
         </ul>

@@ -74,8 +74,8 @@ describe("site header", () => {
 
 describe("section nav", () => {
   it("lists the sections in page order: left column (Review themes under Typical day), then right", () => {
-    expect(SECTIONS.map((s) => s.label)).toEqual(["Traffic", "Typical day", "Review themes", "Weather", "Places"]);
-    expect(SECTIONS.map((s) => s.id)).toEqual(["traffic", "pattern", "review-themes", "weather", "places"]);
+    expect(SECTIONS.map((s) => s.label)).toEqual(["Traffic", "Typical day", "Queue risk", "Review themes", "Weather", "Places"]);
+    expect(SECTIONS.map((s) => s.id)).toEqual(["traffic", "pattern", "queue-risk", "review-themes", "weather", "places"]);
   });
 });
 

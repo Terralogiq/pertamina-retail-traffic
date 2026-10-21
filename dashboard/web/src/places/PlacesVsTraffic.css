@@ -242,7 +242,6 @@
 }
 
 .poi-mini {
-  position: relative;
   max-width: var(--poi-mini-width);
   padding: 0;
   border: 1px solid var(--border);
@@ -260,10 +259,11 @@
   width: 100%;
 }
 
+/* Header strip above the plot, outside the SVG, so no dot can sit under the label. */
 .poi-mini-rho {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
+  display: block;
+  padding: var(--space-1) var(--space-1) 0;
+  text-align: right;
   color: var(--ink-2);
   font-size: var(--text-xs);
 }

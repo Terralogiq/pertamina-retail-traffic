@@ -1,0 +1,39 @@
+/* Queue-risk chip and icon. Red, yellow and green are the traffic band colours (--band-heavy, --band-moderate,
+   --band-free, set from the data palette), so the overview reads the same in both map modes. The colour goes on
+   the border and icon; the text stays --ink-1 on --surface-1, which keeps it readable (the amber is too pale for
+   text). The icon shape (split diamond, bar, circle) and the label carry the level without colour. */
+
+[data-level="red"] {
+  --risk-color: var(--band-heavy);
+}
+
+[data-level="yellow"] {
+  --risk-color: var(--band-moderate);
+}
+
+[data-level="green"] {
+  --risk-color: var(--band-free);
+}
+
+.queue-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  color: var(--risk-color);
+}
+
+.queue-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1.5px solid var(--risk-color);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+  color: var(--ink-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-normal);
+  white-space: nowrap;
+}

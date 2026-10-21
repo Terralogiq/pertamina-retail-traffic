@@ -2,7 +2,7 @@
 
 Supersedes the screen in [overview-station-table.md](overview-station-table.md) (the "Stations at a glance" table and the live-traffic cards). Its two endpoints stay. Decisions by the user, 2026-10-15.
 
-**Status (2026-10-15):** phases 1–4 shipped.
+**Status (2026-10-15):** phases 1–4 shipped. **Group rules superseded 2026-10-21** by the risk levels below (red, yellow, green); the signals are unchanged.
 
 ## Why
 
@@ -15,7 +15,7 @@ The user found the table too complicated. The overview must answer, at any hour:
 | Traffic | The road is slower before the station than after it on at least 70% of days: tier `strong` or `moderate` from `GET /api/traffic/queue-risk`. `cannot_tell` (the road after the station is slower) never counts | Core columns, 28-day window |
 | Reviews | At least 1 review from the last 12 months with `road_queue = true` | `place_review_labels.road_queue` (new, Gemini prompt p4) |
 
-| Group | Rule | On 2026-10-15 |
+| Group (superseded 2026-10-21, see "Risk levels") | Rule | On 2026-10-15 |
 |---|---|---|
 | Potential queue | both signals | Pemogan |
 | Traffic only | traffic signal, no road-queue review | MT Haryono, Makassar, Lingkar Selatan |
@@ -23,6 +23,34 @@ The user found the table too complicated. The overview must answer, at any hour:
 | No signal | neither | Antasari, KM57A, Bandung |
 
 "Queue" appears in the group name because the review signal is a person reporting a queue. A traffic signal on its own is still worded "slower before the station than after it".
+
+## Risk levels (2026-10-21, user decision)
+
+Replaces the four groups. The two signals and their rules are unchanged; the overview shows one of three levels per station.
+
+| Level | Rule | Label | Map pill |
+|---|---|---|---|
+| Red | traffic signal (tier `strong` or `moderate`) and/or review signal (`road_queue_recent >= 1`); reviews win over `cannot_tell` | "Queue risk: traffic + reviews", "Queue risk: traffic", "Queue risk: reviews" | "Both", "Traffic", "Reviews" |
+| Yellow | tier `cannot_tell` (both sides of the station slow together, so a queue cannot be told apart) and no review signal | "Busy road" | "Busy road" |
+| Green | everything else: tier `weak` or `none`, no review signal | "Low queue risk" | "Low" |
+
+- Desk-check confidence does not change the colour; the confidence level and reason stay in the expanded row.
+- An unknown signal (endpoint failed) counts as absent and the row says it is unavailable.
+- Colours reuse the traffic band tokens: red `--band-heavy`, yellow `--band-moderate`, green `--band-free` (chip and pill border, icon); label text stays `--ink-1` on `--surface-1`. Shapes: split diamond (red, left half traffic, right half reviews), bar (yellow), circle (green).
+- Order: red (traffic + reviews, then traffic, then reviews), yellow, green; within a level the server's queue-risk order.
+- Summary line, for example "7 queue risk · 2 busy road · 1 low", plus the fixed caption "Guidance from road traffic and sampled reviews, not a queue count." The map toggle and list heading read "Queue risk".
+
+On 2026-10-21 (tiers: 61.761.03, 54.801.17, 74.902.22, 34.121.03 moderate; KM57A, 24.351.97 weak; 54.601.80 none; 34.117.12, 24.351.34, 34.401.16 `cannot_tell`; `road_queue_recent`: 24.351.97 = 1, 34.117.12 = 1, 54.601.80 = 2, 54.801.17 = 2, else 0):
+
+| Level | Stations |
+|---|---|
+| Red, traffic + reviews | Pemogan 54.801.17 |
+| Red, traffic | MT Haryono 61.761.03, Makassar 74.902.22, Lingkar Selatan 34.121.03 |
+| Red, reviews | Gayungan 54.601.80, Tirtayasa 24.351.97, Daan Mogot 34.117.12 |
+| Yellow | Antasari 24.351.34, Bandung 34.401.16 |
+| Green | KM57A |
+
+Pinned in `dashboard/web/src/overview/overview.test.tsx`. The sections below describe the 2026-10-15 group design; where they say "group", read "risk level".
 
 ## Road-queue flag (prompt p4)
 

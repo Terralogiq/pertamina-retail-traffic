@@ -23,6 +23,7 @@ const SITE_LOADING_HEIGHT = 480;
 export const SECTIONS = [
   { id: "traffic", label: "Traffic" },
   { id: "pattern", label: "Typical day" },
+  { id: "queue-risk", label: "Queue risk" },
   { id: "review-themes", label: "Review themes" },
   { id: "weather", label: "Weather" },
   { id: "places", label: "Places" },

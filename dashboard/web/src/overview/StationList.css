@@ -28,13 +28,9 @@
   background: transparent;
 }
 
-/* On the tint, secondary text steps up from ink-3 (under 4.5:1 there) to ink-2, and the one-signal chip (the same tint) turns white. */
+/* On the tint, secondary text steps up from ink-3 (under 4.5:1 there) to ink-2. */
 .station-row[data-selected] :is(.station-meta, .station-live-label, .station-details dt) {
   color: var(--ink-2);
-}
-
-.station-row[data-selected] .queue-chip:is([data-group="traffic_only"], [data-group="reviews_only"]) {
-  background: var(--surface-1);
 }
 
 .station-row-button:focus-visible {
@@ -77,6 +73,33 @@
   margin-top: var(--space-1);
   color: var(--ink-1);
   font-size: var(--text-xs);
+}
+
+.band-chip {
+  display: inline-flex;
+  flex: none;
+  padding: 0 var(--space-2);
+  border: 1.5px solid var(--band-color);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+  line-height: var(--leading-normal);
+}
+
+.band-chip[data-band="free"] { --band-color: var(--band-free); }
+.band-chip[data-band="moderate"] { --band-color: var(--band-moderate); }
+.band-chip[data-band="heavy"] { --band-color: var(--band-heavy); }
+.band-chip[data-band="jam"] { --band-color: var(--band-jam); }
+.band-chip[data-band="none"] { --band-color: var(--band-none); }
+
+.station-leg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.station-leg .station-live-label {
+  min-width: 5.5em;
 }
 
 .station-live-label {

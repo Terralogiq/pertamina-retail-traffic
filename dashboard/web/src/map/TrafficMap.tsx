@@ -1,7 +1,7 @@
 import { ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { GROUP_LABELS, GROUP_MARKER_TEXT, GROUP_ORDER, QueueGroup } from "../overview/model";
+import { QueueRisk, RISK_LABELS, RISK_MARKER_TEXT, RISK_ORDER } from "../overview/model";
 import { BANDS, CHART_INK } from "../theme/palette";
 import { LatestLeg, Site } from "./api";
 import { boundsOf, formatDelay, legColor, legContext, lineToPath, sitePoints } from "./bands";
@@ -75,21 +75,21 @@ interface Props {
   siteId?: string;
   onSelectSite?: (siteId: string) => void;
   /**
-   * Overview "Potential queues" mode: each site's group sets its marker, and the group key replaces the band key
-   * (no legs, no hover cards). null while the groups load (no markers yet); undefined for live traffic.
+   * Overview "Queue risk" mode: each site's level sets its marker, and the risk key replaces the band key
+   * (no legs, no hover cards). null while the levels load (no markers yet); undefined for live traffic.
    */
-  queueGroups?: Map<string, QueueGroup> | null;
+  queueRisks?: Map<string, QueueRisk> | null;
   /** Overview: the selected site's marker is raised and ringed, and the map pans (zooming out of a group marker) to it. */
   selectedId?: string | null;
 }
 
-/** Sites in group order (list order), keeping the ranking within a group, so a cluster's first member is its highest group. */
-const byGroup = (ranked: SiteState[], groups: Map<string, QueueGroup>) => {
-  const rank = (s: SiteState) => GROUP_ORDER.indexOf(groups.get(s.site.site_id) ?? "none");
+/** Sites in risk order (list order), keeping the ranking within a level, so a cluster's first member is its highest risk. */
+const byRisk = (ranked: SiteState[], risks: Map<string, QueueRisk>) => {
+  const rank = (s: SiteState) => RISK_ORDER.indexOf(risks.get(s.site.site_id) ?? "low");
   return [...ranked].sort((a, b) => rank(a) - rank(b));
 };
 
-export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueGroups, selectedId = null }: Props) {
+export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueRisks, selectedId = null }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const [libs, setLibs] = useState<Libs | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -109,8 +109,8 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
   // The marker effect's last clustering input, so a selection can work out the zoom that separates its marker.
   const clusterInput = useRef<{ points: Point[]; box: typeof MARKER_BOX } | null>(null);
   const clickable = !!onSelectSite;
-  const potential = queueGroups !== undefined;
-  const showLegs = !potential && (!!siteId || zoom >= LEGS_MIN_ZOOM);
+  const riskMode = queueRisks !== undefined;
+  const showLegs = !riskMode && (!!siteId || zoom >= LEGS_MIN_ZOOM);
   // Group markers depend on the zoom on the overview only; the site map never regroups.
   const groupZoom = siteId ? 0 : zoom;
 
@@ -209,13 +209,13 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
 
   // Markers: one per site; on the overview, sites that would overlap at this zoom share one group marker that
   // zooms in on click. Live traffic shows each site's worst band and delay (a group: its worst member's band);
-  // "Potential queues" shows each site's group (a group marker: its highest group).
+  // "Queue risk" shows each site's level (a group marker: its highest risk).
   useEffect(() => {
-    if (!map || !libs || queueGroups === null) return;
+    if (!map || !libs || queueRisks === null) return;
     const ranked = rankSites(shown, latest);
-    const ordered = queueGroups ? byGroup(ranked, queueGroups) : ranked;
+    const ordered = queueRisks ? byRisk(ranked, queueRisks) : ranked;
     const byId = new Map(ordered.map((s) => [s.site.site_id, s]));
-    const box = compact ? MARKER_BOX_COMPACT : queueGroups ? MARKER_BOX_WIDE : MARKER_BOX;
+    const box = compact ? MARKER_BOX_COMPACT : queueRisks ? MARKER_BOX_WIDE : MARKER_BOX;
     const points = ordered.map((s) => ({ id: s.site.site_id, ...s.site.location }));
     clusterInput.current = { points, box };
     const groups = siteId ? ordered.map((s) => ({ ids: [s.site.site_id], ...s.site.location })) : clusterPoints(points, groupZoom, box);
@@ -223,18 +223,18 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
 
     for (const group of groups) {
       const members = group.ids.map((id) => byId.get(id)!);
-      const lead = members[0]; // ordered: the worst site (or highest group) leads its group
+      const lead = members[0]; // ordered: the worst site (or highest risk) leads its group
       if (members.length === 1) {
         const { site, band, worstDelay } = lead;
         const selected = site.site_id === selectedId;
-        if (queueGroups) {
-          const g = queueGroups.get(site.site_id) ?? "none";
+        if (queueRisks) {
+          const r = queueRisks.get(site.site_id) ?? "low";
           const { marker, remove } = reactMarker(
             libs,
             map,
             site.location,
-            `${site.name}: ${GROUP_LABELS[g]}`,
-            <QueueMarker queueGroup={g} text={GROUP_MARKER_TEXT[g]} compact={compact} selected={selected} />,
+            `${site.name}: ${RISK_LABELS[r]}`,
+            <QueueMarker risk={r} text={RISK_MARKER_TEXT[r]} compact={compact} selected={selected} />,
           );
           if (selected) marker.zIndex = SELECTED_Z;
           marker.addEventListener("gmp-click", () => select.current?.(site.site_id));
@@ -264,9 +264,9 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
         const names = members.map((m) => m.site.name);
         const at = { lat: group.lat, lng: group.lng };
         const countText = compact ? String(members.length) : `${members.length} sites`;
-        const leadGroup = queueGroups?.get(lead.site.site_id);
-        const { marker, remove } = leadGroup
-          ? reactMarker(libs, map, at, `${members.length} sites: ${names.join(", ")}`, <QueueMarker queueGroup={leadGroup} text={countText} group compact={compact} />)
+        const leadRisk = queueRisks?.get(lead.site.site_id);
+        const { marker, remove } = leadRisk
+          ? reactMarker(libs, map, at, `${members.length} sites: ${names.join(", ")}`, <QueueMarker risk={leadRisk} text={countText} group compact={compact} />)
           : reactMarker(
               libs,
               map,
@@ -274,7 +274,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
               `${members.length} sites, worst ${BANDS[lead.band].label}: ${names.join(", ")}`,
               <MapMarker band={lead.band} text={countText} group compact={compact} />,
             );
-        if (!queueGroups) {
+        if (!queueRisks) {
           const model = buildGroupPopup(members);
           marker.addEventListener("pointerenter", hoverOnly(() => popup.hover(at, <GroupPopup model={model} />, MARKER_CARD_LIFT_PX)));
           marker.addEventListener("pointerleave", popup.hideSoon);
@@ -290,7 +290,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
       popup.hide();
       cleanups.forEach((fn) => fn());
     };
-  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup, compact, fitPadding, queueGroups, selectedId]);
+  }, [map, libs, shown, latest, clickable, siteId, groupZoom, popup, compact, fitPadding, queueRisks, selectedId]);
 
   // Selection: pan to the site, zooming in first when its marker sits inside a group marker at this zoom.
   useEffect(() => {
@@ -314,7 +314,7 @@ export default function TrafficMap({ sites, latest, siteId, onSelectSite, queueG
       )}
       <div ref={el} className="map-canvas" />
       {legendEl &&
-        createPortal(potential ? <QueueLegend /> : <Legend sites={shown} latest={latest} compact={!!siteId} />, legendEl)}
+        createPortal(riskMode ? <QueueLegend /> : <Legend sites={shown} latest={latest} compact={!!siteId} />, legendEl)}
     </>
   );
 }

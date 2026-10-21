@@ -8,9 +8,10 @@ import {
   StationRow,
   buildRows,
   effectiveMode,
-  groupSummary,
-  orderByGroup,
+  RISK_GUIDANCE,
   orderByRank,
+  orderByRisk,
+  riskSummary,
   selectionReducer,
 } from "../overview/model";
 import { StationData, useStationData } from "../overview/useStationData";
@@ -50,12 +51,13 @@ export function NowSummary({ summary }: { summary: Summary }) {
   );
 }
 
-/** The "Potential queues" line under the page title: stations per group, and the windows the two signals cover. */
-export function GroupSummary({ rows, windowDays }: { rows: StationRow[] | null; windowDays: number | null }) {
+/** The "Queue risk" line under the page title: stations per level, the fixed guidance caption, and the windows the two signals cover. */
+export function RiskSummary({ rows, windowDays }: { rows: StationRow[] | null; windowDays: number | null }) {
   if (rows === null) return <p className="now-line">Loading stations…</p>;
   return (
     <p className="now-line">
-      <strong className="num">{groupSummary(rows)}</strong>
+      <strong className="num">{riskSummary(rows)}</strong>
+      <span className="now-slot">{RISK_GUIDANCE}</span>
       {windowDays !== null && <span className="now-slot">Traffic from the last {windowDays} days, reviews from the last 12 months</span>}
     </p>
   );
@@ -72,12 +74,12 @@ export function BaselineNotice({ samples }: { samples: number | null }) {
 }
 
 const MODES: { value: MapMode; label: string }[] = [
-  { value: "potential", label: "Potential queues" },
+  { value: "risk", label: "Queue risk" },
   { value: "now", label: "Traffic now" },
 ];
 
 const HEADINGS: Record<MapMode, string> = {
-  potential: "Stations, potential queues first",
+  risk: "Stations, highest queue risk first",
   now: "Stations, worst traffic first",
 };
 
@@ -113,9 +115,9 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
     () => (settled && sites ? buildRows(sites, risk?.sites ?? null, themes?.sites ?? null) : null),
     [settled, sites, risk, themes],
   );
-  const listed = useMemo(() => rows && (mode === "potential" ? orderByGroup(rows) : orderByRank(rows, ranked)), [rows, mode, ranked]);
-  const queueGroups = useMemo(
-    () => (mode === "now" ? undefined : rows ? new Map(rows.map((r) => [r.site.site_id, r.group])) : null),
+  const listed = useMemo(() => rows && (mode === "risk" ? orderByRisk(rows) : orderByRank(rows, ranked)), [rows, mode, ranked]);
+  const queueRisks = useMemo(
+    () => (mode === "now" ? undefined : rows ? new Map(rows.map((r) => [r.site.site_id, r.queueRisk])) : null),
     [mode, rows],
   );
   const selectSite = useCallback((siteId: string) => dispatch({ type: "select", siteId }), [dispatch]);
@@ -129,7 +131,7 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
       context={
         sites && (
           <>
-            {mode === "potential" ? <GroupSummary rows={rows} windowDays={windowDays} /> : <NowSummary summary={summary} />}
+            {mode === "risk" ? <RiskSummary rows={rows} windowDays={windowDays} /> : <NowSummary summary={summary} />}
             <BaselineNotice samples={summary.baseline} />
           </>
         )
@@ -146,14 +148,14 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
             <Notice tone="error">Couldn't load the slowdown comparison, so the map shows traffic now. {station.risk.message}</Notice>
           )}
           {station.themes instanceof Error && (
-            <Notice tone="error">Couldn't load review counts, so stations are grouped by traffic only. {station.themes.message}</Notice>
+            <Notice tone="error">Couldn't load review counts, so queue risk comes from traffic only. {station.themes.message}</Notice>
           )}
         </div>
       )}
       <div className="overview">
         <div className="map-frame">
           {sites ? (
-            <TrafficMap sites={sites} latest={latest} onSelectSite={selectSite} queueGroups={queueGroups} selectedId={selected} />
+            <TrafficMap sites={sites} latest={latest} onSelectSite={selectSite} queueRisks={queueRisks} selectedId={selected} />
           ) : (
             <div className="map-canvas map-placeholder" />
           )}
@@ -163,8 +165,9 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
           latest={latest}
           weatherBySite={weatherBySite}
           heading={HEADINGS[mode]}
+          mode={mode}
           selectedId={selected}
-          showGroup={!riskFailed}
+          showRisk={!riskFailed}
           windowDays={windowDays}
           onToggle={toggleSite}
         />
@@ -176,7 +179,7 @@ export function OverviewView({ sites, latest, weatherBySite, error, station, mod
 export default function Overview() {
   const { sites, latest, weatherBySite, error } = useTrafficData();
   const station = useStationData();
-  const [mode, setMode] = useState<MapMode>("potential");
+  const [mode, setMode] = useState<MapMode>("risk");
   const [selected, dispatch] = useReducer(selectionReducer, null);
   useEffect(() => {
     if (!selected) return;

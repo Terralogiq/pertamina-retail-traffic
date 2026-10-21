@@ -192,6 +192,12 @@ describe("scatter", () => {
     expect(data.map((d) => d.symbol)).toEqual(["circle", "circle", "diamond"]);
   });
 
+  it("shifts overlapping point labels apart instead of hiding them", () => {
+    const points = pointsFor(analysis.sites, "shopping_mall", 0, "delay");
+    const option = scatterOption(points, "delay", false, null, analysis.sites) as { series: { labelLayout: { moveOverlap: string; hideOverlap?: boolean } }[] };
+    expect(option.series[0].labelLayout).toEqual({ moveOverlap: "shiftY" });
+  });
+
   it("show ranks plots rank against rank on linear axes", () => {
     const points = pointsFor(analysis.sites, "shopping_mall", 0, "delay");
     const option = scatterOption(points, "delay", true, null, analysis.sites) as { xAxis: { type: string }; series: { data: { value: number[] }[] }[] };
@@ -208,6 +214,14 @@ describe("small multiples and site table", () => {
     expect((html.match(/class="poi-mini( selected)?"/g) ?? []).length).toBe(6);
     expect(html).toContain("poi-mini selected");
     expect(html).toContain("Shopping malls within 3 km: rho −0.02");
+  });
+
+  it("puts rho in a header above the plot, not over it", () => {
+    const html = renderToStaticMarkup(
+      <SmallMultiples data={analysis} group="shopping_mall" radius={3000} ranked={false} hover={null} onHover={() => {}} onSelect={() => {}} />,
+    );
+    expect(html.indexOf("poi-mini-rho")).toBeGreaterThan(-1);
+    expect(html.indexOf("poi-mini-rho")).toBeLessThan(html.indexOf("poi-mini-svg"));
   });
 
   it("lists sites with links to their pages, counts at the selected radius and the toll site marked", () => {

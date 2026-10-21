@@ -120,22 +120,9 @@
 .map-marker[data-band="jam"] { --band-color: var(--band-jam); }
 .map-marker[data-band="none"] { --band-color: var(--band-none); }
 
-/* "Potential queues": the same accent as the group chips. Both signals is the one filled pill. */
-.map-marker[data-queue-group="potential"] {
-  --band-color: var(--brand-primary);
-  background: var(--brand-primary);
-  color: var(--brand-on-primary);
-}
-
-.map-marker[data-queue-group="traffic_only"],
-.map-marker[data-queue-group="reviews_only"] {
-  --band-color: var(--brand-secondary);
-  color: var(--brand-secondary);
-}
-
-.map-marker[data-queue-group="none"] {
-  --band-color: var(--border-strong);
-  color: var(--ink-2);
+/* "Queue risk": the level colour of the chips (see QueueRisk.css) on the border, tail and icon; the text stays ink. */
+.map-marker[data-level] {
+  --band-color: var(--risk-color);
 }
 
 /* Selected station: raised (the marker's z-index is set too) and ringed, with a surface gap so the ring reads on any fill. */

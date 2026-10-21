@@ -211,6 +211,8 @@ export function scatterOption(points: Point[], metric: PoiMetric, ranked: boolea
       metricValue: p.value,
       symbol: toll ? "diamond" : "circle",
       symbolSize: hot ? SYMBOL_SIZE_HOVER : SYMBOL_SIZE,
+      // Names sit beside their point, facing the middle, so a name never runs through a neighbouring point above it.
+      label: { position: xr[i] > points.length / 2 ? "left" : "right" },
       // The toll site is a hollow diamond; the others are filled.
       itemStyle: {
         color: toll ? CHART_INK.surface : CHART_INK.text,
@@ -239,7 +241,9 @@ export function scatterOption(points: Point[], metric: PoiMetric, ranked: boolea
       {
         type: "scatter",
         data,
-        label: { show: true, position: "top", formatter: (p: unknown) => (p as { data: { name: string } }).data.name, color: CHART_INK.text, fontSize: 11 },
+        label: { show: true, formatter: (p: unknown) => (p as { data: { name: string } }).data.name, color: CHART_INK.text, fontSize: 11 },
+        // Close points would draw their names on top of each other; nudge labels apart vertically so none is dropped.
+        labelLayout: { moveOverlap: "shiftY" },
       },
     ],
   };
@@ -410,10 +414,10 @@ function MultiplesRow({
             aria-label={`${group.label} within ${radiusLabel(r)}: rho ${formatRho(stat?.rho)}`}
             onClick={() => onSelect(group.id, r)}
           >
-            <Mini points={pointsFor(data.sites, group.id, i, data.metric)} ranked={ranked} yRange={yRange} hover={hover} onHover={onHover} />
             <span className="poi-mini-rho num">
               {"ρ"} {formatRho(stat?.rho)}
             </span>
+            <Mini points={pointsFor(data.sites, group.id, i, data.metric)} ranked={ranked} yRange={yRange} hover={hover} onHover={onHover} />
           </button>
         );
       })}

@@ -1,7 +1,7 @@
 import type { BandId } from "../theme/palette";
 import { BandIndicator } from "../theme/BandIndicator";
-import { GroupIcon } from "../overview/QueueGroup";
-import type { QueueGroup } from "../overview/model";
+import { RiskIcon } from "../overview/QueueRisk";
+import { QueueRisk, RISK_LEVEL } from "../overview/model";
 
 const markerClass = (group: boolean, compact: boolean, selected: boolean) =>
   ["map-marker", group && "map-marker-group", compact && "map-marker-compact", selected && "map-marker-selected"].filter(Boolean).join(" ");
@@ -31,23 +31,23 @@ export function MapMarker({
   );
 }
 
-/** "Potential queues" marker: the group's icon (state without colour) plus its short name, or the size of a cluster. */
+/** "Queue risk" marker: the level's icon (state without colour) plus its short name, or the size of a cluster. */
 export function QueueMarker({
-  queueGroup,
+  risk,
   text,
   group = false,
   compact = false,
   selected = false,
 }: {
-  queueGroup: QueueGroup;
+  risk: QueueRisk;
   text: string;
   group?: boolean;
   compact?: boolean;
   selected?: boolean;
 }) {
   return (
-    <span className={markerClass(group, compact, selected)} data-queue-group={queueGroup}>
-      <GroupIcon group={queueGroup} />
+    <span className={markerClass(group, compact, selected)} data-risk={risk} data-level={RISK_LEVEL[risk]}>
+      <RiskIcon risk={risk} />
       <span className={compact && !group ? "visually-hidden" : "map-marker-text"}>{text}</span>
     </span>
   );
