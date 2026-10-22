@@ -123,6 +123,7 @@
   white-space: nowrap;
 }
 
+.hour-scale-ramp [data-step="0"] { --tick-fill: var(--surface-sunken); }
 .hour-tick[data-step="1"], .hour-scale-ramp [data-step="1"] { --tick-fill: var(--seq-1); }
 .hour-tick[data-step="2"], .hour-scale-ramp [data-step="2"] { --tick-fill: var(--seq-2); }
 .hour-tick[data-step="3"], .hour-scale-ramp [data-step="3"] { --tick-fill: var(--seq-3); }

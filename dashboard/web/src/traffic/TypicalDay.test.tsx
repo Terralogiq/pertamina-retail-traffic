@@ -63,7 +63,7 @@ describe("typical day", () => {
     expect(delayStep(80, 80)).toBe(5);
     expect(delayStep(40, 80)).toBe(3);
     expect(delayStep(1, 80)).toBe(1);
-    expect(delayStep(0, 80)).toBe(1);
+    expect(delayStep(0, 80)).toBe(0);
     expect(maxMedian([leg("approach", "weekday"), leg("departure", "weekday")])).toBe(80);
     const html = renderToStaticMarkup(<HourStrip leg="departure" hours={leg("departure", "weekday").hours} max={160} />);
     expect(html.match(/<li[^>]*data-hour="9"[^>]*>/)?.[0]).toContain('data-step="3"');

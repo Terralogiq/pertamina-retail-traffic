@@ -137,9 +137,9 @@ export function typicalChartOption(legs: TypicalLeg[]) {
 
 const STEPS = [1, 2, 3, 4, 5] as const;
 
-/** Step 1-5 of the sequential ramp (--seq-1 to --seq-5) for a median delay, scaled to the day's slowest hour. */
+/** Step 1-5 of the sequential ramp (--seq-1 to --seq-5) for a median delay, scaled to the day's slowest hour; 0 (grey) for no delay. */
 export function delayStep(delayS: number, max: number): number {
-  if (delayS <= 0 || max <= 0) return 1;
+  if (delayS <= 0 || max <= 0) return 0;
   return Math.min(STEPS.length, Math.max(1, Math.ceil((delayS / max) * STEPS.length)));
 }
 
@@ -187,7 +187,7 @@ function HourScale({ max }: { max: number }) {
     <p className="hour-scale">
       <span>{formatDelay(0)}</span>
       <span className="hour-scale-ramp" aria-hidden="true">
-        {STEPS.map((step) => (
+        {[0, ...STEPS].map((step) => (
           <span key={step} data-step={step} />
         ))}
       </span>
